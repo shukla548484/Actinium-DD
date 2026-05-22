@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Excel-Sheet-Comp
 
-## Getting Started
+Compare vendor service quotes from Excel files. Different vendors often label the same service differently or place items under different headings — this app normalizes those rows into a **standard service list** and builds a **vertical comparison** of costs.
 
-First, run the development server:
+## Features
+
+- Upload multiple `.xlsx` / `.xls` files (one per vendor)
+- Auto-detect headers, categories/section headings, and priced line items
+- Fuzzy-match similar service names across vendors (adjustable sensitivity)
+- Preview comparison table with lowest total highlighted per row
+- Download standardized comparison Excel
+
+## Getting started
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Excel format tips
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Works best when each vendor file has:
 
-## Learn More
+- A header row with columns like *Description*, *Qty*, *Unit Price*, *Total*
+- Section headings as text-only rows (no prices)
+- One priced row per service
 
-To learn more about Next.js, take a look at the following resources:
+If headers are missing, the parser uses the leftmost text column as the service name and the rightmost numeric columns as prices.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Stack
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Next.js (App Router, no `src/` folder)
+- [SheetJS (xlsx)](https://sheetjs.com/) — read/write Excel
+- [Fuse.js](https://fusejs.io/) — fuzzy service name matching
 
-## Deploy on Vercel
+## Project structure
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+app/           # Next.js routes
+components/    # UI
+lib/
+  excel/       # Parse & export
+  matching/    # Normalize & fuzzy match
+```
