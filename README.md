@@ -10,14 +10,23 @@ Compare vendor service quotes from Excel files. Different vendors often label th
 - Preview comparison table with lowest total highlighted per row
 - Download standardized comparison Excel
 
-## Getting started
+## Getting started (local only — no publish required)
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open the URL printed in the terminal (starts at **http://localhost:3000**).
+
+`npm run dev` and `npm run start` automatically use the next free port if 3000 is busy (3001, 3002, …). Override the starting port with `PORT=4000 npm run dev`.
+
+Production build locally:
+
+```bash
+npm run build
+npm run start
+```
 
 ## Excel format tips
 
