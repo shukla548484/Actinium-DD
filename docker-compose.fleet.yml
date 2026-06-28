@@ -1,0 +1,21 @@
+services:
+  fleet-postgres:
+    image: postgres:16-alpine
+    container_name: actinium-dd-postgres
+    restart: unless-stopped
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: drydock
+      POSTGRES_PASSWORD: drydock_local
+      POSTGRES_DB: actinium_dd
+    volumes:
+      - actinium_dd_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U drydock -d actinium_dd"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  actinium_dd_pg:

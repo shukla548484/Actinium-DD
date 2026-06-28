@@ -1,9 +1,5 @@
-import { QuoteCompareApp } from "@/components/QuoteCompareApp";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return (
-    <main className="min-h-screen bg-gradient-to-b from-zinc-50 to-zinc-100">
-      <QuoteCompareApp />
-    </main>
-  );
+  redirect("/projects");
 }

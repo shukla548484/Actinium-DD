@@ -1,0 +1,37 @@
+-- AlterTable
+ALTER TABLE "compare_snapshots" ALTER COLUMN "office_changed_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "relay_changed_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "deleted_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" DROP DEFAULT,
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "projects" ALTER COLUMN "office_changed_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "relay_changed_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "deleted_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "quote_lines" ALTER COLUMN "office_changed_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "relay_changed_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "deleted_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "quote_meta" ALTER COLUMN "office_changed_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "relay_changed_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "deleted_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "spec_lines" ALTER COLUMN "office_changed_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "relay_changed_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "deleted_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "sync_tombstones" ALTER COLUMN "deleted_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "yard_invites" ALTER COLUMN "office_changed_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "relay_changed_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "deleted_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" DROP DEFAULT,
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);

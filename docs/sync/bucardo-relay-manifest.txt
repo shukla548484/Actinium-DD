@@ -1,0 +1,54 @@
+# Bucardo sync manifest — Actinium-DD
+
+Tables replicated: **Office ↔ VPS relay ↔ Ship / Superintendent local PostgreSQL**
+
+**Not included:** yard portal sessions (yard writes direct to office; rows appear via relay pull).
+
+Load order matters for initial clone and FK integrity.
+
+```
+projects
+spec_lines
+yard_invites
+quote_meta
+quote_lines
+compare_snapshots
+sync_tombstones
+```
+
+## Per-table notes
+
+| Table | Parent FK | Sync direction | Conflict note |
+|-------|-----------|----------------|---------------|
+| `projects` | — | Bidirectional | Office owns `status` transitions |
+| `spec_lines` | `project_id` | Bidirectional | `owner_locked=true` → office wins |
+| `yard_invites` | `project_id` | Office → fleet primarily | Tokens created on office |
+| `quote_meta` | `invite_id` | Bidirectional | Yard portal writes on office first |
+| `quote_lines` | `invite_id`, `spec_line_id` | Bidirectional | `match_method=portal` → office wins |
+| `compare_snapshots` | `project_id` | Bidirectional | `origin_node` + `changed_at` |
+| `sync_tombstones` | — | Bidirectional | Delete propagation |
+
+## Bucardo dbgroups (suggested names)
+
+### Ship node
+
+- `drydock_ship_to_relay`
+- `drydock_ship_from_relay`
+
+### Superintendent node
+
+- `drydock_superintendent_to_relay`
+- `drydock_superintendent_from_relay`
+
+## Relay database
+
+- Name: `drydock_sync_relay`
+- Grants: see `bucardo-relay-postgres-grants.sql` (adapt role names per vessel/superintendent)
+
+## Schema prerequisites
+
+Before enabling Bucardo:
+
+1. Run Prisma migrations on office, relay, ship, superintendent.
+2. Run `relay-install-changed-at-triggers.sh` on all four databases.
+3. Set `REPLICA IDENTITY FULL` on tables with heavy UPDATE patterns (see PMS `bucardo-relay-replica-identity.sql`).

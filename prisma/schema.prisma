@@ -1,0 +1,1577 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProjectStatus {
+  draft
+  tendering
+  comparing
+  closed
+}
+
+enum YardInviteStatus {
+  invited
+  in_progress
+  submitted
+  excel_imported
+  shortlisted
+  accepted
+  rejected
+}
+
+enum QuoteSource {
+  portal
+  excel
+}
+
+enum PricingStatus {
+  priced
+  included
+  na
+  owner_supply
+}
+
+enum MatchMethod {
+  portal
+  excel_auto
+  excel_manual
+  owner
+}
+
+enum ScopeLocale {
+  en
+  zh
+  ja
+}
+
+/// Which node last wrote or owns a row for sync conflict rules.
+enum SyncOriginNode {
+  office
+  vps
+  ship
+  superintendent
+  yard
+}
+
+/// RBAC — where the user operates (matches role spreadsheet User Type).
+enum RbacUserType {
+  system
+  office
+  vessel
+  external
+}
+
+enum UserStatus {
+  active
+  invited
+  disabled
+}
+
+/// Scope for a role assignment (vessel, project, yard invite, etc.).
+enum RbacScopeType {
+  system
+  organization
+  fleet
+  vessel
+  project
+  yard_invite
+}
+
+/// Application surface for page-level access control.
+enum AppSurface {
+  office
+  desktop
+  yard
+  vessel
+  platform
+}
+
+enum EntityStatus {
+  active
+  wait
+  inactive
+}
+
+enum CompanyType {
+  MASTER
+  SUB
+}
+
+enum CompanyCategory {
+  shipyard
+  ship_management
+  ship_owner
+  other
+}
+
+model Company {
+  id              String           @id @default(cuid())
+  code            String           @unique
+  name            String
+  type            CompanyType      @default(MASTER)
+  category        CompanyCategory  @default(other)
+  status          EntityStatus     @default(wait)
+  parentId        String?        @map("parent_id")
+  address         String?
+  contactPerson   String?        @map("contact_person")
+  contactEmail    String?        @map("contact_email")
+  contactPhone    String?        @map("contact_phone")
+  isShipowner     Boolean        @default(false) @map("is_shipowner")
+  originNode      SyncOriginNode @default(office) @map("origin_node")
+  officeChangedAt DateTime       @default(now()) @map("office_changed_at")
+  relayChangedAt  DateTime?      @map("relay_changed_at")
+  deletedAt       DateTime?      @map("deleted_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  parent    Company?  @relation("CompanyHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children  Company[] @relation("CompanyHierarchy")
+  vessels   Vessel[]
+  employees Employee[]
+  projects  Project[]
+
+  @@index([parentId])
+  @@index([status])
+  @@index([deletedAt])
+  @@index([officeChangedAt])
+  @@map("companies")
+}
+
+model Vessel {
+  id              String         @id @default(cuid())
+  companyId       String         @map("company_id")
+  code            String
+  name            String
+  imoNumber       String?        @unique @map("imo_number")
+  flag            String?
+  vesselType      String?        @map("vessel_type")
+  callSign        String?        @map("call_sign")
+  grossTonnage    Float?         @map("gross_tonnage")
+  yearBuilt       Int?           @map("year_built")
+  status          EntityStatus   @default(active)
+  originNode      SyncOriginNode @default(office) @map("origin_node")
+  officeChangedAt DateTime       @default(now()) @map("office_changed_at")
+  relayChangedAt  DateTime?      @map("relay_changed_at")
+  deletedAt       DateTime?      @map("deleted_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  company           Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employeeVessels   EmployeeVessel[]
+  projects          Project[]        @relation("ProjectVessel")
+  dryDockProjects   DryDockProject[]
+  vesselJobs        DdVesselJob[]
+  technicalProfile  VesselTechnicalProfile?
+
+  nextDryDockDue    DateTime?        @map("next_dry_dock_due")
+  lastDryDockDate   DateTime?        @map("last_dry_dock_date")
+  classSociety      String?          @map("class_society")
+  readinessScore    Int?             @map("readiness_score")
+
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([status])
+  @@index([deletedAt])
+  @@index([officeChangedAt])
+  @@map("vessels")
+}
+
+model Employee {
+  id              String         @id @default(cuid())
+  companyId       String         @map("company_id")
+  employeeCode    String         @unique @map("employee_code")
+  firstName       String         @map("first_name")
+  lastName        String         @map("last_name")
+  email           String         @unique
+  phone           String?
+  designation     String?
+  department      String?
+  status          EntityStatus   @default(wait)
+  roleId          String?        @map("role_id")
+  userId          String?        @unique @map("user_id")
+  originNode      SyncOriginNode @default(office) @map("origin_node")
+  officeChangedAt DateTime       @default(now()) @map("office_changed_at")
+  relayChangedAt  DateTime?      @map("relay_changed_at")
+  deletedAt       DateTime?      @map("deleted_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  role            Role?            @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  user            User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  vesselAssignments EmployeeVessel[]
+
+  @@index([companyId])
+  @@index([status])
+  @@index([deletedAt])
+  @@index([officeChangedAt])
+  @@map("employees")
+}
+
+model EmployeeVessel {
+  id            String    @id @default(cuid())
+  employeeId    String    @map("employee_id")
+  vesselId      String    @map("vessel_id")
+  assignedAt    DateTime  @default(now()) @map("assigned_at")
+  isWatchKeeper Boolean   @default(false) @map("is_watch_keeper")
+  signOffDate   DateTime? @map("sign_off_date")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  vessel   Vessel   @relation(fields: [vesselId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, vesselId])
+  @@index([vesselId])
+  @@map("employee_vessels")
+}
+
+model Organization {
+  id              String         @id @default(cuid())
+  name            String
+  slug            String         @unique
+  originNode      SyncOriginNode @default(office) @map("origin_node")
+  officeChangedAt DateTime       @default(now()) @map("office_changed_at")
+  relayChangedAt  DateTime?      @map("relay_changed_at")
+  deletedAt       DateTime?      @map("deleted_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  users    User[]
+  roles    Role[]
+  projects Project[]
+
+  @@index([deletedAt])
+  @@index([officeChangedAt])
+  @@map("organizations")
+}
+
+/// System role catalog (organizationId null) or company-cloned roles.
+model Role {
+  id              String         @id @default(cuid())
+  /// Spreadsheet Role ID (1, 2, … 39). Globally unique for system catalog rows.
+  roleNo          Int?           @unique @map("role_no")
+  code            String
+  name            String
+  userType        RbacUserType   @map("user_type")
+  hierarchyLevel  Int            @map("hierarchy_level")
+  sortOrder       Int            @default(0) @map("sort_order")
+  designation     String?
+  department      String?
+  description     String?
+  isSystem        Boolean        @default(true) @map("is_system")
+  organizationId  String?        @map("organization_id")
+  originNode      SyncOriginNode @default(office) @map("origin_node")
+  officeChangedAt DateTime       @default(now()) @map("office_changed_at")
+  relayChangedAt  DateTime?      @map("relay_changed_at")
+  deletedAt       DateTime?      @map("deleted_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  organization    Organization?    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  rolePermissions RolePermission[]
+  userRoles       UserRole[]
+  employees       Employee[]
+
+  @@unique([organizationId, code])
+  @@index([userType, hierarchyLevel])
+  @@index([deletedAt])
+  @@index([officeChangedAt])
+  @@map("roles")
+}
+
+model Permission {
+  id          String     @id @default(cuid())
+  key         String     @unique
+  module      String
+  resource    String?
+  appSurface  AppSurface? @map("app_surface")
+  description String?
+  sortOrder   Int        @default(0) @map("sort_order")
+
+  rolePermissions RolePermission[]
+  userOverrides   UserPermissionOverride[]
+
+  @@index([module])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String @id @default(cuid())
+  roleId       String @map("role_id")
+  permissionId String @map("permission_id")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model User {
+  id              String         @id @default(cuid())
+  organizationId  String?        @map("organization_id")
+  loginId         String?        @unique @map("login_id")
+  email           String
+  passwordHash    String?        @map("password_hash")
+  displayName     String         @map("display_name")
+  status          UserStatus     @default(invited)
+  originNode      SyncOriginNode @default(office) @map("origin_node")
+  officeChangedAt DateTime       @default(now()) @map("office_changed_at")
+  relayChangedAt  DateTime?      @map("relay_changed_at")
+  deletedAt       DateTime?      @map("deleted_at")
+  lastLoginAt     DateTime?      @map("last_login_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  organization    Organization?            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userRoles       UserRole[]
+  permissionOverrides UserPermissionOverride[]
+  employeeProfile Employee?
+
+  @@unique([organizationId, email])
+  @@index([organizationId])
+  @@index([deletedAt])
+  @@index([officeChangedAt])
+  @@map("users")
+}
+
+model UserRole {
+  id              String         @id @default(cuid())
+  userId          String         @map("user_id")
+  roleId          String         @map("role_id")
+  scopeType       RbacScopeType  @default(organization) @map("scope_type")
+  scopeId         String?        @map("scope_id")
+  originNode      SyncOriginNode @default(office) @map("origin_node")
+  officeChangedAt DateTime       @default(now()) @map("office_changed_at")
+  relayChangedAt  DateTime?      @map("relay_changed_at")
+  deletedAt       DateTime?      @map("deleted_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId, scopeType, scopeId])
+  @@index([userId])
+  @@index([roleId])
+  @@index([scopeType, scopeId])
+  @@index([deletedAt])
+  @@map("user_roles")
+}
+
+/// Per-user grant/deny on top of role permissions (company policy overrides).
+model UserPermissionOverride {
+  id           String  @id @default(cuid())
+  userId       String  @map("user_id")
+  permissionId String  @map("permission_id")
+  granted      Boolean @default(true)
+  conditions   Json    @default("{}")
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, permissionId])
+  @@map("user_permission_overrides")
+}
+
+model Project {
+  id              String         @id @default(cuid())
+  organizationId  String?        @map("organization_id")
+  companyId       String?        @map("company_id")
+  name            String
+  vesselName      String?        @map("vessel_name")
+  referenceCode   String?        @map("reference_code")
+  /// Links to vessels.id when registered; used for sync scope.
+  vesselId        String?        @map("vessel_id")
+  currency        String         @default("USD")
+  shipyardDays    Int?           @map("shipyard_days")
+  dryDockDays     Int?           @map("dry_dock_days")
+  cprDays         Int?           @map("cpr_days")
+  status          ProjectStatus  @default(draft)
+  notes           String?
+  scopeLocales    ScopeLocale[]  @default([en, zh, ja]) @map("scope_locales")
+  originNode      SyncOriginNode @default(office) @map("origin_node")
+  officeChangedAt DateTime       @default(now()) @map("office_changed_at")
+  relayChangedAt  DateTime?      @map("relay_changed_at")
+  deletedAt       DateTime?      @map("deleted_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  specLines         SpecLine[]
+  yardInvites       YardInvite[]
+  compareSnapshots  CompareSnapshot[]
+  categories        ProjectCategory[]
+  organization      Organization?     @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  company           Company?          @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  vessel            Vessel?           @relation("ProjectVessel", fields: [vesselId], references: [id], onDelete: SetNull)
+  dryDockProjects   DryDockProject[]  @relation("DryDockTenderLink")
+  yardWorkProject   YardWorkProject?
+
+  @@index([organizationId])
+  @@index([companyId])
+  @@index([vesselId])
+  @@index([officeChangedAt])
+  @@index([deletedAt])
+  @@map("projects")
+}
+
+model SpecLine {
+  id                String         @id @default(cuid())
+  projectId         String         @map("project_id")
+  bucket            String
+  sortOrder         Int            @map("sort_order")
+  lineCode          String?        @map("line_code")
+  descriptionEn     String         @map("description_en")
+  descriptionZh     String?        @map("description_zh")
+  descriptionJa     String?        @map("description_ja")
+  unit              String?
+  defaultQty        Float?         @map("default_qty")
+  scopeDays         Float?         @map("scope_days")
+  scopeAreaM2       Float?         @map("scope_area_m2")
+  scopeNotes        String?        @map("scope_notes")
+  ownerLocked       Boolean        @default(true) @map("owner_locked")
+  allowDiscount     Boolean        @default(true) @map("allow_discount")
+  maxDiscountPct    Float?         @map("max_discount_pct")
+  referenceUnitRate Float?         @map("reference_unit_rate")
+  calcRule          String         @map("calc_rule")
+  calcParams        Json           @default("{}") @map("calc_params")
+  serviceDefId      String?        @map("service_def_id")
+  isOptional        Boolean        @default(false) @map("is_optional")
+  originNode        SyncOriginNode @default(office) @map("origin_node")
+  officeChangedAt   DateTime       @default(now()) @map("office_changed_at")
+  relayChangedAt    DateTime?      @map("relay_changed_at")
+  deletedAt         DateTime?      @map("deleted_at")
+
+  project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  quoteLines QuoteLine[]
+  workshopJobs WorkshopJob[]
+
+  @@index([projectId, sortOrder])
+  @@index([officeChangedAt])
+  @@index([deletedAt])
+  @@map("spec_lines")
+}
+
+model ProjectCategory {
+  id              String         @id @default(cuid())
+  projectId       String         @map("project_id")
+  categoryNo      String         @map("category_no")
+  slug            String
+  name            String
+  shortcut        String
+  sortOrder       Int            @map("sort_order")
+  isSystem        Boolean        @default(false) @map("is_system")
+  originNode      SyncOriginNode @default(office) @map("origin_node")
+  officeChangedAt DateTime       @default(now()) @map("office_changed_at")
+  relayChangedAt  DateTime?      @map("relay_changed_at")
+  deletedAt       DateTime?      @map("deleted_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, slug])
+  @@unique([projectId, categoryNo])
+  @@unique([projectId, shortcut])
+  @@index([projectId, sortOrder])
+  @@index([officeChangedAt])
+  @@index([deletedAt])
+  @@map("project_categories")
+}
+
+/// Company-wide master catalog — copied into new tender projects as spec lines.
+model MasterSpecLine {
+  id                String   @id @default(cuid())
+  bucket            String
+  sortOrder         Int      @map("sort_order")
+  lineCode          String?  @unique @map("line_code")
+  descriptionEn     String   @map("description_en")
+  descriptionZh     String?  @map("description_zh")
+  descriptionJa     String?  @map("description_ja")
+  unit              String?
+  defaultQty        Float?   @map("default_qty")
+  scopeDays         Float?   @map("scope_days")
+  scopeAreaM2       Float?   @map("scope_area_m2")
+  scopeNotes        String?  @map("scope_notes")
+  allowDiscount     Boolean  @default(true) @map("allow_discount")
+  maxDiscountPct    Float?   @map("max_discount_pct")
+  referenceUnitRate Float?   @map("reference_unit_rate")
+  calcRule          String   @map("calc_rule")
+  calcParams        Json     @default("{}") @map("calc_params")
+  serviceDefId      String?  @map("service_def_id")
+  isOptional        Boolean  @default(false) @map("is_optional")
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@index([bucket, sortOrder])
+  @@index([isActive])
+  @@map("master_spec_lines")
+}
+
+enum YardWorkProjectStatus {
+  planning
+  execution
+  completed
+  on_hold
+}
+
+enum WorkshopJobStatus {
+  not_started
+  in_progress
+  completed
+  blocked
+  awaiting_owner
+  awaiting_class
+  awaiting_material
+}
+
+enum JobPriority {
+  critical
+  high
+  normal
+  low
+}
+
+model YardWorkProject {
+  id            String                @id @default(cuid())
+  projectId     String                @unique @map("project_id")
+  yardCompanyId String?               @map("yard_company_id")
+  status        YardWorkProjectStatus @default(planning)
+  plannedStart  DateTime?             @map("planned_start")
+  plannedFinish DateTime?             @map("planned_finish")
+  actualStart   DateTime?             @map("actual_start")
+  actualFinish  DateTime?             @map("actual_finish")
+  notes         String?
+  createdAt     DateTime              @default(now()) @map("created_at")
+  updatedAt     DateTime              @updatedAt @map("updated_at")
+
+  project Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  jobs    WorkshopJob[]
+
+  dailyProgress   YardDailyProgress[]
+  delayEntries    YardDelayEntry[]
+  permitEntries   YardPermitEntry[]
+  inspectionEntries YardInspectionEntry[]
+  clarifications  YardClarification[]
+  variations      YardVariationEntry[]
+  attachments     YardJobAttachment[]
+
+  @@map("yard_work_projects")
+}
+
+model WorkshopJob {
+  id                    String            @id @default(cuid())
+  yardWorkProjectId     String            @map("yard_work_project_id")
+  workshopSlug          String            @map("workshop_slug")
+  jobCode               String?           @map("job_code")
+  jobTitle              String            @map("job_title")
+  vesselArea            String?           @map("vessel_area")
+  priority              JobPriority       @default(normal)
+  status                WorkshopJobStatus @default(not_started)
+  plannedStart          DateTime?         @map("planned_start")
+  plannedFinish         DateTime?         @map("planned_finish")
+  actualStart           DateTime?         @map("actual_start")
+  actualFinish          DateTime?         @map("actual_finish")
+  progressPct           Float             @default(0) @map("progress_pct")
+  manpowerRequired      Int?              @map("manpower_required")
+  equipmentRequired     String?           @map("equipment_required")
+  materialRequired      String?           @map("material_required")
+  permitRequired        String?           @map("permit_required")
+  classHoldPoint        Boolean           @default(false) @map("class_hold_point")
+  ownerApprovalRequired Boolean           @default(false) @map("owner_approval_required")
+  blockingDependency    String?           @map("blocking_dependency")
+  delayReason           String?           @map("delay_reason")
+  remarks               String?
+  isCriticalPath        Boolean           @default(false) @map("is_critical_path")
+  isVariation           Boolean           @default(false) @map("is_variation")
+  specLineId            String?           @map("spec_line_id")
+  sortOrder             Int               @default(0) @map("sort_order")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+
+  yardWorkProject YardWorkProject           @relation(fields: [yardWorkProjectId], references: [id], onDelete: Cascade)
+  specLine        SpecLine?                 @relation(fields: [specLineId], references: [id], onDelete: SetNull)
+  predecessors    WorkshopJobDependency[]   @relation("JobSuccessor")
+  successors      WorkshopJobDependency[]   @relation("JobPredecessor")
+  dailyProgress   YardDailyProgress[]
+  delayEntries    YardDelayEntry[]
+  permitEntries   YardPermitEntry[]
+  inspectionEntries YardInspectionEntry[]
+  clarifications  YardClarification[]
+  variations      YardVariationEntry[]
+  attachments     YardJobAttachment[]
+
+  @@index([yardWorkProjectId, workshopSlug])
+  @@index([status])
+  @@map("workshop_jobs")
+}
+
+model WorkshopJobDependency {
+  id               String @id @default(cuid())
+  successorJobId   String @map("successor_job_id")
+  predecessorJobId String @map("predecessor_job_id")
+  lagDays          Int    @default(0) @map("lag_days")
+
+  successor   WorkshopJob @relation("JobSuccessor", fields: [successorJobId], references: [id], onDelete: Cascade)
+  predecessor WorkshopJob @relation("JobPredecessor", fields: [predecessorJobId], references: [id], onDelete: Cascade)
+
+  @@unique([successorJobId, predecessorJobId])
+  @@map("workshop_job_dependencies")
+}
+
+enum YardRegisterStatus {
+  open
+  in_progress
+  resolved
+  closed
+}
+
+enum YardClarificationStatus {
+  open
+  awaiting_owner
+  awaiting_class
+  resolved
+}
+
+enum YardPermitType {
+  hot_work
+  enclosed_space
+  height_work
+  other
+}
+
+enum YardInspectionResult {
+  pending
+  pass
+  fail
+  conditional
+}
+
+enum YardAttachmentType {
+  photo
+  document
+  drawing
+  certificate
+}
+
+enum YardAttachmentVisibility {
+  internal
+  owner
+  class
+}
+
+model YardDailyProgress {
+  id                String   @id @default(cuid())
+  yardWorkProjectId String   @map("yard_work_project_id")
+  workshopJobId     String?  @map("workshop_job_id")
+  reportDate        DateTime @map("report_date")
+  progressPct       Float?   @map("progress_pct")
+  manpowerCount     Int?     @map("manpower_count")
+  remarks           String?
+  updatedBy         String?  @map("updated_by")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
+
+  yardWorkProject YardWorkProject @relation(fields: [yardWorkProjectId], references: [id], onDelete: Cascade)
+  workshopJob     WorkshopJob?    @relation(fields: [workshopJobId], references: [id], onDelete: SetNull)
+
+  @@index([yardWorkProjectId, reportDate])
+  @@map("yard_daily_progress")
+}
+
+model YardDelayEntry {
+  id                String             @id @default(cuid())
+  yardWorkProjectId String             @map("yard_work_project_id")
+  workshopJobId     String?            @map("workshop_job_id")
+  delayReason       String             @map("delay_reason")
+  impactDays        Int?               @map("impact_days")
+  ownerAction       String?            @map("owner_action")
+  status            YardRegisterStatus @default(open)
+  sinceDate         DateTime?          @map("since_date")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  deletedAt         DateTime?          @map("deleted_at")
+
+  yardWorkProject YardWorkProject @relation(fields: [yardWorkProjectId], references: [id], onDelete: Cascade)
+  workshopJob     WorkshopJob?    @relation(fields: [workshopJobId], references: [id], onDelete: SetNull)
+
+  @@index([yardWorkProjectId, status])
+  @@map("yard_delay_entries")
+}
+
+model YardPermitEntry {
+  id                String             @id @default(cuid())
+  yardWorkProjectId String             @map("yard_work_project_id")
+  workshopJobId     String?            @map("workshop_job_id")
+  permitNo          String?            @map("permit_no")
+  permitType        YardPermitType     @default(other) @map("permit_type")
+  validFrom         DateTime?          @map("valid_from")
+  validTo           DateTime?          @map("valid_to")
+  safetyOfficer     String?            @map("safety_officer")
+  status            YardRegisterStatus @default(open)
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  deletedAt         DateTime?          @map("deleted_at")
+
+  yardWorkProject YardWorkProject @relation(fields: [yardWorkProjectId], references: [id], onDelete: Cascade)
+  workshopJob     WorkshopJob?    @relation(fields: [workshopJobId], references: [id], onDelete: SetNull)
+
+  @@index([yardWorkProjectId, status])
+  @@map("yard_permit_entries")
+}
+
+model YardInspectionEntry {
+  id                String               @id @default(cuid())
+  yardWorkProjectId String               @map("yard_work_project_id")
+  workshopJobId     String?              @map("workshop_job_id")
+  holdPoint         String?              @map("hold_point")
+  inspector         String?
+  plannedDate       DateTime?            @map("planned_date")
+  completedDate     DateTime?            @map("completed_date")
+  result            YardInspectionResult @default(pending)
+  classComment      String?              @map("class_comment")
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+  deletedAt         DateTime?            @map("deleted_at")
+
+  yardWorkProject YardWorkProject @relation(fields: [yardWorkProjectId], references: [id], onDelete: Cascade)
+  workshopJob     WorkshopJob?    @relation(fields: [workshopJobId], references: [id], onDelete: SetNull)
+
+  @@index([yardWorkProjectId, result])
+  @@map("yard_inspection_entries")
+}
+
+model YardClarification {
+  id                String                  @id @default(cuid())
+  yardWorkProjectId String                  @map("yard_work_project_id")
+  workshopJobId     String?                 @map("workshop_job_id")
+  refNo             String?                 @map("ref_no")
+  issueType         String                  @map("issue_type")
+  raisedBy          String?                 @map("raised_by")
+  actionBy          String?                 @map("action_by")
+  body              String
+  ownerReply        String?                 @map("owner_reply")
+  classComment      String?                 @map("class_comment")
+  internalNotes     String?                 @map("internal_notes")
+  status            YardClarificationStatus @default(open)
+  createdAt         DateTime                @default(now()) @map("created_at")
+  updatedAt         DateTime                @updatedAt @map("updated_at")
+  deletedAt         DateTime?               @map("deleted_at")
+
+  yardWorkProject YardWorkProject @relation(fields: [yardWorkProjectId], references: [id], onDelete: Cascade)
+  workshopJob     WorkshopJob?    @relation(fields: [workshopJobId], references: [id], onDelete: SetNull)
+
+  @@index([yardWorkProjectId, status])
+  @@map("yard_clarifications")
+}
+
+model YardVariationEntry {
+  id                String             @id @default(cuid())
+  yardWorkProjectId String             @map("yard_work_project_id")
+  workshopJobId     String?            @map("workshop_job_id")
+  voNumber          String?            @map("vo_number")
+  description       String
+  raisedBy          String?            @map("raised_by")
+  ownerStatus       YardRegisterStatus @default(open) @map("owner_status")
+  commercialImpact  Float?             @map("commercial_impact")
+  approved          Boolean            @default(false)
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  deletedAt         DateTime?          @map("deleted_at")
+
+  yardWorkProject YardWorkProject @relation(fields: [yardWorkProjectId], references: [id], onDelete: Cascade)
+  workshopJob     WorkshopJob?    @relation(fields: [workshopJobId], references: [id], onDelete: SetNull)
+
+  @@index([yardWorkProjectId, ownerStatus])
+  @@map("yard_variation_entries")
+}
+
+model YardJobAttachment {
+  id                String                   @id @default(cuid())
+  yardWorkProjectId String                   @map("yard_work_project_id")
+  workshopJobId     String?                  @map("workshop_job_id")
+  attachmentType    YardAttachmentType       @default(document) @map("attachment_type")
+  filename          String
+  fileUrl           String                   @map("file_url")
+  uploadedBy        String?                  @map("uploaded_by")
+  visibility        YardAttachmentVisibility @default(internal)
+  notes             String?
+  createdAt         DateTime                 @default(now()) @map("created_at")
+  updatedAt         DateTime                 @updatedAt @map("updated_at")
+  deletedAt         DateTime?                @map("deleted_at")
+
+  yardWorkProject YardWorkProject @relation(fields: [yardWorkProjectId], references: [id], onDelete: Cascade)
+  workshopJob     WorkshopJob?    @relation(fields: [workshopJobId], references: [id], onDelete: SetNull)
+
+  @@index([yardWorkProjectId, attachmentType])
+  @@map("yard_job_attachments")
+}
+
+model YardInvite {
+  id              String           @id @default(cuid())
+  projectId       String           @map("project_id")
+  yardName        String           @map("yard_name")
+  contactEmail    String?          @map("contact_email")
+  token           String           @unique
+  sourceType      QuoteSource      @default(portal) @map("source_type")
+  status          YardInviteStatus @default(invited)
+  preferredLocale ScopeLocale      @default(en) @map("preferred_locale")
+  submittedAt     DateTime?        @map("submitted_at")
+  originNode      SyncOriginNode   @default(office) @map("origin_node")
+  officeChangedAt DateTime         @default(now()) @map("office_changed_at")
+  relayChangedAt  DateTime?        @map("relay_changed_at")
+  deletedAt       DateTime?        @map("deleted_at")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  project          Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  quoteMeta        QuoteMeta?
+  quoteLines       QuoteLine[]
+  compareSnapshots CompareSnapshot[]
+
+  @@index([projectId])
+  @@index([officeChangedAt])
+  @@index([deletedAt])
+  @@map("yard_invites")
+}
+
+model QuoteMeta {
+  inviteId           String         @id @map("invite_id")
+  currency           String?
+  shipyardDays       Int?           @map("shipyard_days")
+  dryDockDays        Int?           @map("dry_dock_days")
+  cprDays            Int?           @map("cpr_days")
+  exchangeRate       Float?         @map("exchange_rate")
+  validityDays       Int?           @map("validity_days")
+  generalNotes       String?        @map("general_notes")
+  excelFileName      String?        @map("excel_file_name")
+  globalDiscountPct  Float?         @map("global_discount_pct")
+  taxPct             Float?         @map("tax_pct")
+  quoteGrossTotal    Float?         @map("quote_gross_total")
+  quoteNetTotal      Float?         @map("quote_net_total")
+  originNode         SyncOriginNode @default(office) @map("origin_node")
+  officeChangedAt    DateTime       @default(now()) @map("office_changed_at")
+  relayChangedAt     DateTime?      @map("relay_changed_at")
+  deletedAt          DateTime?      @map("deleted_at")
+
+  invite YardInvite @relation(fields: [inviteId], references: [id], onDelete: Cascade)
+
+  @@index([officeChangedAt])
+  @@index([deletedAt])
+  @@map("quote_meta")
+}
+
+model QuoteLine {
+  id               String         @id @default(cuid())
+  inviteId         String         @map("invite_id")
+  specLineId       String?        @map("spec_line_id")
+  isExtra          Boolean        @default(false) @map("is_extra")
+  description      String
+  unit             String?
+  unitRate         Float?         @map("unit_rate")
+  quantity         Float?
+  quotedTotal      Float?         @map("quoted_total")
+  calculatedTotal  Float?         @map("calculated_total")
+  discountPct      Float?         @default(0) @map("discount_pct")
+  grossTotal       Float?         @map("gross_total")
+  netTotal         Float?         @map("net_total")
+  pricingStatus    PricingStatus  @default(priced) @map("pricing_status")
+  remarks          String?
+  matchConfidence  Float?         @map("match_confidence")
+  matchMethod      MatchMethod    @default(portal) @map("match_method")
+  sortOrder        Int            @default(0) @map("sort_order")
+  originNode       SyncOriginNode @default(office) @map("origin_node")
+  officeChangedAt  DateTime       @default(now()) @map("office_changed_at")
+  relayChangedAt   DateTime?      @map("relay_changed_at")
+  deletedAt        DateTime?      @map("deleted_at")
+
+  invite   YardInvite @relation(fields: [inviteId], references: [id], onDelete: Cascade)
+  specLine SpecLine?  @relation(fields: [specLineId], references: [id], onDelete: SetNull)
+
+  @@index([inviteId])
+  @@index([officeChangedAt])
+  @@index([deletedAt])
+  @@map("quote_lines")
+}
+
+/// Parsed hull/dry-dock/yard compare state per vendor file (ship/superintendent Excel imports).
+model CompareSnapshot {
+  id              String         @id @default(cuid())
+  projectId       String         @map("project_id")
+  inviteId        String?        @map("invite_id")
+  vendorName      String         @map("vendor_name")
+  fileName        String         @map("file_name")
+  snapshot        Json
+  originNode      SyncOriginNode @default(ship) @map("origin_node")
+  officeChangedAt DateTime       @default(now()) @map("office_changed_at")
+  relayChangedAt  DateTime?      @map("relay_changed_at")
+  deletedAt       DateTime?      @map("deleted_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  project Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  invite  YardInvite? @relation(fields: [inviteId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@index([inviteId])
+  @@index([officeChangedAt])
+  @@index([deletedAt])
+  @@map("compare_snapshots")
+}
+
+/// Propagate hard deletes through Bucardo (PMS pattern).
+model SyncTombstone {
+  id          String         @id @default(cuid())
+  tableName   String         @map("table_name")
+  recordId    String         @map("record_id")
+  businessKey String?        @map("business_key")
+  metadata    Json?
+  source      String?
+  vesselId    String?        @map("vessel_id")
+  originNode  SyncOriginNode @default(office) @map("origin_node")
+  deletedAt   DateTime       @default(now()) @map("deleted_at")
+  reason      String?
+
+  @@index([tableName, recordId])
+  @@index([tableName, businessKey])
+  @@index([vesselId, tableName])
+  @@index([deletedAt])
+  @@map("sync_tombstones")
+}
+
+// ─── Technical Superintendent / Dry Dock Execution ───────────────────────────
+
+enum DryDockProjectStatus {
+  draft
+  planning
+  budgeting
+  rfq_issued
+  quote_evaluation
+  tendering
+  approved
+  mobilization
+  awarded
+  docking
+  in_progress
+  execution
+  sea_trial
+  final_inspection
+  completed
+  closed
+  archived
+  on_hold
+  cancelled
+  reopened
+}
+
+enum DryDockProjectType {
+  special_survey
+  intermediate_survey
+  damage_repair
+  occasional_repair
+  underwater_survey
+  new_installation
+  emergency_docking
+  layup_reactivation
+  conversion_modification
+  warranty_repair
+}
+
+enum DryDockProjectPriority {
+  low
+  medium
+  high
+  critical
+}
+
+enum DdJobStatus {
+  planned
+  in_progress
+  pending_approval
+  completed
+  closed
+}
+
+enum DdJobPriority {
+  low
+  medium
+  high
+  critical
+}
+
+enum DdApprovalStatus {
+  pending
+  approved
+  rejected
+  cancelled
+}
+
+enum DdRiskLevel {
+  low
+  medium
+  high
+  critical
+}
+
+enum DdSurveyStatus {
+  pending
+  in_progress
+  completed
+  deferred
+}
+
+enum DdSparesStatus {
+  required
+  ordered
+  delivered
+  pending
+  cancelled
+}
+
+enum DdPoStatus {
+  draft
+  issued
+  acknowledged
+  in_transit
+  delivered
+  cancelled
+}
+
+enum DdResourceType {
+  crane
+  scaffolding
+  worker_team
+  equipment
+  other
+}
+
+enum DdResourceStatus {
+  planned
+  mobilized
+  active
+  demobilized
+}
+
+model VesselTechnicalProfile {
+  id              String    @id @default(cuid())
+  vesselId        String    @unique @map("vessel_id")
+  classNotation   String?   @map("class_notation")
+  mainEngine      String?   @map("main_engine")
+  auxiliaryEngine String?   @map("auxiliary_engine")
+  boilerInfo      String?   @map("boiler_info")
+  defectSummary   String?   @map("defect_summary")
+  pmsSummary      String?   @map("pms_summary")
+  sparesSummary   String?   @map("spares_summary")
+  notes           String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  vessel Vessel @relation(fields: [vesselId], references: [id], onDelete: Cascade)
+
+  @@map("vessel_technical_profiles")
+}
+
+model DryDockProject {
+  id              String                   @id @default(cuid())
+  vesselId        String                   @map("vessel_id")
+  projectId       String?                  @map("project_id")
+  name            String
+  referenceCode   String?                  @unique @map("reference_code")
+  projectType     DryDockProjectType       @default(special_survey) @map("project_type")
+  priority        DryDockProjectPriority   @default(medium)
+  status          DryDockProjectStatus     @default(draft)
+  plannedStart    DateTime?                @map("planned_start")
+  plannedEnd      DateTime?                @map("planned_end")
+  actualStart     DateTime?                @map("actual_start")
+  actualEnd       DateTime?                @map("actual_end")
+  expectedSailing DateTime?                @map("expected_sailing")
+  selectedYard    String?                  @map("selected_yard")
+  shipyardCountry String?                  @map("shipyard_country")
+  dockType        String?                  @map("dock_type")
+  currency        String?                  @default("USD")
+  budgetTotal     Float?                   @map("budget_total")
+  approvedBudget  Float?                   @map("approved_budget")
+  contingencyBudget Float?                 @map("contingency_budget")
+  quotedTotal     Float?                   @map("quoted_total")
+  actualTotal     Float?                   @map("actual_total")
+  offHireCost     Float?                   @map("off_hire_cost")
+  dryDockDays     Int?                     @map("dry_dock_days")
+  classSociety    String?                  @map("class_society")
+  surveyType      String?                  @map("survey_type")
+  mainScope       String?                  @map("main_scope")
+  dockingReason   String?                  @map("docking_reason")
+  portLocation    String?                  @map("port_location")
+  projectOwner    String?                  @map("project_owner")
+  progressPct     Float?                   @default(0) @map("progress_pct")
+  templateVersion String                   @default("1") @map("template_version")
+  workspaceProvisionedAt DateTime?         @map("workspace_provisioned_at")
+  baselineLockedAt       DateTime?         @map("baseline_locked_at")
+  lastShipyardSyncAt     DateTime?         @map("last_shipyard_sync_at")
+  notes           String?
+  deletedAt       DateTime?                @map("deleted_at")
+  createdAt       DateTime                 @default(now()) @map("created_at")
+  updatedAt       DateTime                 @updatedAt @map("updated_at")
+
+  vessel          Vessel               @relation(fields: [vesselId], references: [id], onDelete: Cascade)
+  tenderProject   Project?             @relation("DryDockTenderLink", fields: [projectId], references: [id], onDelete: SetNull)
+  jobs            DdJob[]
+  budgetLines     DdBudgetLine[]
+  checklistItems  DdChecklistItem[]
+  milestones      DdMilestone[]
+  risks           DdRiskItem[]
+  variations      DdVariationOrder[]
+  dailyReports    DdDailyReport[]
+  delays          DdDelayItem[]
+  surveyItems     DdSurveyItem[]
+  sparesItems     DdSparesItem[]
+  approvals       DdApprovalRequest[]
+  inputSubmissions DdInputSubmission[]
+  purchaseOrders  DdPurchaseOrder[]
+  resources       DdResourceAllocation[]
+  vesselJobsTarget     DdVesselJob[] @relation("VesselJobTarget")
+  vesselJobsIntegrated DdVesselJob[] @relation("VesselJobIntegrated")
+
+  @@index([vesselId])
+  @@index([status])
+  @@index([projectType])
+  @@index([deletedAt])
+  @@map("dry_dock_projects")
+}
+
+model DdJob {
+  id                String        @id @default(cuid())
+  dryDockProjectId  String        @map("dry_dock_project_id")
+  jobCode           String?       @map("job_code")
+  title             String
+  category          String
+  description       String?
+  workshop          String?       @map("workshop")
+  priority          DdJobPriority @default(medium)
+  status            DdJobStatus   @default(planned)
+  progressPct       Float?        @default(0) @map("progress_pct")
+  budgetAmount      Float?        @map("budget_amount")
+  quotedAmount      Float?        @map("quoted_amount")
+  actualAmount      Float?        @map("actual_amount")
+  responsibleParty  String?       @map("responsible_party")
+  sortOrder         Int           @default(0) @map("sort_order")
+  deletedAt         DateTime?     @map("deleted_at")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  dryDockProject DryDockProject @relation(fields: [dryDockProjectId], references: [id], onDelete: Cascade)
+  attachments    DdJobAttachment[]
+  sourceVesselJob DdVesselJob?
+
+  @@index([dryDockProjectId, sortOrder])
+  @@index([deletedAt])
+  @@map("dd_jobs")
+}
+
+model DdJobAttachment {
+  id        String   @id @default(cuid())
+  jobId     String   @map("job_id")
+  fileName  String   @map("file_name")
+  fileUrl   String   @map("file_url")
+  mimeType  String?  @map("mime_type")
+  fileSize  Int?     @map("file_size")
+  caption   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  job DdJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@map("dd_job_attachments")
+}
+
+enum DdVesselJobStatus {
+  draft
+  submitted
+  approved
+  integrated
+  rejected
+  carry_forward
+}
+
+enum DdVesselJobSource {
+  vessel
+  pms
+  class
+  superintendent
+  defect_report
+}
+
+/// Vessel-scoped job held in the superintendent-curated bank until integrated into a dry dock project.
+model DdVesselJob {
+  id                         String                @id @default(cuid())
+  vesselId                   String                @map("vessel_id")
+  targetDryDockProjectId     String?               @map("target_dry_dock_project_id")
+  integratedDryDockProjectId String?               @map("integrated_dry_dock_project_id")
+  integratedDdJobId          String?               @unique @map("integrated_dd_job_id")
+  jobCode                    String?               @map("job_code")
+  title                      String
+  category                   String
+  workshop                   String?
+  description                String?               @db.Text
+  priority                   DdJobPriority         @default(medium)
+  source                     DdVesselJobSource     @default(vessel)
+  status                     DdVesselJobStatus     @default(draft)
+  createdByName              String?               @map("created_by_name")
+  createdByRole              DdInputResponsibleRole? @map("created_by_role")
+  submittedAt                DateTime?             @map("submitted_at")
+  approvedAt                 DateTime?             @map("approved_at")
+  approvedByName             String?               @map("approved_by_name")
+  integratedAt               DateTime?             @map("integrated_at")
+  integratedByName           String?               @map("integrated_by_name")
+  rejectedAt                 DateTime?             @map("rejected_at")
+  rejectedByName             String?               @map("rejected_by_name")
+  rejectionReason            String?               @map("rejection_reason") @db.Text
+  carryForwardReason         String?               @map("carry_forward_reason") @db.Text
+  deletedAt                  DateTime?             @map("deleted_at")
+  createdAt                  DateTime              @default(now()) @map("created_at")
+  updatedAt                  DateTime              @updatedAt @map("updated_at")
+
+  vessel                   Vessel          @relation(fields: [vesselId], references: [id], onDelete: Cascade)
+  targetDryDockProject     DryDockProject? @relation("VesselJobTarget", fields: [targetDryDockProjectId], references: [id], onDelete: SetNull)
+  integratedDryDockProject DryDockProject? @relation("VesselJobIntegrated", fields: [integratedDryDockProjectId], references: [id], onDelete: SetNull)
+  integratedDdJob          DdJob?          @relation(fields: [integratedDdJobId], references: [id], onDelete: SetNull)
+
+  @@index([vesselId, status])
+  @@index([targetDryDockProjectId])
+  @@index([integratedDryDockProjectId])
+  @@index([deletedAt])
+  @@map("dd_vessel_jobs")
+}
+
+model DdBudgetLine {
+  id                String   @id @default(cuid())
+  dryDockProjectId  String   @map("dry_dock_project_id")
+  category          String
+  description       String?
+  budgetAmount      Float    @default(0) @map("budget_amount")
+  quotedAmount      Float?   @map("quoted_amount")
+  approvedAmount    Float?   @map("approved_amount")
+  actualAmount      Float?   @map("actual_amount")
+  responsibleParty  String?  @map("responsible_party")
+  varianceReason    String?  @map("variance_reason")
+  approvalStatus    DdApprovalStatus @default(pending) @map("approval_status")
+  sortOrder         Int      @default(0) @map("sort_order")
+  deletedAt         DateTime? @map("deleted_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  dryDockProject DryDockProject @relation(fields: [dryDockProjectId], references: [id], onDelete: Cascade)
+
+  @@index([dryDockProjectId])
+  @@index([deletedAt])
+  @@map("dd_budget_lines")
+}
+
+model DdChecklistItem {
+  id                String   @id @default(cuid())
+  dryDockProjectId  String   @map("dry_dock_project_id")
+  title             String
+  category          String?
+  isCompleted       Boolean  @default(false) @map("is_completed")
+  dueDate           DateTime? @map("due_date")
+  completedAt       DateTime? @map("completed_at")
+  assignedTo        String?  @map("assigned_to")
+  notes             String?
+  sortOrder         Int      @default(0) @map("sort_order")
+  deletedAt         DateTime? @map("deleted_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  dryDockProject DryDockProject @relation(fields: [dryDockProjectId], references: [id], onDelete: Cascade)
+  attachments    DdChecklistAttachment[]
+
+  @@index([dryDockProjectId])
+  @@index([deletedAt])
+  @@map("dd_checklist_items")
+}
+
+model DdChecklistAttachment {
+  id              String   @id @default(cuid())
+  checklistItemId String   @map("checklist_item_id")
+  fileName        String   @map("file_name")
+  fileUrl         String   @map("file_url")
+  mimeType        String?  @map("mime_type")
+  fileSize        Int?     @map("file_size")
+  caption         String?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  checklistItem DdChecklistItem @relation(fields: [checklistItemId], references: [id], onDelete: Cascade)
+
+  @@index([checklistItemId])
+  @@map("dd_checklist_attachments")
+}
+
+model DdMilestone {
+  id                   String    @id @default(cuid())
+  dryDockProjectId     String    @map("dry_dock_project_id")
+  title                String
+  plannedDate          DateTime? @map("planned_date")
+  baselineDate         DateTime? @map("baseline_date")
+  actualDate           DateTime? @map("actual_date")
+  status               String    @default("planned")
+  notes                String?
+  dependsOnMilestoneId String?   @map("depends_on_milestone_id")
+  sortOrder            Int       @default(0) @map("sort_order")
+  deletedAt            DateTime? @map("deleted_at")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  dryDockProject       DryDockProject @relation(fields: [dryDockProjectId], references: [id], onDelete: Cascade)
+  dependsOnMilestone   DdMilestone?   @relation("MilestoneDependency", fields: [dependsOnMilestoneId], references: [id], onDelete: SetNull)
+  dependentMilestones  DdMilestone[]  @relation("MilestoneDependency")
+
+  @@index([dryDockProjectId])
+  @@index([deletedAt])
+  @@map("dd_milestones")
+}
+
+model DdRiskItem {
+  id                String      @id @default(cuid())
+  dryDockProjectId  String      @map("dry_dock_project_id")
+  title             String
+  description       String?
+  likelihood        DdRiskLevel @default(medium)
+  impact            DdRiskLevel @default(medium)
+  mitigation        String?
+  owner             String?
+  status            String      @default("open")
+  deletedAt         DateTime?   @map("deleted_at")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+
+  dryDockProject DryDockProject @relation(fields: [dryDockProjectId], references: [id], onDelete: Cascade)
+
+  @@index([dryDockProjectId])
+  @@index([deletedAt])
+  @@map("dd_risk_items")
+}
+
+model DdVariationOrder {
+  id                String           @id @default(cuid())
+  dryDockProjectId  String           @map("dry_dock_project_id")
+  voNumber          String?          @map("vo_number")
+  title             String
+  description       String?
+  amount            Float            @default(0)
+  approvalStatus    DdApprovalStatus @default(pending) @map("approval_status")
+  requestedBy       String?          @map("requested_by")
+  approvedBy        String?          @map("approved_by")
+  deletedAt         DateTime?        @map("deleted_at")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  dryDockProject DryDockProject @relation(fields: [dryDockProjectId], references: [id], onDelete: Cascade)
+
+  @@index([dryDockProjectId])
+  @@index([deletedAt])
+  @@map("dd_variation_orders")
+}
+
+model DdDailyReport {
+  id                String   @id @default(cuid())
+  dryDockProjectId  String   @map("dry_dock_project_id")
+  reportDate        DateTime @map("report_date")
+  completedWork     String?  @map("completed_work")
+  plannedWork       String?  @map("planned_work")
+  manpowerCount     Int?     @map("manpower_count")
+  safetyNotes       String?  @map("safety_notes")
+  delayNotes        String?  @map("delay_notes")
+  progressPct       Float?   @map("progress_pct")
+  deletedAt         DateTime? @map("deleted_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  dryDockProject DryDockProject @relation(fields: [dryDockProjectId], references: [id], onDelete: Cascade)
+
+  @@index([dryDockProjectId, reportDate])
+  @@index([deletedAt])
+  @@map("dd_daily_reports")
+}
+
+model DdDelayItem {
+  id                String   @id @default(cuid())
+  dryDockProjectId  String   @map("dry_dock_project_id")
+  title             String
+  reason            String?
+  impactDays        Float?   @map("impact_days")
+  responsibleParty  String?  @map("responsible_party")
+  status            String   @default("open")
+  deletedAt         DateTime? @map("deleted_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  dryDockProject DryDockProject @relation(fields: [dryDockProjectId], references: [id], onDelete: Cascade)
+
+  @@index([dryDockProjectId])
+  @@index([deletedAt])
+  @@map("dd_delay_items")
+}
+
+model DdSurveyItem {
+  id                String         @id @default(cuid())
+  dryDockProjectId  String         @map("dry_dock_project_id")
+  surveyType        String         @map("survey_type")
+  title             String
+  description       String?
+  dueDate           DateTime?      @map("due_date")
+  status            DdSurveyStatus @default(pending)
+  classReference    String?        @map("class_reference")
+  deletedAt         DateTime?      @map("deleted_at")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+
+  dryDockProject DryDockProject @relation(fields: [dryDockProjectId], references: [id], onDelete: Cascade)
+
+  @@index([dryDockProjectId])
+  @@index([deletedAt])
+  @@map("dd_survey_items")
+}
+
+model DdSparesItem {
+  id                String        @id @default(cuid())
+  dryDockProjectId  String        @map("dry_dock_project_id")
+  partName          String        @map("part_name")
+  partNumber        String?       @map("part_number")
+  quantity          Float         @default(1)
+  supplyType        String        @default("owner") @map("supply_type")
+  status            DdSparesStatus @default(required)
+  requiredDate      DateTime?     @map("required_date")
+  deliveredDate     DateTime?     @map("delivered_date")
+  notes             String?
+  deletedAt         DateTime?     @map("deleted_at")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  dryDockProject DryDockProject @relation(fields: [dryDockProjectId], references: [id], onDelete: Cascade)
+
+  @@index([dryDockProjectId])
+  @@index([deletedAt])
+  @@map("dd_spares_items")
+}
+
+model DdPurchaseOrder {
+  id                String     @id @default(cuid())
+  dryDockProjectId  String     @map("dry_dock_project_id")
+  poNumber          String?    @map("po_number")
+  supplier          String?
+  description       String?
+  amount            Float      @default(0)
+  currency          String     @default("USD")
+  status            DdPoStatus @default(draft)
+  orderedDate       DateTime?  @map("ordered_date")
+  expectedDelivery  DateTime?  @map("expected_delivery")
+  deliveredDate     DateTime?  @map("delivered_date")
+  notes             String?
+  deletedAt         DateTime?  @map("deleted_at")
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+
+  dryDockProject DryDockProject @relation(fields: [dryDockProjectId], references: [id], onDelete: Cascade)
+
+  @@index([dryDockProjectId])
+  @@index([deletedAt])
+  @@map("dd_purchase_orders")
+}
+
+model DdResourceAllocation {
+  id                String           @id @default(cuid())
+  dryDockProjectId  String           @map("dry_dock_project_id")
+  title             String
+  resourceType      DdResourceType   @default(other) @map("resource_type")
+  quantity          Float            @default(1)
+  unit              String?
+  status            DdResourceStatus @default(planned)
+  startDate         DateTime?        @map("start_date")
+  endDate           DateTime?        @map("end_date")
+  notes             String?
+  deletedAt         DateTime?        @map("deleted_at")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  dryDockProject DryDockProject @relation(fields: [dryDockProjectId], references: [id], onDelete: Cascade)
+
+  @@index([dryDockProjectId])
+  @@index([deletedAt])
+  @@map("dd_resource_allocations")
+}
+
+model DdApprovalRequest {
+  id                String           @id @default(cuid())
+  dryDockProjectId  String           @map("dry_dock_project_id")
+  approvalType      String           @map("approval_type")
+  title             String
+  description       String?
+  amount            Float?
+  status            DdApprovalStatus @default(pending)
+  requestedBy       String?          @map("requested_by")
+  approvedBy        String?          @map("approved_by")
+  decidedAt         DateTime?        @map("decided_at")
+  deletedAt         DateTime?        @map("deleted_at")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  dryDockProject DryDockProject @relation(fields: [dryDockProjectId], references: [id], onDelete: Cascade)
+
+  @@index([dryDockProjectId])
+  @@index([deletedAt])
+  @@map("dd_approval_requests")
+}
+
+enum DdInputSubmissionStatus {
+  draft
+  submitted
+  reviewed
+  approved
+  rejected
+  inactive
+}
+
+enum DdInputResponsibleRole {
+  vessel
+  superintendent
+  shipyard
+  purchase
+  class
+  accounts
+}
+
+/// Structured project input — one active row per section per project (versioned via inactive + new draft).
+model DdInputSubmission {
+  id               String                   @id @default(cuid())
+  dryDockProjectId String                   @map("dry_dock_project_id")
+  sectionKey       String                   @map("section_key")
+  pageKey          String                   @map("page_key")
+  moduleId         String                   @map("module_id")
+  version          Int                      @default(1)
+  status           DdInputSubmissionStatus  @default(draft)
+  valuesJson       Json                     @default("{}") @map("values_json")
+  enteredByRole    DdInputResponsibleRole   @map("entered_by_role")
+  enteredByName    String?                  @map("entered_by_name")
+  enteredAt        DateTime?                @map("entered_at")
+  reviewedByName   String?                  @map("reviewed_by_name")
+  reviewedAt       DateTime?                @map("reviewed_at")
+  reviewNotes      String?                  @map("review_notes")
+  approvedByName   String?                  @map("approved_by_name")
+  approvedAt       DateTime?                @map("approved_at")
+  linkedJobId      String?                  @map("linked_job_id")
+  mandatory        Boolean                  @default(false)
+  attachmentRequired Boolean                @default(false) @map("attachment_required")
+  deletedAt        DateTime?                @map("deleted_at")
+  inactiveAt       DateTime?                @map("inactive_at")
+  createdAt        DateTime                 @default(now()) @map("created_at")
+  updatedAt        DateTime                 @updatedAt @map("updated_at")
+
+  dryDockProject DryDockProject @relation(fields: [dryDockProjectId], references: [id], onDelete: Cascade)
+
+  @@index([dryDockProjectId, sectionKey])
+  @@index([dryDockProjectId, pageKey])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("dd_input_submissions")
+}

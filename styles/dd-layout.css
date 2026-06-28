@@ -1,0 +1,171 @@
+/* App shell — structural layout only; spacing uses shadcn/Tailwind tokens */
+
+:root {
+  --dd-nav-height: 3rem;
+  --dd-sidebar-width: 18rem;
+}
+
+.dd-app-shell {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  /* Safari: vh / -webkit-fill-available before dvh */
+  height: 100vh;
+  height: -webkit-fill-available;
+  height: 100dvh;
+  max-height: 100vh;
+  max-height: 100dvh;
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: var(--background);
+}
+
+/** Root frame under body — column flex child that must fill the shell */
+.dd-portal-root {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0%;
+  min-height: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.dd-app-body {
+  display: flex;
+  flex: 1 1 0%;
+  flex-direction: column;
+  min-height: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+/** Sidebar module outer wrapper (superintendent, admin, shipyard) */
+.dd-module-layout {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0%;
+  min-height: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+/** Sidebar + main content row beneath module chrome bars */
+.dd-module-row {
+  display: flex;
+  flex: 1 1 0%;
+  align-items: stretch;
+  min-height: 0;
+  min-width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+/** Side nav — must not expand the module row beyond the viewport (Safari flex bug) */
+.dd-module-sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  align-self: stretch;
+  overflow: hidden;
+}
+
+.dd-module-sidebar-scroll {
+  flex: 1 1 0%;
+  min-height: 0;
+  height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dd-main {
+  display: flex;
+  flex: 1 1 0%;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  align-self: stretch;
+  overflow: hidden;
+}
+
+.dd-main-scroll {
+  display: flex;
+  flex: 1 1 0%;
+  flex-direction: column;
+  /* height:0 is valid here — parent .dd-main is column flex (Safari scroll fix) */
+  min-height: 0;
+  height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/** Single-column pages without sidebar */
+.dd-content-scroll {
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 0%;
+  height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Legacy alias — prefer PageShell component */
+.dd-page {
+  box-sizing: border-box;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+  max-width: 72rem;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .dd-page {
+    padding: 1.5rem;
+  }
+}
+
+.dd-page-header {
+  margin-bottom: 0;
+}
+
+.dd-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.dd-sidebar {
+  background: var(--dd-black);
+  color: #fafafa;
+  border-color: #27272a;
+}
+
+.dd-sub-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+@media (min-width: 768px) {
+  .dd-sub-bar {
+    padding: 1rem 1.5rem;
+  }
+}

@@ -1,0 +1,306 @@
+import type { PermissionSeed } from "@/lib/rbac/types";
+
+/** Permission catalog — pages (UI) + actions (API). Keys are stable identifiers. */
+export const PERMISSIONS: PermissionSeed[] = [
+  // —— Platform (Developer Admin) ——
+  {
+    key: "platform.tenant.manage",
+    module: "platform",
+    appSurface: "platform",
+    description: "Manage tenants and licenses",
+  },
+  {
+    key: "platform.config.manage",
+    module: "platform",
+    appSurface: "platform",
+    description: "System configuration and feature flags",
+  },
+  {
+    key: "page.platform.admin",
+    module: "page",
+    resource: "/platform",
+    appSurface: "platform",
+    description: "Developer admin console",
+  },
+
+  // —— Office pages ——
+  {
+    key: "page.office.projects",
+    module: "page",
+    resource: "/projects",
+    appSurface: "office",
+    description: "Project list",
+    sortOrder: 10,
+  },
+  {
+    key: "page.office.projects.new",
+    module: "page",
+    resource: "/projects/new",
+    appSurface: "office",
+    description: "Create project",
+    sortOrder: 11,
+  },
+  {
+    key: "page.office.project.overview",
+    module: "page",
+    resource: "/projects/[id]#overview",
+    appSurface: "office",
+    description: "Project overview tab",
+    sortOrder: 20,
+  },
+  {
+    key: "page.office.project.categories",
+    module: "page",
+    resource: "/projects/[id]#categories",
+    appSurface: "office",
+    description: "Cost categories tab",
+    sortOrder: 21,
+  },
+  {
+    key: "page.office.project.spec",
+    module: "page",
+    resource: "/projects/[id]#spec",
+    appSurface: "office",
+    description: "Spec editor tab",
+    sortOrder: 22,
+  },
+  {
+    key: "page.office.project.yards",
+    module: "page",
+    resource: "/projects/[id]#yards",
+    appSurface: "office",
+    description: "Yard invites tab",
+    sortOrder: 23,
+  },
+  {
+    key: "page.office.project.comparison",
+    module: "page",
+    resource: "/projects/[id]#comparison",
+    appSurface: "office",
+    description: "Comparison matrix tab",
+    sortOrder: 24,
+  },
+  {
+    key: "page.office.admin",
+    module: "page",
+    resource: "/admin",
+    appSurface: "office",
+    description: "Admin module home",
+    sortOrder: 29,
+  },
+  {
+    key: "page.office.admin.access",
+    module: "page",
+    resource: "/admin/access",
+    appSurface: "office",
+    description: "Page access matrix",
+    sortOrder: 35,
+  },
+  {
+    key: "page.office.admin.companies",
+    module: "page",
+    resource: "/admin/companies",
+    appSurface: "office",
+    description: "Company management",
+    sortOrder: 30,
+  },
+  {
+    key: "page.office.admin.vessels",
+    module: "page",
+    resource: "/admin/vessels",
+    appSurface: "office",
+    description: "Vessel management",
+    sortOrder: 31,
+  },
+  {
+    key: "page.office.admin.employees",
+    module: "page",
+    resource: "/admin/employees",
+    appSurface: "office",
+    description: "Employee management",
+    sortOrder: 32,
+  },
+  {
+    key: "page.office.admin.users",
+    module: "page",
+    resource: "/admin/users",
+    appSurface: "office",
+    description: "User management (legacy)",
+    sortOrder: 33,
+  },
+  {
+    key: "page.office.admin.roles",
+    module: "page",
+    resource: "/admin/roles",
+    appSurface: "office",
+    description: "Role and permission management",
+    sortOrder: 34,
+  },
+
+  // —— Desktop pages ——
+  {
+    key: "page.desktop.jobs",
+    module: "page",
+    resource: "desktop://jobs",
+    appSurface: "desktop",
+    description: "Desktop job list and comparison",
+    sortOrder: 40,
+  },
+  {
+    key: "page.desktop.sync",
+    module: "page",
+    resource: "desktop://sync",
+    appSurface: "desktop",
+    description: "Sync status panel",
+    sortOrder: 41,
+  },
+
+  // —— Yard portal ——
+  {
+    key: "page.yard.quote",
+    module: "page",
+    resource: "/quote/[token]",
+    appSurface: "yard",
+    description: "Shipyard quote portal",
+    sortOrder: 50,
+  },
+
+  // —— Shipyard execution portal ——
+  {
+    key: "page.shipyard.dashboard",
+    module: "page",
+    resource: "/shipyard",
+    appSurface: "yard",
+    description: "Shipyard execution dashboard",
+    sortOrder: 60,
+  },
+  {
+    key: "page.shipyard.projects",
+    module: "page",
+    resource: "/shipyard/projects",
+    appSurface: "yard",
+    description: "Active execution projects",
+    sortOrder: 61,
+  },
+  {
+    key: "page.shipyard.workshops",
+    module: "page",
+    resource: "/shipyard/workshops",
+    appSurface: "yard",
+    description: "Workshop job boards",
+    sortOrder: 62,
+  },
+  {
+    key: "page.shipyard.planning",
+    module: "page",
+    resource: "/shipyard/planning",
+    appSurface: "yard",
+    description: "Master schedule and dependencies",
+    sortOrder: 63,
+  },
+  {
+    key: "page.shipyard.execution",
+    module: "page",
+    resource: "/shipyard/execution",
+    appSurface: "yard",
+    description: "Daily progress and registers",
+    sortOrder: 64,
+  },
+  {
+    key: "page.shipyard.commercial",
+    module: "page",
+    resource: "/shipyard/commercial",
+    appSurface: "yard",
+    description: "Variations, work done, completion",
+    sortOrder: 65,
+  },
+  {
+    key: "page.shipyard.tender",
+    module: "page",
+    resource: "/shipyard/tender",
+    appSurface: "yard",
+    description: "Tender and RFQ workflow",
+    sortOrder: 66,
+  },
+
+  // —— Ship Access (onboard) ——
+  {
+    key: "page.shipAccess.dashboard",
+    module: "page",
+    resource: "/ship-access",
+    appSurface: "vessel",
+    description: "Ship Access overview",
+    sortOrder: 70,
+  },
+  {
+    key: "page.shipAccess.jobs",
+    module: "page",
+    resource: "/ship-access/jobs",
+    appSurface: "vessel",
+    description: "View vessel job submissions",
+    sortOrder: 71,
+  },
+  {
+    key: "page.shipAccess.jobs.new",
+    module: "page",
+    resource: "/ship-access/jobs/new",
+    appSurface: "vessel",
+    description: "Create vessel scope jobs",
+    sortOrder: 72,
+  },
+  { key: "ship.job.create", module: "ship", description: "Create vessel job bank entries" },
+  { key: "ship.job.read", module: "ship", description: "View own vessel job submissions" },
+
+  // —— Shipyard execution actions ——
+  { key: "yard.execution.read", module: "yard", description: "View yard execution projects and jobs" },
+  { key: "yard.execution.manage", module: "yard", description: "Manage all workshops and planning" },
+  { key: "yard.workshop.hull", module: "yard", description: "Hull workshop jobs only" },
+  { key: "yard.workshop.steel", module: "yard", description: "Steel workshop jobs only" },
+  { key: "yard.workshop.painting", module: "yard", description: "Painting workshop jobs only" },
+  { key: "yard.workshop.machinery", module: "yard", description: "Machinery workshop jobs only" },
+  { key: "yard.workshop.valve", module: "yard", description: "Valve / pipe workshop jobs only" },
+  { key: "yard.workshop.electrical", module: "yard", description: "Electrical workshop jobs only" },
+  { key: "yard.workshop.safety", module: "yard", description: "Safety / QA-QC inspections and permits" },
+  { key: "yard.workshop.commercial", module: "yard", description: "Variations and invoice support" },
+  { key: "yard.job.update", module: "yard", description: "Update workshop job progress" },
+  { key: "yard.dependency.manage", module: "yard", description: "Manage job dependencies" },
+
+  // —— Tender actions ——
+  { key: "project.create", module: "tender", description: "Create tender project" },
+  { key: "project.read", module: "tender", description: "View tender projects" },
+  { key: "project.delete", module: "tender", description: "Delete tender project" },
+  { key: "project.status.change", module: "tender", description: "Change project status" },
+  { key: "spec.read", module: "tender", description: "View owner spec" },
+  { key: "spec.edit", module: "tender", description: "Edit owner spec" },
+  { key: "spec.import", module: "tender", description: "Import spec from Excel" },
+  { key: "spec.lock", module: "tender", description: "Lock spec and issue tender" },
+  { key: "category.read", module: "tender", description: "View cost categories" },
+  { key: "category.edit", module: "tender", description: "Edit cost categories" },
+  { key: "yard.invite", module: "tender", description: "Invite shipyards" },
+  { key: "yard.revoke", module: "tender", description: "Revoke yard invites" },
+  { key: "yard.view", module: "tender", description: "View yard invite status" },
+  { key: "quote.read.summary", module: "tender", description: "View quote totals" },
+  { key: "quote.read.detail", module: "tender", description: "View quote line detail" },
+  { key: "quote.submit", module: "tender", description: "Submit yard quotation" },
+  { key: "comparison.view", module: "tender", description: "View comparison matrix" },
+  { key: "comparison.export", module: "tender", description: "Export comparison" },
+  { key: "tender.shortlist", module: "tender", description: "Shortlist yard" },
+  { key: "tender.award", module: "tender", description: "Award tender to yard" },
+
+  // —— Organization ——
+  { key: "org.user.manage", module: "org", description: "Manage company users" },
+  { key: "org.role.manage", module: "org", description: "Manage roles and permissions" },
+  { key: "org.profile.manage", module: "org", description: "Edit company profile" },
+
+  // —— Sync / fleet ——
+  { key: "sync.view_status", module: "sync", description: "View sync status" },
+  { key: "device.register", module: "sync", description: "Register fleet device" },
+
+  // —— Audit ——
+  { key: "audit.read", module: "audit", description: "View audit log" },
+];
+
+export const PERMISSION_BY_KEY = Object.fromEntries(PERMISSIONS.map((p) => [p.key, p])) as Record<
+  string,
+  PermissionSeed
+>;

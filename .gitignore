@@ -19,10 +19,13 @@
 
 # production
 /build
+/desktop/dist
+/desktop/src-tauri/target
 
 # misc
 .DS_Store
 *.pem
+/public/uploads/
 
 # debug
 npm-debug.log*
@@ -30,8 +33,28 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# local database
+/data/
+
+# legacy sqlite (removed)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# local app runtime logs
+local-apps/**/sidecar.log
+local-apps/**/fleet.local.env
+
+# built installers (copy via npm run local-app:package)
+local-apps/mac/*.dmg
+local-apps/mac/*.app
+local-apps/windows/*.msi
+local-apps/windows/*.exe
+
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel

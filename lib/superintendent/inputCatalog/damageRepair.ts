@@ -1,0 +1,86 @@
+import type { InputSectionDef } from "./types";
+
+/** DD03 Damage Repair — vessel sections. */
+export const DAMAGE_REPAIR_VESSEL_SECTIONS: InputSectionDef[] = [
+  {
+    key: "damage_report",
+    label: "Damage report",
+    pageKey: "vessel",
+    moduleId: "scope",
+    enteredBy: "vessel",
+    reviewedBy: "superintendent",
+    projectTypes: ["damage_repair"],
+    mandatory: true,
+    attachmentRequired: true,
+    fields: [
+      { key: "incidentDateTime", label: "Date / time of damage", type: "text", required: true },
+      { key: "location", label: "Location", type: "text", required: true },
+      { key: "cause", label: "Cause", type: "textarea", required: true },
+      { key: "narrative", label: "Narrative", type: "textarea", required: true },
+    ],
+  },
+  {
+    key: "damage_photos",
+    label: "Photos & evidence",
+    pageKey: "vessel",
+    moduleId: "documents",
+    enteredBy: "vessel",
+    reviewedBy: "superintendent",
+    projectTypes: ["damage_repair"],
+    mandatory: true,
+    attachmentRequired: true,
+    fields: [
+      { key: "damagePhotos", label: "Damage photos / video refs", type: "photos_note", required: true },
+      { key: "sketch", label: "Sketch / diagram notes", type: "textarea" },
+    ],
+  },
+  {
+    key: "damage_immediate_action",
+    label: "Immediate action",
+    pageKey: "vessel",
+    moduleId: "scope",
+    enteredBy: "vessel",
+    reviewedBy: "superintendent",
+    projectTypes: ["damage_repair"],
+    mandatory: true,
+    fields: [
+      { key: "temporaryRepair", label: "Temporary repair done", type: "textarea" },
+      { key: "safetyAction", label: "Safety action taken", type: "textarea" },
+      { key: "classNotified", label: "Class notified", type: "boolean" },
+    ],
+  },
+  {
+    key: "damage_impact",
+    label: "Impact assessment",
+    pageKey: "vessel",
+    moduleId: "scope",
+    enteredBy: "vessel",
+    reviewedBy: "superintendent",
+    projectTypes: ["damage_repair"],
+    fields: [
+      { key: "machineryAffected", label: "Machinery affected", type: "textarea" },
+      { key: "hullAffected", label: "Hull affected", type: "textarea" },
+      { key: "cargoAffected", label: "Cargo affected", type: "textarea" },
+      { key: "canSail", label: "Vessel can sail", type: "select", options: [
+        { value: "yes", label: "Yes" },
+        { value: "no", label: "No" },
+        { value: "restricted", label: "With restrictions" },
+      ]},
+      { key: "speedRestriction", label: "Speed restriction", type: "text" },
+    ],
+  },
+  {
+    key: "damage_documents",
+    label: "Documents",
+    pageKey: "vessel",
+    moduleId: "documents",
+    enteredBy: "vessel",
+    reviewedBy: "superintendent",
+    projectTypes: ["damage_repair"],
+    fields: [
+      { key: "incidentReport", label: "Incident report ref", type: "text" },
+      { key: "classMemo", label: "Class memo ref", type: "text" },
+      { key: "insuranceReport", label: "Insurance report ref", type: "text" },
+    ],
+  },
+];

@@ -1,18 +1,54 @@
 {
-  "name": "excel-sheet-comp",
+  "name": "actinium-dd",
   "version": "0.1.0",
   "private": true,
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "scripts": {
-    "dev": "node scripts/run-next.mjs dev",
-    "build": "next build",
+    "dev": "prisma generate && node scripts/run-next.mjs dev",
+    "build": "prisma generate && next build",
     "start": "node scripts/run-next.mjs start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:studio": "prisma studio",
+    "postinstall": "prisma generate",
+    "desktop:install": "npm install --prefix desktop",
+    "desktop:dev": "npm run tauri:dev --prefix desktop",
+    "desktop:build": "npm run tauri:build --prefix desktop",
+    "fleet:api": "tsx local-api/server.ts",
+    "fleet:dev": "node scripts/fleet-dev.mjs",
+    "fleet:dev:web": "node scripts/fleet-dev-web.mjs",
+    "fleet:up": "docker compose -f docker-compose.fleet.yml up -d",
+    "fleet:migrate": "prisma migrate deploy",
+    "relay:office-triggers": "bash scripts/relay/office-install-changed-at-triggers.sh",
+    "relay:office-bootstrap": "bash scripts/relay/office-bootstrap.sh",
+    "relay:deploy-vps": "bash scripts/relay/deploy-to-vps.sh",
+    "sync:phase-a": "bash scripts/sync/phase-a-deploy.sh",
+    "sync:checklist": "bash scripts/sync/e2e-checklist.sh",
+    "local-app:sidecar": "node scripts/fleet-sidecar.mjs",
+    "local-app:launch": "node scripts/local-app-launcher.mjs",
+    "local-app:package": "node scripts/package-local-apps.mjs"
   },
   "dependencies": {
+    "@base-ui/react": "^1.5.0",
+    "@prisma/client": "^6.19.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
     "fuse.js": "^7.3.0",
+    "lucide-react": "^1.20.0",
+    "nanoid": "^5.1.11",
     "next": "16.2.6",
     "react": "19.2.4",
+    "react-day-picker": "^10.0.1",
     "react-dom": "19.2.4",
+    "shadcn": "^4.11.0",
+    "tailwind-merge": "^3.6.0",
+    "tw-animate-css": "^1.4.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
@@ -22,7 +58,9 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "prisma": "^6.19.3",
     "tailwindcss": "^4",
+    "tsx": "^4.20.3",
     "typescript": "^5"
   }
 }

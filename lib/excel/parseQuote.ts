@@ -199,8 +199,16 @@ export async function parseExcelFile(
   vendorName?: string,
 ): Promise<VendorQuote> {
   const buffer = await file.arrayBuffer();
+  return parseExcelBuffer(buffer, file.name, vendorName);
+}
+
+export function parseExcelBuffer(
+  buffer: ArrayBuffer,
+  fileName: string,
+  vendorName?: string,
+): VendorQuote {
   const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
-  const name = vendorName?.trim() || file.name.replace(/\.[^.]+$/, "");
+  const name = vendorName?.trim() || fileName.replace(/\.[^.]+$/, "");
 
   const allItems: LineItem[] = [];
 
@@ -216,7 +224,7 @@ export async function parseExcelFile(
 
   return {
     vendorName: name,
-    fileName: file.name,
+    fileName,
     items: allItems,
   };
 }

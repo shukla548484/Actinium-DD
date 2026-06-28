@@ -1,0 +1,9 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Actinium-DD — offline ship desktop",
+  "windows": ["main"],
+  "permissions": [
+    "core:default"
+  ]
+}

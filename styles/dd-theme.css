@@ -1,0 +1,130 @@
+/**
+ * Actinium-DD — design tokens
+ * Palette: Black · Rose · Orange · Deep Yellow
+ */
+:root {
+  /* Core palette */
+  --dd-black: #0a0a0a;
+  --dd-black-soft: #18181b;
+  --dd-black-muted: #3f3f46;
+
+  --dd-rose: #be123c;
+  --dd-rose-bright: #e11d48;
+  --dd-rose-muted: #fff1f2;
+  --dd-rose-border: #fecdd3;
+
+  --dd-orange: #c2410c;
+  --dd-orange-bright: #ea580c;
+  --dd-orange-muted: #fff7ed;
+  --dd-orange-border: #fed7aa;
+
+  --dd-yellow: #a16207;
+  --dd-yellow-bright: #ca8a04;
+  --dd-yellow-muted: #fefce8;
+  --dd-yellow-border: #fef08a;
+
+  --dd-surface: #fafafa;
+  --dd-surface-warm: #f8f6f3;
+  --dd-card: #ffffff;
+  --dd-border: #e4e4e7;
+  --dd-text: #18181b;
+  --dd-text-muted: #71717a;
+
+  --background: var(--dd-surface-warm);
+  --foreground: var(--dd-text);
+}
+
+@theme inline {
+  --color-dd-black: var(--dd-black);
+  --color-dd-black-soft: var(--dd-black-soft);
+  --color-dd-black-muted: var(--dd-black-muted);
+  --color-dd-rose: var(--dd-rose);
+  --color-dd-rose-bright: var(--dd-rose-bright);
+  --color-dd-rose-muted: var(--dd-rose-muted);
+  --color-dd-rose-border: var(--dd-rose-border);
+  --color-dd-orange: var(--dd-orange);
+  --color-dd-orange-bright: var(--dd-orange-bright);
+  --color-dd-orange-muted: var(--dd-orange-muted);
+  --color-dd-orange-border: var(--dd-orange-border);
+  --color-dd-yellow: var(--dd-yellow);
+  --color-dd-yellow-bright: var(--dd-yellow-bright);
+  --color-dd-yellow-muted: var(--dd-yellow-muted);
+  --color-dd-yellow-border: var(--dd-yellow-border);
+  --color-dd-surface: var(--dd-surface);
+  --color-dd-surface-warm: var(--dd-surface-warm);
+  --color-dd-card: var(--dd-card);
+  --color-dd-border: var(--dd-border);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+}
+
+/* Module accent cards */
+.dd-card {
+  border-radius: 0.75rem;
+  border: 1px solid var(--dd-border);
+  background: var(--dd-card);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+}
+
+/* Use CSS padding — Tailwind arbitrary `p-[var(...)]` does not apply in Vite builds */
+.dd-card-padded {
+  padding: var(--dd-card-padding);
+}
+
+.dd-card-rose {
+  border-color: var(--dd-rose-border);
+  background: linear-gradient(135deg, var(--dd-card) 0%, var(--dd-rose-muted) 100%);
+}
+
+.dd-card-orange {
+  border-color: var(--dd-orange-border);
+  background: linear-gradient(135deg, var(--dd-card) 0%, var(--dd-orange-muted) 100%);
+}
+
+.dd-card-yellow {
+  border-color: var(--dd-yellow-border);
+  background: linear-gradient(135deg, var(--dd-card) 0%, var(--dd-yellow-muted) 100%);
+}
+
+.dd-card-black {
+  border-color: var(--dd-black-soft);
+  background: linear-gradient(135deg, var(--dd-card) 0%, #f4f4f5 100%);
+}
+
+.dd-tab-active-rose {
+  background: var(--dd-rose-muted);
+  color: var(--dd-rose);
+  border: 1px solid var(--dd-rose-border);
+  box-shadow: 0 1px 2px rgb(190 18 60 / 0.08);
+}
+
+.dd-tab-active-orange {
+  background: var(--dd-orange-muted);
+  color: var(--dd-orange);
+  border: 1px solid var(--dd-orange-border);
+}
+
+.dd-tab-active-yellow {
+  background: var(--dd-yellow-muted);
+  color: var(--dd-yellow);
+  border: 1px solid var(--dd-yellow-border);
+}
+
+.dd-tab-active-black {
+  background: var(--dd-black);
+  color: white;
+}
+
+.dd-btn-primary {
+  background: var(--dd-black);
+  color: white;
+}
+.dd-btn-primary:hover {
+  background: var(--dd-black-soft);
+}
+
+.dd-sidebar {
+  background: var(--dd-black);
+  color: #fafafa;
+  border-color: #27272a;
+}

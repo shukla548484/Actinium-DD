@@ -1,4 +1,4 @@
-# Excel-Sheet-Comp
+# Actinium-DD
 
 Compare vendor service quotes from Excel files. Different vendors often label the same service differently or place items under different headings — this app normalizes those rows into a **standard service list** and builds a **vertical comparison** of costs.
 
