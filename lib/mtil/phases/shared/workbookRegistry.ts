@@ -1,13 +1,35 @@
+import fs from "node:fs";
 import type { ParsedMtilWorkbook } from "@/lib/mtil/import/parseWorkbook";
 import type { MtilDynamicTemplateDef } from "@/lib/mtil/types";
 import type { JobInputFieldDef } from "@/lib/vessel/jobLibrary/inputTemplate";
-import { loadPhase1WorkbookV04 } from "@/lib/mtil/phases/phase1/workbookV04";
-import { loadPhase2WorkbookV05 } from "@/lib/mtil/phases/phase2/workbookV05";
-import { loadPhase3WorkbookV06 } from "@/lib/mtil/phases/phase3/workbookV06";
-import { loadPhase4WorkbookV07 } from "@/lib/mtil/phases/phase4/workbookV07";
-import { loadPhase5WorkbookV08 } from "@/lib/mtil/phases/phase5/workbookV08";
-import { loadPhase6WorkbookV09 } from "@/lib/mtil/phases/phase6/workbookV09";
-import { loadPhase7WorkbookV10 } from "@/lib/mtil/phases/phase7/workbookV10";
+import {
+  loadPhase1WorkbookV04,
+  PHASE1_WORKBOOK_V04_PATH,
+} from "@/lib/mtil/phases/phase1/workbookV04";
+import {
+  loadPhase2WorkbookV05,
+  PHASE2_WORKBOOK_V05_PATH,
+} from "@/lib/mtil/phases/phase2/workbookV05";
+import {
+  loadPhase3WorkbookV06,
+  PHASE3_WORKBOOK_V06_PATH,
+} from "@/lib/mtil/phases/phase3/workbookV06";
+import {
+  loadPhase4WorkbookV07,
+  PHASE4_WORKBOOK_V07_PATH,
+} from "@/lib/mtil/phases/phase4/workbookV07";
+import {
+  loadPhase5WorkbookV08,
+  PHASE5_WORKBOOK_V08_PATH,
+} from "@/lib/mtil/phases/phase5/workbookV08";
+import {
+  loadPhase6WorkbookV09,
+  PHASE6_WORKBOOK_V09_PATH,
+} from "@/lib/mtil/phases/phase6/workbookV09";
+import {
+  loadPhase7WorkbookV10,
+  PHASE7_WORKBOOK_V10_PATH,
+} from "@/lib/mtil/phases/phase7/workbookV10";
 import {
   buildWorkbookRuntimeFields,
   keyToTemplateId,
@@ -17,18 +39,37 @@ import {
 
 export type WorkbookLoader = () => ParsedMtilWorkbook;
 
-export const MTIL_WORKBOOK_LOADERS: WorkbookLoader[] = [
-  loadPhase1WorkbookV04,
-  loadPhase2WorkbookV05,
-  loadPhase3WorkbookV06,
-  loadPhase4WorkbookV07,
-  loadPhase5WorkbookV08,
-  loadPhase6WorkbookV09,
-  loadPhase7WorkbookV10,
+type WorkbookLoaderEntry = {
+  path: string;
+  load: WorkbookLoader;
+};
+
+const MTIL_WORKBOOK_LOADER_ENTRIES: WorkbookLoaderEntry[] = [
+  { path: PHASE1_WORKBOOK_V04_PATH, load: loadPhase1WorkbookV04 },
+  { path: PHASE2_WORKBOOK_V05_PATH, load: loadPhase2WorkbookV05 },
+  { path: PHASE3_WORKBOOK_V06_PATH, load: loadPhase3WorkbookV06 },
+  { path: PHASE4_WORKBOOK_V07_PATH, load: loadPhase4WorkbookV07 },
+  { path: PHASE5_WORKBOOK_V08_PATH, load: loadPhase5WorkbookV08 },
+  { path: PHASE6_WORKBOOK_V09_PATH, load: loadPhase6WorkbookV09 },
+  { path: PHASE7_WORKBOOK_V10_PATH, load: loadPhase7WorkbookV10 },
 ];
 
+/** @deprecated Prefer MTIL_WORKBOOK_LOADER_ENTRIES — loaders only when files exist on disk. */
+export const MTIL_WORKBOOK_LOADERS: WorkbookLoader[] = MTIL_WORKBOOK_LOADER_ENTRIES.map(
+  ({ load }) => load,
+);
+
+function isWorkbookAvailable(path: string): boolean {
+  return fs.existsSync(path);
+}
+
+function loadWorkbookTemplates(entry: WorkbookLoaderEntry): MtilDynamicTemplateDef[] {
+  if (!isWorkbookAvailable(entry.path)) return [];
+  return workbookTemplatesToDynamicDefs(entry.load());
+}
+
 export function getAllWorkbookTemplateDefs(): MtilDynamicTemplateDef[] {
-  return MTIL_WORKBOOK_LOADERS.flatMap((load) => workbookTemplatesToDynamicDefs(load()));
+  return MTIL_WORKBOOK_LOADER_ENTRIES.flatMap(loadWorkbookTemplates);
 }
 
 export function findWorkbookTemplateDef(templateKey: string): MtilDynamicTemplateDef | null {
@@ -37,8 +78,9 @@ export function findWorkbookTemplateDef(templateKey: string): MtilDynamicTemplat
 }
 
 export function buildWorkbookRuntimeFieldsFromAny(templateKeyOrId: string): JobInputFieldDef[] | null {
-  for (const load of MTIL_WORKBOOK_LOADERS) {
-    const fields = buildWorkbookRuntimeFields(templateKeyOrId, load());
+  for (const entry of MTIL_WORKBOOK_LOADER_ENTRIES) {
+    if (!isWorkbookAvailable(entry.path)) continue;
+    const fields = buildWorkbookRuntimeFields(templateKeyOrId, entry.load());
     if (fields?.length) return fields;
   }
   return null;
@@ -48,8 +90,9 @@ export function resolveWorkbookTemplateId(templateKey: string): string | null {
   if (templateKey.startsWith("TMP-")) return templateKey;
   const asId = keyToTemplateId(templateKey);
   if (!asId) return null;
-  for (const load of MTIL_WORKBOOK_LOADERS) {
-    const data = load();
+  for (const entry of MTIL_WORKBOOK_LOADER_ENTRIES) {
+    if (!isWorkbookAvailable(entry.path)) continue;
+    const data = entry.load();
     if (data.templates.some((t) => t.templateId === asId)) return asId;
   }
   return asId;

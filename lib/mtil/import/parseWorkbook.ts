@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import fs from "node:fs";
 import type {
   DdRiskLevel,
   DryDockProjectType,
@@ -511,4 +512,30 @@ export function parseMtilWorkbookFile(path: string): ParsedMtilWorkbook {
   const workbook = XLSX.readFile(path);
   const bytes = XLSX.write(workbook, { type: "array", bookType: "xlsx" });
   return parseMtilWorkbookBuffer(bytes);
+}
+
+/** Empty workbook used when MTIL xlsx files are absent (e.g. Vercel build without /data/). */
+export function emptyParsedMtilWorkbook(): ParsedMtilWorkbook {
+  return {
+    libraryVersion: null,
+    masterJobs: [],
+    templates: [],
+    measurements: [],
+    checklistItems: [],
+    scopeSteps: [],
+    attachments: [],
+    spares: [],
+    rfqMappings: [],
+    workflows: [],
+  };
+}
+
+/** Parse workbook from disk, or return empty data when the file is missing/unreadable. */
+export function parseMtilWorkbookFileIfExists(path: string): ParsedMtilWorkbook {
+  if (!fs.existsSync(path)) return emptyParsedMtilWorkbook();
+  try {
+    return parseMtilWorkbookFile(path);
+  } catch {
+    return emptyParsedMtilWorkbook();
+  }
 }

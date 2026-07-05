@@ -1,6 +1,6 @@
 import path from "node:path";
 import type { ParsedMasterJobRow, ParsedMtilWorkbook } from "@/lib/mtil/import/parseWorkbook";
-import { parseMtilWorkbookFile } from "@/lib/mtil/import/parseWorkbook";
+import { parseMtilWorkbookFileIfExists } from "@/lib/mtil/import/parseWorkbook";
 import { buildWorkbookJobLibraryTree } from "@/lib/mtil/phases/shared/buildWorkbookJobLibraryTree";
 import {
   buildWorkbookRuntimeFields,
@@ -27,7 +27,7 @@ let cachedWorkbook: ParsedMtilWorkbook | null = null;
 
 export function loadPhase3WorkbookV06(): ParsedMtilWorkbook {
   if (!cachedWorkbook) {
-    cachedWorkbook = parseMtilWorkbookFile(PHASE3_WORKBOOK_V06_PATH);
+    cachedWorkbook = parseMtilWorkbookFileIfExists(PHASE3_WORKBOOK_V06_PATH);
   }
   return cachedWorkbook;
 }

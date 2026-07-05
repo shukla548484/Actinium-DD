@@ -1,14 +1,22 @@
 import type { DdJobPriority } from "@prisma/client";
+import fs from "node:fs";
 import { generatePhase1JobLibraryTree } from "@/lib/mtil/phases/phase1/generate";
 import { generatePhase1WorkbookJobLibraryTree } from "@/lib/mtil/phases/phase1/workbookJobLibraryTree";
+import { PHASE1_WORKBOOK_V04_PATH } from "@/lib/mtil/phases/phase1/workbookV04";
 import { generatePhase2JobLibraryTree } from "@/lib/mtil/phases/phase2/generate";
 import { generatePhase2WorkbookJobLibraryTree } from "@/lib/mtil/phases/phase2/workbookJobLibraryTree";
+import { PHASE2_WORKBOOK_V05_PATH } from "@/lib/mtil/phases/phase2/workbookV05";
 import { generatePhase3JobLibraryTree } from "@/lib/mtil/phases/phase3/generate";
 import { generatePhase3WorkbookJobLibraryTree } from "@/lib/mtil/phases/phase3/workbookJobLibraryTree";
+import { PHASE3_WORKBOOK_V06_PATH } from "@/lib/mtil/phases/phase3/workbookV06";
 import { generatePhase4WorkbookJobLibraryTree } from "@/lib/mtil/phases/phase4/workbookJobLibraryTree";
+import { PHASE4_WORKBOOK_V07_PATH } from "@/lib/mtil/phases/phase4/workbookV07";
 import { generatePhase5WorkbookJobLibraryTree } from "@/lib/mtil/phases/phase5/workbookJobLibraryTree";
+import { PHASE5_WORKBOOK_V08_PATH } from "@/lib/mtil/phases/phase5/workbookV08";
 import { generatePhase6WorkbookJobLibraryTree } from "@/lib/mtil/phases/phase6/workbookJobLibraryTree";
+import { PHASE6_WORKBOOK_V09_PATH } from "@/lib/mtil/phases/phase6/workbookV09";
 import { generatePhase7WorkbookJobLibraryTree } from "@/lib/mtil/phases/phase7/workbookJobLibraryTree";
+import { PHASE7_WORKBOOK_V10_PATH } from "@/lib/mtil/phases/phase7/workbookV10";
 import {
   STANDARD_JOB_INPUT_TEMPLATE,
   type JobInputFieldDef,
@@ -95,18 +103,25 @@ function category(code: string, name: string, department: string, children: JobL
   return { code, name, nodeType: "category", department, children };
 }
 
+function workbookCatalogEntry(
+  workbookPath: string,
+  build: () => JobLibrarySeedNode,
+): JobLibrarySeedNode[] {
+  return fs.existsSync(workbookPath) ? [build()] : [];
+}
+
 /** Master job library seed — MTIL-generated phases + legacy departments until migrated. */
 export const JOB_LIBRARY_CATALOG: JobLibrarySeedNode[] = [
   generatePhase1JobLibraryTree(),
-  generatePhase1WorkbookJobLibraryTree(),
+  ...workbookCatalogEntry(PHASE1_WORKBOOK_V04_PATH, generatePhase1WorkbookJobLibraryTree),
   generatePhase2JobLibraryTree(),
-  generatePhase2WorkbookJobLibraryTree(),
+  ...workbookCatalogEntry(PHASE2_WORKBOOK_V05_PATH, generatePhase2WorkbookJobLibraryTree),
   generatePhase3JobLibraryTree(),
-  generatePhase3WorkbookJobLibraryTree(),
-  generatePhase4WorkbookJobLibraryTree(),
-  generatePhase5WorkbookJobLibraryTree(),
-  generatePhase6WorkbookJobLibraryTree(),
-  generatePhase7WorkbookJobLibraryTree(),
+  ...workbookCatalogEntry(PHASE3_WORKBOOK_V06_PATH, generatePhase3WorkbookJobLibraryTree),
+  ...workbookCatalogEntry(PHASE4_WORKBOOK_V07_PATH, generatePhase4WorkbookJobLibraryTree),
+  ...workbookCatalogEntry(PHASE5_WORKBOOK_V08_PATH, generatePhase5WorkbookJobLibraryTree),
+  ...workbookCatalogEntry(PHASE6_WORKBOOK_V09_PATH, generatePhase6WorkbookJobLibraryTree),
+  ...workbookCatalogEntry(PHASE7_WORKBOOK_V10_PATH, generatePhase7WorkbookJobLibraryTree),
   {
     code: "machinery_jobs",
     name: "Machinery Jobs",

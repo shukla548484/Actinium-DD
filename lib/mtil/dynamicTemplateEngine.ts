@@ -20,15 +20,21 @@ import {
   getPhase3TemplateCatalog,
 } from "./phases/phase3/templateCatalog";
 
-/** Build registry from Phase 1–3 catalog + Phase 2 v0.5 workbook + supplemental templates. */
-export const MTIL_DYNAMIC_TEMPLATES: Record<string, MtilDynamicTemplateDef> = Object.fromEntries(
-  [
-    ...getAllPhase1Templates(),
-    ...getAllPhase2Templates(),
-    ...getAllPhase3Templates(),
-    ...getAllWorkbookTemplateDefs(),
-  ].map((t) => [t.key, t]),
-);
+let cachedMtilDynamicTemplates: Record<string, MtilDynamicTemplateDef> | null = null;
+
+/** Build registry from Phase 1–3 catalog + workbook bundles (lazy — avoids build-time xlsx reads). */
+function getMtilDynamicTemplates(): Record<string, MtilDynamicTemplateDef> {
+  if (cachedMtilDynamicTemplates) return cachedMtilDynamicTemplates;
+  cachedMtilDynamicTemplates = Object.fromEntries(
+    [
+      ...getAllPhase1Templates(),
+      ...getAllPhase2Templates(),
+      ...getAllPhase3Templates(),
+      ...getAllWorkbookTemplateDefs(),
+    ].map((t) => [t.key, t]),
+  );
+  return cachedMtilDynamicTemplates;
+}
 
 function measurementFields(measurements: MtilMeasurementRef[]): JobInputFieldDef[] {
   return measurements.map((m) => ({
@@ -92,7 +98,7 @@ function reportFields(reports: string[]): JobInputFieldDef[] {
 
 /** Resolve a dynamic template key into a full input form definition (code registry fallback). */
 export function resolveDynamicTemplate(templateKey: string): JobInputFieldDef[] {
-  const def = MTIL_DYNAMIC_TEMPLATES[templateKey];
+  const def = getMtilDynamicTemplates()[templateKey];
   if (!def) return STANDARD_JOB_INPUT_TEMPLATE;
 
   const base = STANDARD_JOB_INPUT_TEMPLATE.filter(
@@ -173,7 +179,7 @@ export async function resolveDynamicTemplateAsync(templateKey: string): Promise<
 }
 
 export function listDynamicTemplateKeys(): string[] {
-  return Object.keys(MTIL_DYNAMIC_TEMPLATES);
+  return Object.keys(getMtilDynamicTemplates());
 }
 
 export function listPhase1CatalogTemplateKeys(): string[] {
@@ -193,7 +199,7 @@ export function getDynamicTemplateDef(key: string): MtilDynamicTemplateDef | nul
     getPhase1TemplateByKey(key) ??
     getPhase2TemplateByKey(key) ??
     getPhase3TemplateByKey(key) ??
-    MTIL_DYNAMIC_TEMPLATES[key] ??
+    getMtilDynamicTemplates()[key] ??
     null
   );
 }
