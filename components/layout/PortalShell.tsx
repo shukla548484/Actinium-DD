@@ -150,7 +150,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
         navItems={portalNavItems}
         homeHref={homeHref}
         showTasksPending={showOfficeChrome}
-        showSearch={showOfficeChrome}
+        showSearch={false}
       />
       {isSidebarModule ? (
         <div className="dd-app-body">{children}</div>
