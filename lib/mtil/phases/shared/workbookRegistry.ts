@@ -31,6 +31,10 @@ import {
   PHASE7_WORKBOOK_V10_PATH,
 } from "@/lib/mtil/phases/phase7/workbookV10";
 import {
+  loadPhase8WorkbookV11,
+  PHASE8_WORKBOOK_V11_PATH,
+} from "@/lib/mtil/phases/phase8/workbookV11";
+import {
   buildWorkbookRuntimeFields,
   keyToTemplateId,
   templateIdToKey,
@@ -52,6 +56,7 @@ const MTIL_WORKBOOK_LOADER_ENTRIES: WorkbookLoaderEntry[] = [
   { path: PHASE5_WORKBOOK_V08_PATH, load: loadPhase5WorkbookV08 },
   { path: PHASE6_WORKBOOK_V09_PATH, load: loadPhase6WorkbookV09 },
   { path: PHASE7_WORKBOOK_V10_PATH, load: loadPhase7WorkbookV10 },
+  { path: PHASE8_WORKBOOK_V11_PATH, load: loadPhase8WorkbookV11 },
 ];
 
 /** @deprecated Prefer MTIL_WORKBOOK_LOADER_ENTRIES — loaders only when files exist on disk. */

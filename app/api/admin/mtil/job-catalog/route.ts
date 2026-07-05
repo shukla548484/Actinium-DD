@@ -10,6 +10,7 @@ import { isPhase4WorkbookV07Seeded } from "@/lib/mtil/db/seedPhase4WorkbookV07";
 import { isPhase5WorkbookV08Seeded } from "@/lib/mtil/db/seedPhase5WorkbookV08";
 import { isPhase6WorkbookV09Seeded } from "@/lib/mtil/db/seedPhase6WorkbookV09";
 import { isPhase7WorkbookV10Seeded } from "@/lib/mtil/db/seedPhase7WorkbookV10";
+import { isPhase8WorkbookV11Seeded } from "@/lib/mtil/db/seedPhase8WorkbookV11";
 import { getPhase1WorkbookV04Stats } from "@/lib/mtil/phases/phase1/workbookJobLibraryTree";
 import { getPhase2WorkbookV05Stats } from "@/lib/mtil/phases/phase2/workbookJobLibraryTree";
 import { getPhase3WorkbookV06Stats } from "@/lib/mtil/phases/phase3/workbookJobLibraryTree";
@@ -17,6 +18,7 @@ import { getPhase4WorkbookV07Stats } from "@/lib/mtil/phases/phase4/workbookJobL
 import { getPhase5WorkbookV08Stats } from "@/lib/mtil/phases/phase5/workbookJobLibraryTree";
 import { getPhase6WorkbookV09Stats } from "@/lib/mtil/phases/phase6/workbookJobLibraryTree";
 import { getPhase7WorkbookV10Stats } from "@/lib/mtil/phases/phase7/workbookJobLibraryTree";
+import { getPhase8WorkbookV11Stats } from "@/lib/mtil/phases/phase8/workbookJobLibraryTree";
 import {
   ensureMtilPhase1WorkbookV04Seeded,
   ensureMtilPhase2WorkbookV05Seeded,
@@ -25,6 +27,7 @@ import {
   ensureMtilPhase5WorkbookV08Seeded,
   ensureMtilPhase6WorkbookV09Seeded,
   ensureMtilPhase7WorkbookV10Seeded,
+  ensureMtilPhase8WorkbookV11Seeded,
 } from "@/lib/vessel/jobLibrary/seed";
 
 export const runtime = "nodejs";
@@ -44,6 +47,7 @@ export async function GET() {
     workbookV08Seeded,
     workbookV09Seeded,
     workbookV10Seeded,
+    workbookV11Seeded,
   ] = await Promise.all([
     isJobCatalogPhase1Seeded(),
     isJobCatalogPhase2Seeded(),
@@ -55,6 +59,7 @@ export async function GET() {
     isPhase5WorkbookV08Seeded(),
     isPhase6WorkbookV09Seeded(),
     isPhase7WorkbookV10Seeded(),
+    isPhase8WorkbookV11Seeded(),
   ]);
 
   const stats = seeded ? await getJobCatalogPhase1Stats() : null;
@@ -76,6 +81,7 @@ export async function GET() {
       phase5V08: { seeded: workbookV08Seeded, stats: getPhase5WorkbookV08Stats() },
       phase6V09: { seeded: workbookV09Seeded, stats: getPhase6WorkbookV09Stats() },
       phase7V10: { seeded: workbookV10Seeded, stats: getPhase7WorkbookV10Stats() },
+      phase8V11: { seeded: workbookV11Seeded, stats: getPhase8WorkbookV11Stats() },
     },
   });
 }
@@ -96,6 +102,7 @@ export async function POST() {
       workbookV08,
       workbookV09,
       workbookV10,
+      workbookV11,
     ] = await Promise.all([
       seedJobCatalogPhase1(),
       seedJobCatalogPhase2(),
@@ -107,6 +114,7 @@ export async function POST() {
       ensureMtilPhase5WorkbookV08Seeded(),
       ensureMtilPhase6WorkbookV09Seeded(),
       ensureMtilPhase7WorkbookV10Seeded(),
+      ensureMtilPhase8WorkbookV11Seeded(),
     ]);
 
     const inserted =
@@ -119,7 +127,8 @@ export async function POST() {
       workbookV07.inserted ||
       workbookV08.inserted ||
       workbookV09.inserted ||
-      workbookV10.inserted;
+      workbookV10.inserted ||
+      workbookV11.inserted;
 
     return NextResponse.json(
       {
@@ -134,6 +143,7 @@ export async function POST() {
           phase5V08: workbookV08,
           phase6V09: workbookV09,
           phase7V10: workbookV10,
+          phase8V11: workbookV11,
         },
       },
       { status: inserted ? 201 : 200 },

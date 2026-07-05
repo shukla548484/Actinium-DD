@@ -89,6 +89,10 @@ const WORKSHOP_MAP: Record<string, JobCatalogWorkshop> = {
   "coatings workshop": "paint",
   "paint / coatings workshop": "paint",
   "safety workshop": "safety",
+  "lsa workshop": "safety",
+  "ffa workshop": "safety",
+  "accommodation workshop": "deck",
+  "safety / lsa workshop": "safety",
   "qa/qc": "qa_qc",
   qa_qc: "qa_qc",
 };
@@ -162,6 +166,16 @@ const TEMPLATE_CATEGORY_MAP: Record<string, JobTemplateCategory> = {
   "inert gas": "testing",
   "tank gauging": "inspection",
   "vapor system": "repair",
+  lsa: "survey",
+  ffa: "testing",
+  "life saving": "survey",
+  "life saving appliances": "survey",
+  "fixed fire fighting": "testing",
+  "fire fighting": "testing",
+  accommodation: "cleaning",
+  "safety equipment": "inspection",
+  lifeboat: "survey",
+  davit: "survey",
 };
 
 const UI_LAYOUT_MAP: Record<string, JobUiLayoutType> = {

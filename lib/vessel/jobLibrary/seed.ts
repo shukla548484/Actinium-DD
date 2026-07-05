@@ -370,3 +370,37 @@ export async function ensureMtilPhase7WorkbookV10Seeded(): Promise<{
     initializedOnly: stats.initializedOnly,
   };
 }
+
+/** Upsert Phase 8 v1.1 engineering workbook library (JOB-SAF-LSA / TMP-SAF). */
+export async function ensureMtilPhase8WorkbookV11Seeded(): Promise<{
+  inserted: boolean;
+  jobCount: number;
+  templates: number;
+  libraryVersion: string;
+  initializedOnly?: boolean;
+}> {
+  const { getPhase8WorkbookV11Stats } = await import("@/lib/mtil/phases/phase8/workbookJobLibraryTree");
+  const { seedPhase8WorkbookV11, isPhase8WorkbookV11Seeded } = await import(
+    "@/lib/mtil/db/seedPhase8WorkbookV11"
+  );
+  const stats = getPhase8WorkbookV11Stats();
+
+  if (await isPhase8WorkbookV11Seeded()) {
+    return {
+      inserted: false,
+      jobCount: stats.jobCount,
+      templates: stats.catalogTemplateCount,
+      libraryVersion: stats.libraryVersion,
+      initializedOnly: stats.initializedOnly,
+    };
+  }
+
+  const result = await seedPhase8WorkbookV11();
+  return {
+    inserted: true,
+    jobCount: result.jobCount,
+    templates: result.templates,
+    libraryVersion: result.libraryVersion,
+    initializedOnly: stats.initializedOnly,
+  };
+}
