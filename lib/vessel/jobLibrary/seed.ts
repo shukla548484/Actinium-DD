@@ -302,3 +302,37 @@ export async function ensureMtilPhase5WorkbookV08Seeded(): Promise<{
     initializedOnly: stats.initializedOnly,
   };
 }
+
+/** Upsert Phase 6 v0.9 engineering workbook library (JOB-ELC-ELC / TMP-ELC). */
+export async function ensureMtilPhase6WorkbookV09Seeded(): Promise<{
+  inserted: boolean;
+  jobCount: number;
+  templates: number;
+  libraryVersion: string;
+  initializedOnly?: boolean;
+}> {
+  const { getPhase6WorkbookV09Stats } = await import("@/lib/mtil/phases/phase6/workbookJobLibraryTree");
+  const { seedPhase6WorkbookV09, isPhase6WorkbookV09Seeded } = await import(
+    "@/lib/mtil/db/seedPhase6WorkbookV09"
+  );
+  const stats = getPhase6WorkbookV09Stats();
+
+  if (await isPhase6WorkbookV09Seeded()) {
+    return {
+      inserted: false,
+      jobCount: stats.jobCount,
+      templates: stats.catalogTemplateCount,
+      libraryVersion: stats.libraryVersion,
+      initializedOnly: stats.initializedOnly,
+    };
+  }
+
+  const result = await seedPhase6WorkbookV09();
+  return {
+    inserted: true,
+    jobCount: result.jobCount,
+    templates: result.templates,
+    libraryVersion: result.libraryVersion,
+    initializedOnly: stats.initializedOnly,
+  };
+}

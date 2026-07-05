@@ -260,7 +260,7 @@ function isInitializedWorkbook(workbook: XLSX.WorkBook, masterJobRows: ParsedMas
   }
   const raw = sheetRows(workbook, MTIL_WORKBOOK_SHEETS.masterJobs);
   const text = raw.flatMap((row) => Object.values(row).map((v) => cellStr(v).toLowerCase())).join(" ");
-  return text.includes("initialized");
+  return text.includes("initialized") || text.includes("foundation created");
 }
 
 function parseMasterJobs(rows: Array<Record<string, unknown>>): ParsedMasterJobRow[] {

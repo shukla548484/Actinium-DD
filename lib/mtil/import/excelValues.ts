@@ -75,6 +75,8 @@ const WORKSHOP_MAP: Record<string, JobCatalogWorkshop> = {
   "paint workshop": "paint",
   paint: "paint",
   "electrical workshop": "electrical",
+  "electrical / automation workshop": "electrical",
+  "automation workshop": "electrical",
   "deck workshop": "deck",
   deck: "deck",
   "deck / cargo workshop": "deck",
@@ -144,6 +146,13 @@ const TEMPLATE_CATEGORY_MAP: Record<string, JobTemplateCategory> = {
   "anti-fouling": "cleaning",
   tank: "inspection",
   rudder: "repair",
+  generators: "machinery_overhaul",
+  switchboards: "testing",
+  motors: "machinery_overhaul",
+  automation: "general",
+  navigation: "inspection",
+  communication: "general",
+  electrical: "testing",
 };
 
 const UI_LAYOUT_MAP: Record<string, JobUiLayoutType> = {

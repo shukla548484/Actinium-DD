@@ -40,6 +40,7 @@ function workshopLabel(workshop: ParsedMasterJobRow["workshop"]): string {
   if (workshop === "hull") return "Hull";
   if (workshop === "steel") return "Steel";
   if (workshop === "paint") return "Paint";
+  if (workshop === "electrical") return "Electrical";
   return workshop;
 }
 
