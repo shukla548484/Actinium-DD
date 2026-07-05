@@ -317,6 +317,11 @@ export function DynamicScopeJobWizard({
 
             {loading ? (
               <p className="text-sm text-muted-foreground">Loading options…</p>
+            ) : options.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No job library departments are available for this vessel and project type. Ask an
+                administrator to seed the MTIL V2.0.1 sprint workbooks from Admin → Job library.
+              </p>
             ) : (
               <div className="grid gap-2 sm:grid-cols-2">
                 {options.map((node) => (

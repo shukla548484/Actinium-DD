@@ -25,7 +25,7 @@ export type JobCatalogSheetDef = {
 
 /** 01_Master_Job_Library — 33 fields */
 export const MASTER_JOB_LIBRARY_FIELDS: JobCatalogFieldDef[] = [
-  { fieldNo: 1, fieldName: "jobId", dataType: "Text", required: true, example: "JOB-ENG-ME-0001", purpose: "Unique standard job identifier", source: "System", notes: "Must be unique" },
+  { fieldNo: 1, fieldName: "jobId", dataType: "Text", required: true, example: "JOBS-ME-CYU-0001", purpose: "Unique standard job identifier", source: "System", notes: "Master Code v1.0 — 4-letter entity prefix" },
   { fieldNo: 2, fieldName: "libraryVersion", dataType: "Text", required: true, example: "MTIL-v0.3", purpose: "Library version of this row", source: "System", notes: "Version controlled" },
   { fieldNo: 3, fieldName: "department", dataType: "Enum", required: true, example: "Engine", purpose: "Primary department", source: "Admin", notes: "Engine/Deck/Electrical/Hull/Safety" },
   { fieldNo: 4, fieldName: "systemGroup", dataType: "Text", required: true, example: "Main Propulsion", purpose: "High-level system grouping", source: "Technical" },
@@ -41,7 +41,7 @@ export const MASTER_JOB_LIBRARY_FIELDS: JobCatalogFieldDef[] = [
   { fieldNo: 14, fieldName: "responsibleUserRole", dataType: "Enum", required: true, example: "Chief Engineer", purpose: "Main input role", source: "System" },
   { fieldNo: 15, fieldName: "reviewRole", dataType: "Enum", required: true, example: "Technical Superintendent", purpose: "Reviewing role", source: "System" },
   { fieldNo: 16, fieldName: "approvalRole", dataType: "Enum", required: true, example: "Technical Manager", purpose: "Approval role", source: "System" },
-  { fieldNo: 17, fieldName: "templateId", dataType: "Text", required: true, example: "TMP-ENG-ME-0017", purpose: "Dynamic template linked to job", source: "System", notes: "Must exist in Template Library" },
+  { fieldNo: 17, fieldName: "templateId", dataType: "Text", required: true, example: "TMPL-ME-CYU-0008", purpose: "Dynamic template linked to job", source: "System", notes: "Must exist in Template Library" },
   { fieldNo: 18, fieldName: "measurementSetId", dataType: "Text", required: false, example: "MEA-ENG-ME-0017", purpose: "Measurement set", source: "System" },
   { fieldNo: 19, fieldName: "inspectionChecklistId", dataType: "Text", required: false, example: "INS-ENG-ME-0017", purpose: "Checklist mapping", source: "System" },
   { fieldNo: 20, fieldName: "scopeOfWorkId", dataType: "Text", required: false, example: "SOW-ENG-ME-0017", purpose: "Standard scope mapping", source: "System" },

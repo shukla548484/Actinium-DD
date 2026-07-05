@@ -1,9 +1,37 @@
-/** MTIL v0.2 commercial ID standards — Excel / PostgreSQL import ready. */
+/** MTIL v0.2 / Master Code Standard v1.0 — Excel / PostgreSQL import ready. */
 
 export const MTIL_ENGINE_VERSION = "0.2.0";
 
 /** Active production track — normalized engineering database (replaces R0.x phase expansion). */
-export { MTIL_V2_ENGINE_VERSION, MTIL_V2_LIBRARY_VERSION, MTIL_V2_DATABASE_TARGETS } from "./v2/standards";
+export {
+  MTIL_V2_ENGINE_VERSION,
+  MTIL_V2_LIBRARY_VERSION,
+  MTIL_V2_DATABASE_TARGETS,
+} from "./v2/standards";
+
+export {
+  MASTER_ENTITY_CODES,
+  EXTENDED_ENTITY_CODES,
+  MASTER_EQUIPMENT_SYSTEM_CODES,
+  MASTER_CODE_ENTITY_CATALOG,
+  MASTER_CODE_STANDARD_VERSION,
+  buildMasterCode,
+  buildStandardJobId,
+  buildDynamicTemplateId,
+  buildMeasurementSetId,
+  buildInspectionSetId,
+  buildScopeOfWorkId,
+  buildWorkflowId,
+  buildSpareMapId,
+  buildRfqMappingId,
+  normalizeMasterId,
+  parseMasterCode,
+  isCanonicalMasterId,
+  measurementSetIdForTemplateId,
+  inspectionSetIdForTemplateId,
+  scopeOfWorkIdForTemplateId,
+  workflowIdForTemplateId,
+} from "./masterCodeStandard";
 
 export type MtilDeptCode = "ENG" | "AUX" | "PVP" | "DKC" | "HUL" | "ELC" | "SAF";
 
@@ -66,24 +94,26 @@ function padSeq(seq: number, width = 4): string {
   return String(seq).padStart(width, "0");
 }
 
+/** @deprecated Prefer buildStandardJobId(system, subsystem, seq) for V2.0+ libraries. */
 export function buildJobId(dept: MtilDeptCode, system: MtilSystemCode, seq: number): string {
-  return `JOB-${dept}-${system}-${padSeq(seq)}`;
+  return `JOBS-${dept}-${system}-${padSeq(seq)}`;
 }
 
+/** @deprecated Prefer buildDynamicTemplateId(system, subsystem, seq) for V2.0+ libraries. */
 export function buildTemplateId(dept: MtilDeptCode, system: MtilSystemCode, seq: number): string {
-  return `TMP-${dept}-${system}-${padSeq(seq)}`;
+  return `TMPL-${dept}-${system}-${padSeq(seq)}`;
 }
 
 export function buildInspectionId(dept: MtilDeptCode, system: MtilSystemCode, seq: number): string {
-  return `INS-${dept}-${system}-${padSeq(seq)}`;
+  return `INSP-${dept}-${system}-${padSeq(seq)}`;
 }
 
 export function buildMeasurementId(dept: MtilDeptCode, system: MtilSystemCode, seq: number): string {
-  return `MEA-${dept}-${system}-${padSeq(seq)}`;
+  return `MEAS-${dept}-${system}-${padSeq(seq)}`;
 }
 
 export function buildRfqId(dept: MtilDeptCode, system: MtilSystemCode, seq: number): string {
-  return `RFQ-${dept}-${system}-${padSeq(seq)}`;
+  return `RFQM-${dept}-${system}-${padSeq(seq)}`;
 }
 
 export function buildBudgetCode(dept: MtilDeptCode, seq: number): string {

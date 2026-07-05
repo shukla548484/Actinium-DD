@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "../styles/dd-theme.css";
 @import "../styles/dd-layout.css";
+@import "../styles/actinium-loader.css";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 

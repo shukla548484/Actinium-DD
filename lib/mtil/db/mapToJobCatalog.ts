@@ -31,16 +31,22 @@ import {
 } from "@/lib/jobCatalog/types";
 import { MTIL_PROJECT_TYPES } from "@/lib/mtil/standards";
 
+import {
+  inspectionSetIdForTemplateId,
+  measurementSetIdForTemplateId,
+  scopeOfWorkIdForTemplateId,
+} from "@/lib/mtil/masterCodeStandard";
+
 export function measurementSetIdForTemplate(templateId: string): string {
-  return templateId.replace(/^TMP-/, "MEA-");
+  return measurementSetIdForTemplateId(templateId);
 }
 
 export function checklistIdForTemplate(templateId: string): string {
-  return templateId.replace(/^TMP-/, "INS-");
+  return inspectionSetIdForTemplateId(templateId);
 }
 
 export function scopeOfWorkIdForTemplate(templateId: string): string {
-  return templateId.replace(/^TMP-/, "SOW-");
+  return scopeOfWorkIdForTemplateId(templateId);
 }
 
 export function inferTemplateCategory(key: string): JobTemplateCategory {

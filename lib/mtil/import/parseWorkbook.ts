@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 import fs from "node:fs";
+import { normalizeWorkbookMasterIds } from "@/lib/mtil/import/normalizeWorkbookMasterIds";
 import type {
   DdRiskLevel,
   DryDockProjectType,
@@ -493,7 +494,7 @@ export function parseMtilWorkbookBuffer(buffer: ArrayBuffer | Uint8Array): Parse
   const libraryVersion = masterJobs[0]?.libraryVersion ?? parseLibraryVersionFromDashboard(workbook);
   const initializedOnly = isInitializedWorkbook(workbook, masterJobs);
 
-  return {
+  return normalizeWorkbookMasterIds({
     libraryVersion,
     initializedOnly,
     masterJobs,
@@ -505,7 +506,7 @@ export function parseMtilWorkbookBuffer(buffer: ArrayBuffer | Uint8Array): Parse
     spares: parseSpares(sheetRows(workbook, MTIL_WORKBOOK_SHEETS.spares)),
     rfqMappings: parseRfq(sheetRows(workbook, MTIL_WORKBOOK_SHEETS.rfq)),
     workflows: parseWorkflows(sheetRows(workbook, MTIL_WORKBOOK_SHEETS.workflows)),
-  };
+  });
 }
 
 export function parseMtilWorkbookFile(path: string): ParsedMtilWorkbook {

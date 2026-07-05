@@ -96,6 +96,27 @@ type ProgressReport = {
   };
 };
 
+type EmdrReport = {
+  version: string;
+  codebookPresent: boolean;
+  indexPresent: boolean;
+  idFormat: string;
+  sprints: {
+    id: string;
+    sprintCode: string;
+    name: string;
+    emdrRelease: string;
+    status: string;
+    workbookPresent: boolean;
+  }[];
+  pendingReleases: { release: string; domain: string }[];
+  codebook: {
+    entityCodes: { code: string; entity: string }[];
+    systemCodes: { systemCode: string; systemName: string }[];
+    importOrder: { order: number; tableSheet: string; entityCode: string }[];
+  };
+};
+
 const MASTER_REPO_SHEETS = [
   { sheet: "dashboard", label: "Dashboard" },
   { sheet: "repository", label: "Repository" },
@@ -116,13 +137,18 @@ const WORKBOOK_SHEETS = [
 
 export function MtilProgressPanel() {
   const [data, setData] = useState<ProgressReport | null>(null);
+  const [emdr, setEmdr] = useState<EmdrReport | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    void fetch("/api/admin/mtil/progress")
-      .then((r) => r.json())
-      .then((d: { progress?: ProgressReport }) => setData(d.progress ?? null));
+    void Promise.all([
+      fetch("/api/admin/mtil/progress").then((r) => r.json()),
+      fetch("/api/admin/emdr").then((r) => r.json()),
+    ]).then(([progressBody, emdrBody]) => {
+      setData((progressBody as { progress?: ProgressReport }).progress ?? null);
+      setEmdr(emdrBody as EmdrReport);
+    });
   }, []);
 
   async function seedPhase1() {
@@ -332,6 +358,32 @@ export function MtilProgressPanel() {
     );
   }
 
+  async function seedV201Sprints() {
+    setBusy(true);
+    setMsg(null);
+    const res = await fetch("/api/admin/mtil/v2/sprints", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sprintId: "all" }),
+    });
+    const body = (await res.json()) as {
+      ok?: boolean;
+      totalJobs?: number;
+      totalLinked?: number;
+      sprints?: { sprintId: string; jobCount: number; sprintCode?: string }[];
+      error?: string;
+    };
+    setBusy(false);
+    if (!res.ok) {
+      setMsg(body.error ?? "V2.0.1 sprint seed failed");
+      return;
+    }
+    const codes = body.sprints?.map((s) => s.sprintCode ?? s.sprintId).join(", ") ?? "all";
+    setMsg(
+      `V2.0.1 sprints seeded — ${body.totalJobs ?? 0} jobs (${codes}), ${body.totalLinked ?? 0} library nodes linked. Includes ME-CYU, ME-FIS, ME-EVS, ME-TCH when workbook present.`,
+    );
+  }
+
   if (!data) return <p className="text-sm text-muted-foreground">Loading MTIL progress…</p>;
 
   return (
@@ -402,6 +454,9 @@ export function MtilProgressPanel() {
             </Button>
             <Button variant="outline" size="sm" disabled={busy} onClick={() => void seedMasterRepository()}>
               {busy ? "Seeding…" : "Seed Master Repo to DB"}
+            </Button>
+            <Button variant="outline" size="sm" disabled={busy} onClick={() => void seedV201Sprints()}>
+              {busy ? "Seeding…" : "Seed V2.0.1 Sprints (S1–S4) to DB"}
             </Button>
             <Button
               variant="outline"
@@ -610,6 +665,52 @@ export function MtilProgressPanel() {
           </div>
         </CardHeader>
       </Card>
+
+      {emdr ? (
+        <Card className="border-emerald-500/30">
+          <CardHeader>
+            <CardTitle className="text-base">
+              EMDR {emdr.version} — Engineering Master Data Repository
+            </CardTitle>
+            <CardDescription>
+              {emdr.codebookPresent ? "Codebook loaded" : "Codebook fallback"} ·{" "}
+              {emdr.indexPresent ? "Index loaded" : "Index pending"} · {emdr.idFormat} ·{" "}
+              {emdr.codebook.entityCodes.length} entity codes · {emdr.codebook.systemCodes.length}{" "}
+              system codes · {emdr.codebook.importOrder.length} import stages
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 p-0 pb-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Release</TableHead>
+                  <TableHead>Domain</TableHead>
+                  <TableHead>Workbook</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {emdr.sprints.map((s) => (
+                  <TableRow key={s.id}>
+                    <TableCell>{s.emdrRelease}</TableCell>
+                    <TableCell>{s.name}</TableCell>
+                    <TableCell>{s.workbookPresent ? "Present" : "Missing"}</TableCell>
+                    <TableCell className="capitalize">{s.status.toLowerCase()}</TableCell>
+                  </TableRow>
+                ))}
+                {emdr.pendingReleases.map((p) => (
+                  <TableRow key={p.release}>
+                    <TableCell>{p.release}</TableCell>
+                    <TableCell>{p.domain}</TableCell>
+                    <TableCell>—</TableCell>
+                    <TableCell className="text-muted-foreground">Pending (supplied later)</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>

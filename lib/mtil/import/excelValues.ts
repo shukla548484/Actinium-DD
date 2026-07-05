@@ -211,6 +211,10 @@ const PARTY_MAP: Record<string, JobScopeResponsibleParty> = {
   owner: "owner",
   shipyard: "yard",
   yard: "yard",
+  "vessel/yard": "owner",
+  "vessel / yard": "owner",
+  "yard/maker": "yard",
+  "yard / maker": "yard",
   maker: "maker",
   class: "class",
 };
@@ -369,7 +373,7 @@ export function parseFormSections(value: unknown): JobFormSectionDef[] {
   }));
 }
 
-function inferAutoFillSource(label: string): JobAutoFillFieldDef["source"] {
+export function inferAutoFillSource(label: string): JobAutoFillFieldDef["source"] {
   const lower = label.toLowerCase();
   if (lower.includes("vessel") || lower === "imo") return "vessel";
   if (lower.includes("running") || lower.includes("overhaul") || lower.includes("maker") || lower.includes("model") || lower.includes("serial") || lower.includes("engine")) {

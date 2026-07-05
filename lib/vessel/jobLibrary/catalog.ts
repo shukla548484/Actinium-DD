@@ -21,6 +21,10 @@ import { generatePhase8WorkbookJobLibraryTree } from "@/lib/mtil/phases/phase8/w
 import { PHASE8_WORKBOOK_V11_PATH } from "@/lib/mtil/phases/phase8/workbookV11";
 import { generateMasterRepositoryJobLibraryTree } from "@/lib/mtil/master/repositoryJobLibraryTree";
 import { MASTER_REPOSITORY_V12_PATH } from "@/lib/mtil/master/repositoryV12";
+import path from "node:path";
+import { generateV201CombinedJobLibraryTree } from "@/lib/mtil/v2/v201JobLibraryTree";
+import { EMDR_V201_WORKBOOKS_DIR, MTIL_V2_WORKBOOKS_DIR } from "@/lib/emdr/paths";
+import { V2_SPRINT_REGISTRY } from "@/lib/mtil/v2/sprints/registry";
 import {
   STANDARD_JOB_INPUT_TEMPLATE,
   type JobInputFieldDef,
@@ -128,6 +132,16 @@ export const JOB_LIBRARY_CATALOG: JobLibrarySeedNode[] = [
   ...workbookCatalogEntry(PHASE7_WORKBOOK_V10_PATH, generatePhase7WorkbookJobLibraryTree),
   ...workbookCatalogEntry(PHASE8_WORKBOOK_V11_PATH, generatePhase8WorkbookJobLibraryTree),
   ...workbookCatalogEntry(MASTER_REPOSITORY_V12_PATH, generateMasterRepositoryJobLibraryTree),
+  ...(V2_SPRINT_REGISTRY.some((s) => {
+    const emdr = path.join(EMDR_V201_WORKBOOKS_DIR, s.filename);
+    const legacy = path.join(MTIL_V2_WORKBOOKS_DIR, s.filename);
+    return fs.existsSync(emdr) || fs.existsSync(legacy);
+  })
+    ? (() => {
+        const tree = generateV201CombinedJobLibraryTree();
+        return tree ? [tree] : [];
+      })()
+    : []),
   {
     code: "machinery_jobs",
     name: "Machinery Jobs",

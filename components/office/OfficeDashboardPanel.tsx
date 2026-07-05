@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 type Metric = { label: string; value: number | string };
 
@@ -38,7 +39,7 @@ export function OfficeDashboardPanel({ apiPath, mapStats }: Props) {
   }, [apiPath, mapStats]);
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading dashboard…</p>;
+    return <ActiniumLoadingState label="Loading dashboard…" size="md" minHeight={120} />;
   }
 
   if (error) {

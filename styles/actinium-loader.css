@@ -1,0 +1,51 @@
+/**
+ * Actinium-DD loader — ring animation tokens and keyframes.
+ */
+@keyframes actinium-loader-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes actinium-loader-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.actinium-loader-spin {
+  animation: actinium-loader-spin 0.9s linear infinite;
+}
+
+.actinium-loader-pulse {
+  animation: actinium-loader-pulse 1.4s ease-in-out infinite;
+}
+
+.actinium-loader-ring {
+  border-radius: 9999px;
+  border-style: solid;
+  border-color: color-mix(in oklab, var(--dd-border) 55%, transparent);
+  border-top-color: var(--dd-rose-bright);
+  border-right-color: var(--dd-orange-bright);
+  border-bottom-color: var(--dd-yellow-bright);
+  animation: actinium-loader-spin 0.9s linear infinite;
+}
+
+.actinium-loader-overlay-enter {
+  animation: actinium-loader-fade-in 0.2s ease-out forwards;
+}
+
+@keyframes actinium-loader-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

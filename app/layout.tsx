@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { InactivityMonitor } from "@/components/auth/InactivityMonitor";
+import { GlobalLoaderProvider } from "@/components/layout/GlobalLoaderProvider";
 import { PortalShell } from "@/components/layout/PortalShell";
 import "./globals.css";
 
@@ -35,8 +36,10 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="dd-app-shell bg-background text-foreground antialiased">
-        <InactivityMonitor />
-        <PortalShell>{children}</PortalShell>
+        <GlobalLoaderProvider>
+          <InactivityMonitor />
+          <PortalShell>{children}</PortalShell>
+        </GlobalLoaderProvider>
       </body>
     </html>
   );

@@ -34,7 +34,7 @@ export const MTIL_V2_DOMAIN_REGISTRY: MtilV2DomainRelease[] = [
     release: "V2.0.1",
     slug: "main-propulsion",
     name: "Main Propulsion (Expanded)",
-    status: "pending",
+    status: "in_progress",
     legacyPhaseId: 1,
     targetJobCount: { min: 1000, max: 1200 },
     idPrefix: "ENG-ME",

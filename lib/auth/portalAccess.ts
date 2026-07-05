@@ -17,11 +17,12 @@ export const PORTAL_ROUTE_PREFIXES: Record<RbacUserType, readonly string[]> = {
     "/ship-access",
     "/external",
     "/account",
+    "/dev",
   ],
-  office: ["/admin", "/office", "/projects", "/superintendent", "/account"],
-  vessel: ["/ship-access", "/account"],
-  shipyard: ["/shipyard", "/quote", "/account"],
-  external: ["/external", "/quote", "/account"],
+  office: ["/admin", "/office", "/projects", "/superintendent", "/account", "/dev"],
+  vessel: ["/ship-access", "/account", "/dev"],
+  shipyard: ["/shipyard", "/quote", "/account", "/dev"],
+  external: ["/external", "/quote", "/account", "/dev"],
 };
 
 /** API prefixes aligned with portal surfaces. */

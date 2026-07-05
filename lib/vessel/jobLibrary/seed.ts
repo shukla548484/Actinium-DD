@@ -444,3 +444,36 @@ export async function ensureMtilMasterRepositoryV12Seeded(): Promise<{
     frameworkOnly: stats.frameworkOnly,
   };
 }
+
+/** Import V2.0.1 sprint workbooks (ME-CYU, ME-FIS, ME-EVS) and merge job library tree. */
+export async function ensureMtilV201AllSprintsSeeded(): Promise<{
+  inserted: boolean;
+  jobCount: number;
+  templates: number;
+  linkedNodes: number;
+  sprints: { sprintId: string; jobCount: number }[];
+}> {
+  const { getV201CombinedStats, isV201AllSprintsSeeded, seedV201AllSprints } = await import(
+    "@/lib/mtil/db/seedV201MainPropulsion"
+  );
+  const stats = getV201CombinedStats();
+
+  if (await isV201AllSprintsSeeded()) {
+    return {
+      inserted: false,
+      jobCount: stats.jobCount,
+      templates: stats.catalogTemplateCount,
+      linkedNodes: 0,
+      sprints: stats.sprints.map((s) => ({ sprintId: s.sprintId, jobCount: s.jobCount })),
+    };
+  }
+
+  const result = await seedV201AllSprints();
+  return {
+    inserted: true,
+    jobCount: result.totalJobs,
+    templates: stats.catalogTemplateCount,
+    linkedNodes: result.totalLinked,
+    sprints: result.sprints.map((s) => ({ sprintId: s.sprintId, jobCount: s.jobCount })),
+  };
+}

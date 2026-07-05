@@ -21,6 +21,7 @@ import {
 } from "@/lib/mtil/measurementLibrary";
 import { MTIL_V2_RELEASE_DELIVERABLES } from "./deliverables";
 import { MTIL_V2_DOMAIN_REGISTRY } from "./registry";
+import { getV201CombinedStats } from "@/lib/mtil/db/seedV201MainPropulsion";
 import {
   MTIL_R0_FRAMEWORK_COMPLETE,
   MTIL_V2_DATABASE_TARGETS,
@@ -104,17 +105,27 @@ function pct(actual: number, target: number): number {
 }
 
 export function getMtilV2ProgressReport(): MtilV2ProgressReport {
+  const v201 = getV201CombinedStats();
+
   const domains: MtilV2DomainProgress[] = MTIL_V2_DOMAIN_REGISTRY.map((domain) => {
     const r0 = getR0StatsForPhase(domain.legacyPhaseId);
+    const v201Jobs = domain.release === "V2.0.1" ? v201.jobCount : 0;
+    const v201Templates = domain.release === "V2.0.1" ? v201.catalogTemplateCount : 0;
+    const v201Measurements = domain.release === "V2.0.1" ? v201.measurementCount : 0;
+    const v201Checklist = domain.release === "V2.0.1" ? v201.checklistItemCount : 0;
+    const actualJobs = domain.release === "V2.0.1" ? v201Jobs : r0.jobCount;
+    const actualTemplates = domain.release === "V2.0.1" ? v201Templates : r0.templateCount;
+    const actualMeasurements = domain.release === "V2.0.1" ? v201Measurements : r0.measurementCount;
+    const actualChecklistItems = domain.release === "V2.0.1" ? v201Checklist : r0.checklistItemCount;
     return {
       ...domain,
-      actualJobCount: r0.jobCount,
-      actualTemplateCount: r0.templateCount,
-      actualMeasurementCount: r0.measurementCount,
-      actualChecklistItemCount: r0.checklistItemCount,
+      actualJobCount: actualJobs,
+      actualTemplateCount: actualTemplates,
+      actualMeasurementCount: actualMeasurements,
+      actualChecklistItemCount: actualChecklistItems,
       actualSpareMappingCount: 0,
       actualRfqMappingCount: 0,
-      percentJobsComplete: pct(r0.jobCount, domain.targetJobCount.min),
+      percentJobsComplete: pct(actualJobs, domain.targetJobCount.min),
       r0BaselineJobCount: r0.jobCount,
     };
   });

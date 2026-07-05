@@ -3,6 +3,9 @@
 export const MTIL_V2_ENGINE_VERSION = "2.0.0";
 export const MTIL_V2_LIBRARY_VERSION = "MTIL-v2.0";
 
+/** Actinium-SM Engineering Master Code Standard — canonical 4-letter entity IDs. */
+export { MASTER_CODE_STANDARD_VERSION } from "@/lib/mtil/masterCodeStandard";
+
 /** Permanent Actinium-SM engineering database capacity targets. */
 export const MTIL_V2_DATABASE_TARGETS = {
   jobs: { min: 4000, max: 5000 },

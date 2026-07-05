@@ -3,6 +3,7 @@ import type { DryDockProjectType } from "@prisma/client";
 /** Department root codes shown for each dry dock project type. */
 const ROOT_DEPARTMENTS_BY_PROJECT_TYPE: Partial<Record<DryDockProjectType, Set<string>>> = {
   special_survey: new Set([
+    "mtil_v201_main_propulsion",
     "mtil_p1_main_propulsion",
     "machinery_jobs",
     "hull_jobs",
@@ -18,6 +19,7 @@ const ROOT_DEPARTMENTS_BY_PROJECT_TYPE: Partial<Record<DryDockProjectType, Set<s
     "accommodation_jobs",
   ]),
   intermediate_survey: new Set([
+    "mtil_v201_main_propulsion",
     "machinery_jobs",
     "hull_jobs",
     "pipe_jobs",
@@ -28,6 +30,7 @@ const ROOT_DEPARTMENTS_BY_PROJECT_TYPE: Partial<Record<DryDockProjectType, Set<s
     "instrumentation_jobs",
   ]),
   damage_repair: new Set([
+    "mtil_v201_main_propulsion",
     "machinery_jobs",
     "hull_jobs",
     "electrical_jobs",
@@ -35,6 +38,7 @@ const ROOT_DEPARTMENTS_BY_PROJECT_TYPE: Partial<Record<DryDockProjectType, Set<s
     "navigation_jobs",
   ]),
   occasional_repair: new Set([
+    "mtil_v201_main_propulsion",
     "machinery_jobs",
     "hull_jobs",
     "tank_jobs",
@@ -88,5 +92,5 @@ export function filterJobLibraryRootsByProjectType<T extends { code: string }>(
   if (!projectType) return nodes;
   const allowed = ROOT_DEPARTMENTS_BY_PROJECT_TYPE[projectType as DryDockProjectType];
   if (!allowed) return nodes;
-  return nodes.filter((n) => allowed.has(n.code));
+  return nodes.filter((n) => allowed.has(n.code) || n.code.startsWith("mtil_"));
 }

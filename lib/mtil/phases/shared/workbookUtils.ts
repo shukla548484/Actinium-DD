@@ -11,9 +11,12 @@ export function templateIdToKey(templateId: string): string {
 
 /** Convert dynamic template key back to commercial template ID when possible. */
 export function keyToTemplateId(key: string): string | null {
-  if (key.startsWith("TMP-")) return key;
+  const upper = key.toUpperCase().replace(/_/g, "-");
+  if (upper.startsWith("TMPL-") || upper.startsWith("TMP-")) return upper.replace(/^TMP-/, "TMPL-");
+  if (key.startsWith("TMP-") || key.startsWith("TMPL-")) return key.replace(/^TMP-/, "TMPL-");
   const asId = key.toUpperCase().replace(/_/g, "-");
-  return asId.startsWith("TMP-") ? asId : null;
+  if (asId.startsWith("TMPL-") || asId.startsWith("TMP-")) return asId.replace(/^TMP-/, "TMPL-");
+  return null;
 }
 
 export function getWorkbookTemplateById(
@@ -57,8 +60,8 @@ export function buildWorkbookRuntimeFields(
   templateKeyOrId: string,
   data: ParsedMtilWorkbook,
 ): JobInputFieldDef[] | null {
-  const templateId = templateKeyOrId.startsWith("TMP-")
-    ? templateKeyOrId
+  const templateId = templateKeyOrId.startsWith("TMP-") || templateKeyOrId.startsWith("TMPL-")
+    ? templateKeyOrId.replace(/^TMP-/, "TMPL-")
     : keyToTemplateId(templateKeyOrId);
   if (!templateId) return null;
 

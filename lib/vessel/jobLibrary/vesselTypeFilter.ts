@@ -73,5 +73,5 @@ export function filterJobLibraryRootsByVesselType<T extends { code: string }>(
   if (!key) return nodes;
   const allowed = ROOT_BY_VESSEL_KEY[key];
   if (!allowed) return nodes;
-  return nodes.filter((n) => allowed.has(n.code));
+  return nodes.filter((n) => allowed.has(n.code) || n.code.startsWith("mtil_"));
 }
