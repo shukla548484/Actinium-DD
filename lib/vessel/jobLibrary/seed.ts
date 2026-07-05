@@ -336,3 +336,37 @@ export async function ensureMtilPhase6WorkbookV09Seeded(): Promise<{
     initializedOnly: stats.initializedOnly,
   };
 }
+
+/** Upsert Phase 7 v1.0 engineering workbook library (JOB-CGO-TNK / TMP-CGO). */
+export async function ensureMtilPhase7WorkbookV10Seeded(): Promise<{
+  inserted: boolean;
+  jobCount: number;
+  templates: number;
+  libraryVersion: string;
+  initializedOnly?: boolean;
+}> {
+  const { getPhase7WorkbookV10Stats } = await import("@/lib/mtil/phases/phase7/workbookJobLibraryTree");
+  const { seedPhase7WorkbookV10, isPhase7WorkbookV10Seeded } = await import(
+    "@/lib/mtil/db/seedPhase7WorkbookV10"
+  );
+  const stats = getPhase7WorkbookV10Stats();
+
+  if (await isPhase7WorkbookV10Seeded()) {
+    return {
+      inserted: false,
+      jobCount: stats.jobCount,
+      templates: stats.catalogTemplateCount,
+      libraryVersion: stats.libraryVersion,
+      initializedOnly: stats.initializedOnly,
+    };
+  }
+
+  const result = await seedPhase7WorkbookV10();
+  return {
+    inserted: true,
+    jobCount: result.jobCount,
+    templates: result.templates,
+    libraryVersion: result.libraryVersion,
+    initializedOnly: stats.initializedOnly,
+  };
+}

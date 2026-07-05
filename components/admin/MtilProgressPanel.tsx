@@ -34,6 +34,7 @@ type ProgressReport = {
     phase4JobsGenerated: number;
     phase5JobsGenerated: number;
     phase6JobsGenerated: number;
+    phase7JobsGenerated: number;
     totalJobsGenerated: number;
     phase1Measurements: number;
     phase2Measurements: number;
@@ -41,14 +42,17 @@ type ProgressReport = {
     phase4Measurements: number;
     phase5Measurements: number;
     phase6Measurements: number;
+    phase7Measurements: number;
     phase1ChecklistItems: number;
     phase2ChecklistItems: number;
     phase3ChecklistItems: number;
     phase4ChecklistItems: number;
     phase5ChecklistItems: number;
     phase6ChecklistItems: number;
+    phase7ChecklistItems: number;
     phase5InitializedOnly?: boolean;
     phase6InitializedOnly?: boolean;
+    phase7InitializedOnly?: boolean;
   };
 };
 
@@ -199,6 +203,32 @@ export function MtilProgressPanel() {
     );
   }
 
+  async function seedPhase7() {
+    setBusy(true);
+    setMsg(null);
+    const res = await fetch("/api/admin/mtil/phase7", { method: "POST" });
+    const body = (await res.json()) as {
+      workbookV10?: {
+        inserted?: boolean;
+        jobCount?: number;
+        libraryVersion?: string;
+        initializedOnly?: boolean;
+      };
+      error?: string;
+    };
+    setBusy(false);
+    if (!res.ok) {
+      setMsg(body.error ?? "Seed failed");
+      return;
+    }
+    const w = body.workbookV10;
+    setMsg(
+      w?.initializedOnly
+        ? `Phase 7 registered — v1.0 initialized (schema ready, 0 jobs until library populated).`
+        : `Phase 7 seeded — v1.0 workbook: ${w?.jobCount ?? 0} jobs (${w?.libraryVersion ?? "MTIL-v1.0"}).`,
+    );
+  }
+
   if (!data) return <p className="text-sm text-muted-foreground">Loading MTIL progress…</p>;
 
   return (
@@ -220,17 +250,20 @@ export function MtilProgressPanel() {
                 data.totals.phase3Measurements +
                 (data.totals.phase4Measurements ?? 0) +
                 (data.totals.phase5Measurements ?? 0) +
-                (data.totals.phase6Measurements ?? 0)}{" "}
+                (data.totals.phase6Measurements ?? 0) +
+                (data.totals.phase7Measurements ?? 0)}{" "}
               measurements ·{" "}
               {data.totals.phase1ChecklistItems +
                 data.totals.phase2ChecklistItems +
                 data.totals.phase3ChecklistItems +
                 (data.totals.phase4ChecklistItems ?? 0) +
                 (data.totals.phase5ChecklistItems ?? 0) +
-                (data.totals.phase6ChecklistItems ?? 0)}{" "}
+                (data.totals.phase6ChecklistItems ?? 0) +
+                (data.totals.phase7ChecklistItems ?? 0)}{" "}
               checklist items
               {data.totals.phase5InitializedOnly ? " · P5 initialized" : ""}
               {data.totals.phase6InitializedOnly ? " · P6 initialized" : ""}
+              {data.totals.phase7InitializedOnly ? " · P7 initialized" : ""}
             </CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -252,6 +285,9 @@ export function MtilProgressPanel() {
             <Button variant="outline" size="sm" disabled={busy} onClick={() => void seedPhase6()}>
               {busy ? "Seeding…" : "Seed Phase 6 to DB"}
             </Button>
+            <Button variant="outline" size="sm" disabled={busy} onClick={() => void seedPhase7()}>
+              {busy ? "Seeding…" : "Seed Phase 7 to DB"}
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -267,6 +303,7 @@ export function MtilProgressPanel() {
                     phase4V07?: { jobCount?: number };
                     phase5V08?: { jobCount?: number; initializedOnly?: boolean };
                     phase6V09?: { jobCount?: number; initializedOnly?: boolean };
+                    phase7V10?: { jobCount?: number; initializedOnly?: boolean };
                   };
                   error?: string;
                 };
@@ -274,7 +311,7 @@ export function MtilProgressPanel() {
                 const wb = body.workbooks;
                 setMsg(
                   res.ok
-                    ? `Job catalog synced: P4 ${wb?.phase4V07?.jobCount ?? 0} jobs, P5 ${wb?.phase5V08?.initializedOnly ? "initialized" : `${wb?.phase5V08?.jobCount ?? 0} jobs`}, P6 ${wb?.phase6V09?.initializedOnly ? "initialized" : `${wb?.phase6V09?.jobCount ?? 0} jobs`}.`
+                    ? `Job catalog synced: P4 ${wb?.phase4V07?.jobCount ?? 0} jobs, P5 ${wb?.phase5V08?.initializedOnly ? "initialized" : `${wb?.phase5V08?.jobCount ?? 0} jobs`}, P6 ${wb?.phase6V09?.initializedOnly ? "initialized" : `${wb?.phase6V09?.jobCount ?? 0} jobs`}, P7 ${wb?.phase7V10?.initializedOnly ? "initialized" : `${wb?.phase7V10?.jobCount ?? 0} jobs`}.`
                     : body.error ?? "Job catalog sync failed",
                 );
               }}
@@ -407,6 +444,21 @@ export function MtilProgressPanel() {
                     nativeButton={false}
                   >
                     P6 v0.9 {label}
+                  </Button>
+                ))
+              : null}
+            {!data.totals.phase7InitializedOnly
+              ? WORKBOOK_SHEETS.map(({ sheet, label }) => (
+                  <Button
+                    key={`p7v10-${sheet}`}
+                    variant="outline"
+                    size="sm"
+                    render={
+                      <a href={`/api/admin/mtil/phase7?format=csv&sheet=${sheet}`} download />
+                    }
+                    nativeButton={false}
+                  >
+                    P7 v1.0 {label}
                   </Button>
                 ))
               : null}

@@ -7,6 +7,7 @@ import { loadPhase3WorkbookV06 } from "@/lib/mtil/phases/phase3/workbookV06";
 import { loadPhase4WorkbookV07 } from "@/lib/mtil/phases/phase4/workbookV07";
 import { loadPhase5WorkbookV08 } from "@/lib/mtil/phases/phase5/workbookV08";
 import { loadPhase6WorkbookV09 } from "@/lib/mtil/phases/phase6/workbookV09";
+import { loadPhase7WorkbookV10 } from "@/lib/mtil/phases/phase7/workbookV10";
 import {
   buildWorkbookRuntimeFields,
   keyToTemplateId,
@@ -23,6 +24,7 @@ export const MTIL_WORKBOOK_LOADERS: WorkbookLoader[] = [
   loadPhase4WorkbookV07,
   loadPhase5WorkbookV08,
   loadPhase6WorkbookV09,
+  loadPhase7WorkbookV10,
 ];
 
 export function getAllWorkbookTemplateDefs(): MtilDynamicTemplateDef[] {

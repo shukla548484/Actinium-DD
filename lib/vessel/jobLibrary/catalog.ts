@@ -8,6 +8,7 @@ import { generatePhase3WorkbookJobLibraryTree } from "@/lib/mtil/phases/phase3/w
 import { generatePhase4WorkbookJobLibraryTree } from "@/lib/mtil/phases/phase4/workbookJobLibraryTree";
 import { generatePhase5WorkbookJobLibraryTree } from "@/lib/mtil/phases/phase5/workbookJobLibraryTree";
 import { generatePhase6WorkbookJobLibraryTree } from "@/lib/mtil/phases/phase6/workbookJobLibraryTree";
+import { generatePhase7WorkbookJobLibraryTree } from "@/lib/mtil/phases/phase7/workbookJobLibraryTree";
 import {
   STANDARD_JOB_INPUT_TEMPLATE,
   type JobInputFieldDef,
@@ -105,6 +106,7 @@ export const JOB_LIBRARY_CATALOG: JobLibrarySeedNode[] = [
   generatePhase4WorkbookJobLibraryTree(),
   generatePhase5WorkbookJobLibraryTree(),
   generatePhase6WorkbookJobLibraryTree(),
+  generatePhase7WorkbookJobLibraryTree(),
   {
     code: "machinery_jobs",
     name: "Machinery Jobs",

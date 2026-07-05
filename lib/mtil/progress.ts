@@ -8,6 +8,7 @@ import { getPhase3WorkbookV06Stats } from "./phases/phase3/workbookJobLibraryTre
 import { getPhase4WorkbookV07Stats } from "./phases/phase4/workbookJobLibraryTree";
 import { getPhase5WorkbookV08Stats } from "./phases/phase5/workbookJobLibraryTree";
 import { getPhase6WorkbookV09Stats } from "./phases/phase6/workbookJobLibraryTree";
+import { getPhase7WorkbookV10Stats } from "./phases/phase7/workbookJobLibraryTree";
 import {
   getPhase1ChecklistItemCount,
   getPhase2ChecklistItemCount,
@@ -62,7 +63,7 @@ export const MTIL_PHASE_REGISTRY: MtilPhaseMeta[] = [
   { id: 4, slug: "deck-cargo", name: "Deck Machinery & Cargo Systems", status: "completed", targetJobCount: { min: 300, max: 500 }, description: "Engineering Repository v0.7 workbook (151 jobs, TMP-DECK)." },
   { id: 5, slug: "hull-steel", name: "Hull, Steel & Coatings", status: "in_progress", targetJobCount: { min: 400, max: 600 }, description: "Engineering Repository v0.8 initialized (MTIL-v0.8) — schema ready, jobs pending." },
   { id: 6, slug: "electrical", name: "Electrical, Automation & Navigation", status: "in_progress", targetJobCount: { min: 400, max: 600 }, description: "Engineering Repository v0.9 initialized (MTIL-v0.9) — schema ready, jobs pending." },
-  { id: 7, slug: "safety-accommodation", name: "Safety & Accommodation", status: "pending", targetJobCount: { min: 200, max: 400 }, description: "" },
+  { id: 7, slug: "cargo-tank-systems", name: "Cargo & Tank Systems", status: "in_progress", targetJobCount: { min: 300, max: 500 }, description: "Engineering Repository v1.0 initialized (MTIL-v1.0) — schema ready, jobs pending." },
   { id: 8, slug: "dynamic-templates", name: "Dynamic Templates (cross-cutting)", status: "in_progress", targetJobCount: { min: 250, max: 250 }, description: "Template engine live; expanding template library per phase." },
   { id: 9, slug: "rfq-cost", name: "RFQ, Cost Codes & Quote Mapping", status: "pending", targetJobCount: { min: 0, max: 0 }, description: "" },
   { id: 10, slug: "ai-knowledge", name: "AI Knowledge Base & Final Database", status: "pending", targetJobCount: { min: 5000, max: 5000 }, description: "" },
@@ -164,6 +165,22 @@ function enrichPhase(p: MtilPhaseMeta) {
       initializedOnly: v09.initializedOnly,
     };
   }
+  if (p.id === 7) {
+    const v10 = getPhase7WorkbookV10Stats();
+    return {
+      ...p,
+      actualJobCount: v10.jobCount,
+      catalogTemplateCount: v10.catalogTemplateCount,
+      dynamicTemplateCount: v10.dynamicTemplateCount,
+      systemCount: v10.systemCount,
+      componentCount: v10.componentCount,
+      measurementCount: v10.measurementCount,
+      checklistItemCount: v10.checklistItemCount,
+      workbookV10JobCount: v10.jobCount,
+      workbookV10Version: v10.libraryVersion,
+      initializedOnly: v10.initializedOnly,
+    };
+  }
   return p;
 }
 
@@ -177,13 +194,15 @@ export function getMtilProgressReport() {
   const phase4V07 = getPhase4WorkbookV07Stats();
   const phase5V08 = getPhase5WorkbookV08Stats();
   const phase6V09 = getPhase6WorkbookV09Stats();
+  const phase7V10 = getPhase7WorkbookV10Stats();
   const workbookTemplateCount =
     phase1V04.catalogTemplateCount +
     phase2V05.catalogTemplateCount +
     phase3V06.catalogTemplateCount +
     phase4V07.catalogTemplateCount +
     phase5V08.catalogTemplateCount +
-    phase6V09.catalogTemplateCount;
+    phase6V09.catalogTemplateCount +
+    phase7V10.catalogTemplateCount;
 
   return {
     engineVersion: MTIL_ENGINE_VERSION,
@@ -212,6 +231,9 @@ export function getMtilProgressReport() {
       phase6JobsGenerated: phase6V09.jobCount,
       phase6WorkbookV09Jobs: phase6V09.jobCount,
       phase6InitializedOnly: phase6V09.initializedOnly,
+      phase7JobsGenerated: phase7V10.jobCount,
+      phase7WorkbookV10Jobs: phase7V10.jobCount,
+      phase7InitializedOnly: phase7V10.initializedOnly,
       totalJobsGenerated:
         phase1.jobCount +
         phase1V04.jobCount +
@@ -221,19 +243,22 @@ export function getMtilProgressReport() {
         phase3V06.jobCount +
         phase4V07.jobCount +
         phase5V08.jobCount +
-        phase6V09.jobCount,
+        phase6V09.jobCount +
+        phase7V10.jobCount,
       phase1Measurements: getPhase1MeasurementCount() + phase1V04.measurementCount,
       phase2Measurements: getPhase2MeasurementCount() + phase2V05.measurementCount,
       phase3Measurements: getPhase3MeasurementCount() + phase3V06.measurementCount,
       phase4Measurements: phase4V07.measurementCount,
       phase5Measurements: phase5V08.measurementCount,
       phase6Measurements: phase6V09.measurementCount,
+      phase7Measurements: phase7V10.measurementCount,
       phase1ChecklistItems: getPhase1ChecklistItemCount() + phase1V04.checklistItemCount,
       phase2ChecklistItems: getPhase2ChecklistItemCount() + phase2V05.checklistItemCount,
       phase3ChecklistItems: getPhase3ChecklistItemCount() + phase3V06.checklistItemCount,
       phase4ChecklistItems: phase4V07.checklistItemCount,
       phase5ChecklistItems: phase5V08.checklistItemCount,
       phase6ChecklistItems: phase6V09.checklistItemCount,
+      phase7ChecklistItems: phase7V10.checklistItemCount,
     },
   };
 }
