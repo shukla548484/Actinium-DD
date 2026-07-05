@@ -1,18 +1,35 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
+import type { RbacUserType } from "@prisma/client";
 import { AppFooter } from "@/components/layout/AppFooter";
 import { isSidebarModulePath } from "@/components/layout/ModuleScrollArea";
 import { TopNavBar } from "@/components/layout/TopNavBar";
-import { resolveActiveNavId } from "@/lib/navigation/topNavItems";
+import { buildCrewTopNavItems } from "@/lib/navigation/buildCrewNav";
+import {
+  buildTopNavForUserType,
+  portalHomeHrefForUserType,
+  resolveActiveNavIdForUserType,
+} from "@/lib/navigation/buildPortalNav";
+import { resolveCrewActiveNavId } from "@/lib/navigation/crewNavItems";
+import type { TopNavItem } from "@/lib/navigation/topNavItems";
+import { rbacUserTypeLabel } from "@/lib/rbac/userTypes";
 
 type SessionUser = {
   displayName: string;
   loginId: string | null;
   employeeCode: string | null;
   designation: string | null;
+  vesselLoginId: string | null;
   officeBootstrap: boolean;
+  isVesselCrew: boolean;
+  rbacUserType?: RbacUserType;
+  rbacUserTypeLabel?: string;
+  portalHome?: string;
+  roleName: string | null;
+  vessels: { id: string; code: string; name: string }[];
+  assignedPageKeys: string[];
 };
 
 function SimpleScrollPage({
@@ -34,12 +51,48 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isYardPortal = pathname.startsWith("/quote/");
   const isLogin = pathname.startsWith("/login");
+  const isPortalHub = pathname === "/";
   const isSidebarModule = isSidebarModulePath(pathname);
   const [pendingTasks, setPendingTasks] = useState(0);
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
+  const [portalNavItems, setPortalNavItems] = useState<TopNavItem[] | undefined>(undefined);
 
   useEffect(() => {
-    if (isYardPortal || isLogin) return;
+    if (isYardPortal || isLogin || isPortalHub) return;
+    void fetch("/api/auth/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.user) {
+          const user = data.user as SessionUser;
+          setSessionUser(user);
+          const userType = user.rbacUserType ?? (user.isVesselCrew ? "vessel" : "office");
+          if (userType === "vessel") {
+            setPortalNavItems(buildCrewTopNavItems(user.assignedPageKeys ?? []));
+          } else {
+            setPortalNavItems(buildTopNavForUserType(userType));
+          }
+        }
+      })
+      .catch(() => {});
+  }, [isYardPortal, isLogin, isPortalHub, pathname]);
+
+  const userType = useMemo<RbacUserType>(() => {
+    if (sessionUser?.rbacUserType) return sessionUser.rbacUserType;
+    if (sessionUser?.isVesselCrew) return "vessel";
+    return "office";
+  }, [sessionUser]);
+
+  useEffect(() => {
+    if (
+      isYardPortal ||
+      isLogin ||
+      isPortalHub ||
+      userType === "vessel" ||
+      userType === "shipyard" ||
+      userType === "external"
+    ) {
+      return;
+    }
     void fetch("/api/projects")
       .then((r) => r.json())
       .then((data) => {
@@ -49,30 +102,37 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
         );
       })
       .catch(() => {});
-  }, [isYardPortal, isLogin, pathname]);
+  }, [isYardPortal, isLogin, isPortalHub, pathname, userType]);
 
-  useEffect(() => {
-    if (isYardPortal || isLogin) return;
-    void fetch("/api/auth/me")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data?.user) setSessionUser(data.user as SessionUser);
-      })
-      .catch(() => {});
-  }, [isYardPortal, isLogin, pathname]);
-
-  if (isYardPortal || isLogin) {
+  if (isYardPortal || isLogin || isPortalHub) {
     return (
       <div className="dd-portal-root">
-        <SimpleScrollPage compactFooter>{children}</SimpleScrollPage>
+        <SimpleScrollPage compactFooter={isLogin}>{children}</SimpleScrollPage>
       </div>
     );
   }
 
+  const isCrew = userType === "vessel";
   const userName = sessionUser?.displayName ?? "Office User";
-  const userRole =
-    sessionUser?.designation ??
-    (sessionUser?.loginId ? `Employee ID ${sessionUser.loginId}` : "Actinium-DD portal");
+  const assignedVessel = sessionUser?.vessels[0];
+  const userRole = isCrew
+    ? [
+        sessionUser?.designation ?? sessionUser?.roleName,
+        sessionUser?.vesselLoginId ?? sessionUser?.loginId,
+        assignedVessel ? `${assignedVessel.name} (${assignedVessel.code})` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : [
+        sessionUser?.designation ?? sessionUser?.roleName,
+        sessionUser?.rbacUserTypeLabel ?? rbacUserTypeLabel(userType),
+        sessionUser?.loginId ? `ID ${sessionUser.loginId}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+
+  const homeHref = sessionUser?.portalHome ?? portalHomeHrefForUserType(userType);
+  const showOfficeChrome = userType === "office" || userType === "system";
 
   return (
     <div className="dd-portal-root">
@@ -81,8 +141,14 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
         userName={userName}
         userRole={userRole}
         pendingTasksCount={pendingTasks}
-        activeNav={resolveActiveNavId(pathname)}
+        activeNav={
+          isCrew ? resolveCrewActiveNavId(pathname) : resolveActiveNavIdForUserType(pathname, userType)
+        }
         showChangePassword={Boolean(sessionUser?.loginId && !sessionUser.officeBootstrap)}
+        navItems={portalNavItems}
+        homeHref={homeHref}
+        showTasksPending={showOfficeChrome}
+        showSearch={showOfficeChrome}
       />
       {isSidebarModule ? (
         <div className="dd-app-body">{children}</div>

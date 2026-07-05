@@ -6,6 +6,7 @@ import type {
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { provisionDryDockProjectWorkspace } from "@/lib/superintendent/engine/provisionWorkspace";
+import { autoIntegrateApprovedVesselJobs } from "@/lib/db/superintendent/vesselJobs";
 import { nextDryDockProjectCode } from "@/lib/superintendent/projectCodes";
 import { resolveVesselScope } from "@/lib/db/superintendent/dashboard";
 import { notDeleted, parsePageLimit } from "@/lib/db/superintendent/pagination";
@@ -186,6 +187,17 @@ export async function createDryDockProject(input: {
       projectType: input.projectType,
       plannedStart,
     });
+    const { integratedCount } = await autoIntegrateApprovedVesselJobs(row.id);
+    if (integratedCount > 0) {
+      const stamp = new Date().toISOString().slice(0, 10);
+      const line = `[${stamp}] Auto-imported ${integratedCount} CE-approved vessel job(s) into project scope.`;
+      const notes = row.notes?.trim() ? `${row.notes.trim()}\n${line}` : line;
+      await prisma.dryDockProject.update({
+        where: { id: row.id },
+        data: { notes },
+      });
+      row.notes = notes;
+    }
   }
 
   return mapProject(row);

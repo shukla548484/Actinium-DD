@@ -5,9 +5,17 @@
  */
 import { spawn } from "node:child_process";
 import http from "node:http";
-import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { promptRunningInstanceAction } from "./lib/instance-dialog.mjs";
+import {
+  findAvailablePort,
+  isPortAvailable,
+  killProcessesOnPort,
+  openBrowserUrl,
+  probeAppAtPort,
+  waitForPortFree,
+} from "./lib/port-utils.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
@@ -15,6 +23,8 @@ const desktop = path.join(root, "desktop");
 const apiPort = Number(process.env.FLEET_API_PORT ?? 3847);
 const apiHost = process.env.FLEET_API_HOST ?? "127.0.0.1";
 const startPort = Number(process.env.DESKTOP_DEV_PORT ?? 1420);
+const appName = process.env.ACTINIUM_APP_NAME || "Actinium-DD Desktop";
+const desktopAppId = "actinium-dd-desktop";
 
 function httpOk(url) {
   return new Promise((resolve) => {
@@ -25,22 +35,6 @@ function httpOk(url) {
       resolve(false);
     });
   });
-}
-
-function isPortFree(port) {
-  return new Promise((resolve) => {
-    const server = net.createServer();
-    server.once("error", () => resolve(false));
-    server.once("listening", () => server.close(() => resolve(true)));
-    server.listen(port, "127.0.0.1");
-  });
-}
-
-async function findVitePort(from) {
-  for (let p = from; p < from + 20; p++) {
-    if (await isPortFree(p)) return p;
-  }
-  throw new Error(`No free port between ${from} and ${from + 19}`);
 }
 
 function fleetApiHealthy() {
@@ -68,42 +62,96 @@ async function ensureFleetApi() {
   process.exit(1);
 }
 
+function startVite(port) {
+  console.log(`Starting ${appName} → http://localhost:${port}\n`);
+
+  const vite = spawn(
+    "npx",
+    ["vite", "--port", String(port), "--strictPort", "true"],
+    {
+      cwd: desktop,
+      stdio: "inherit",
+      env: { ...process.env, FLEET_WEB_DEV: "1" },
+      shell: process.platform === "win32",
+    },
+  );
+
+  vite.on("exit", (code) => {
+    apiRef?.kill("SIGINT");
+    process.exit(code ?? 0);
+  });
+
+  process.on("SIGINT", () => {
+    vite.kill("SIGINT");
+    apiRef?.kill("SIGINT");
+    process.exit(0);
+  });
+}
+
 console.log("Actinium-DD — browser dev (no Tauri/Rust required)\n");
 
-const api = await ensureFleetApi();
+/** @type {import('node:child_process').ChildProcess | null} */
+let apiRef = null;
+apiRef = await ensureFleetApi();
 
-// Reuse existing Vite on default port
-if (await httpOk(`http://127.0.0.1:${startPort}/`)) {
-  console.log(`Desktop UI already running → http://localhost:${startPort}`);
-  console.log("(Stop it with: kill $(lsof -t -i :1420))");
-  process.exit(0);
+async function resolveStartupPort() {
+  if (await isPortAvailable(startPort, "127.0.0.1")) {
+    return startPort;
+  }
+
+  const probe = await probeAppAtPort(startPort, {
+    appId: desktopAppId,
+    appName,
+    identityPath: "/actinium-app-identity.json",
+  });
+
+  if (probe.isActinium) {
+    const action = await promptRunningInstanceAction({
+      appName,
+      port: startPort,
+      url: probe.url,
+      detected: true,
+      occupant: probe.occupant,
+    });
+
+    if (action === "open") {
+      console.log(`Opening ${probe.url}`);
+      openBrowserUrl(probe.url);
+      process.exit(0);
+    }
+
+    if (action === "cancel") {
+      console.log("Startup cancelled.");
+      process.exit(0);
+    }
+
+    console.log(`Stopping ${appName} on port ${startPort}…`);
+    await killProcessesOnPort(startPort);
+
+    const ready = await waitForPortFree(startPort);
+    if (!ready) {
+      console.error(`Port ${startPort} is still in use. Close the other instance manually and retry.`);
+      process.exit(1);
+    }
+
+    return startPort;
+  }
+
+  const occupantLabel = probe.running
+    ? `${probe.occupant} (HTTP server responded but is not ${appName})`
+    : probe.occupant;
+
+  console.log(`Port ${startPort} is in use by ${occupantLabel}.`);
+
+  const altPort = await findAvailablePort(startPort + 1, { host: "127.0.0.1" });
+  if (!altPort) {
+    console.error(`No free port found near ${startPort}. Stop the other application or set DESKTOP_DEV_PORT.`);
+    process.exit(1);
+  }
+
+  console.log(`Starting ${appName} on port ${altPort} instead.`);
+  return altPort;
 }
 
-const vitePort = await findVitePort(startPort);
-if (vitePort !== startPort) {
-  console.log(`Port ${startPort} busy — using ${vitePort} instead.`);
-}
-
-console.log(`Starting Vite → http://localhost:${vitePort}\n`);
-
-const vite = spawn(
-  "npx",
-  ["vite", "--port", String(vitePort), "--strictPort", "false"],
-  {
-    cwd: desktop,
-    stdio: "inherit",
-    env: { ...process.env, FLEET_WEB_DEV: "1" },
-    shell: process.platform === "win32",
-  },
-);
-
-vite.on("exit", (code) => {
-  api?.kill("SIGINT");
-  process.exit(code ?? 0);
-});
-
-process.on("SIGINT", () => {
-  vite.kill("SIGINT");
-  api?.kill("SIGINT");
-  process.exit(0);
-});
+const port = await resolveStartupPort();
+startVite(port);

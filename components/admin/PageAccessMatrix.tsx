@@ -18,6 +18,9 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { mapSelectItems, PAGE_ACCESS_TYPE_ITEMS } from "@/lib/ui/labeledSelect";
+import { rbacUserTypeLabel } from "@/lib/rbac/userTypes";
+import { suggestPageKeysFromJobScope } from "@/lib/rbac/jobScopePages";
+import { approvalLevelLabel } from "@/lib/rbac/approvalLevel";
 
 type RoleOption = {
   id: string;
@@ -25,6 +28,10 @@ type RoleOption = {
   name: string;
   userType: string;
   hierarchyLevel: number;
+  roleNo: number | null;
+  approvalLevel: number;
+  jobScope: string | null;
+  reportsToCode: string | null;
 };
 
 type PagePermission = {
@@ -41,13 +48,6 @@ const SURFACE_LABEL: Record<string, string> = {
   yard: "Yard portal",
   vessel: "Vessel",
   platform: "Platform",
-};
-
-const USER_TYPE_LABEL: Record<string, string> = {
-  system: "System",
-  office: "Office",
-  vessel: "Vessel",
-  external: "External",
 };
 
 export function PageAccessMatrix() {
@@ -84,6 +84,21 @@ export function PageAccessMatrix() {
       k.startsWith("page."),
     );
     setGranted(new Set(pageKeys));
+    if (data.role) {
+      setRoles((prev) =>
+        prev.map((r) =>
+          r.id === roleId
+            ? {
+                ...r,
+                roleNo: data.role.roleNo ?? r.roleNo,
+                approvalLevel: data.role.approvalLevel ?? r.approvalLevel,
+                jobScope: data.role.jobScope ?? r.jobScope,
+                reportsToCode: data.role.reportsToCode ?? r.reportsToCode,
+              }
+            : r,
+        ),
+      );
+    }
   }, []);
 
   useEffect(() => {
@@ -148,6 +163,27 @@ export function PageAccessMatrix() {
       return next;
     });
   }
+
+  function applyJobScopeSuggestions() {
+    if (!selectedRole?.jobScope) return;
+    const suggested = suggestPageKeysFromJobScope(selectedRole.jobScope);
+    setGranted((prev) => {
+      const next = new Set(prev);
+      for (const key of suggested) next.add(key);
+      return next;
+    });
+    setMessage(`Added ${suggested.length} page(s) suggested from job scope. Save to persist.`);
+  }
+
+  const jobScopeSuggestions = useMemo(
+    () => suggestPageKeysFromJobScope(selectedRole?.jobScope),
+    [selectedRole?.jobScope],
+  );
+
+  const unsuggestedCount = useMemo(
+    () => jobScopeSuggestions.filter((k) => !granted.has(k)).length,
+    [jobScopeSuggestions, granted],
+  );
 
   async function save() {
     if (!selectedRoleId) return;
@@ -228,12 +264,49 @@ export function PageAccessMatrix() {
       </Card>
 
       {selectedRole ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">{USER_TYPE_LABEL[selectedRole.userType]}</Badge>
-          <Badge variant="outline">Level {selectedRole.hierarchyLevel}</Badge>
-          <span className="text-sm text-muted-foreground">
-            {granted.size} of {pages.length} pages enabled
-          </span>
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            {selectedRole.roleNo ? (
+              <Badge variant="outline" className="font-mono">
+                {selectedRole.roleNo}
+              </Badge>
+            ) : null}
+            <Badge variant="secondary">{rbacUserTypeLabel(selectedRole.userType)}</Badge>
+            <Badge variant="outline">Tier {selectedRole.hierarchyLevel}</Badge>
+            <Badge variant="outline">{approvalLevelLabel(selectedRole.approvalLevel)}</Badge>
+            {selectedRole.reportsToCode ? (
+              <Badge variant="outline">Reports to {selectedRole.reportsToCode}</Badge>
+            ) : null}
+            <span className="text-sm text-muted-foreground">
+              {granted.size} of {pages.length} pages enabled
+            </span>
+          </div>
+          {selectedRole.jobScope ? (
+            <Card>
+              <CardHeader className="py-4">
+                <CardTitle className="text-base">Job scope</CardTitle>
+                <CardDescription>
+                  Catalog definition for this designation — use suggestions to map scope to pages.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm leading-relaxed text-muted-foreground">{selectedRole.jobScope}</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={unsuggestedCount === 0}
+                    onClick={applyJobScopeSuggestions}
+                  >
+                    {unsuggestedCount > 0
+                      ? `Apply ${unsuggestedCount} suggested page(s)`
+                      : "All suggested pages enabled"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
         </div>
       ) : null}
 

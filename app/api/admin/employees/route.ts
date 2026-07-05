@@ -12,12 +12,14 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status") as EntityStatus | "all" | null;
+  const userType = searchParams.get("userType") as import("@prisma/client").RbacUserType | null;
   const result = await listEmployees({
     page: Number(searchParams.get("page") ?? 1),
     limit: Number(searchParams.get("limit") ?? 20),
     search: searchParams.get("search") ?? undefined,
     companyId: searchParams.get("companyId") ?? undefined,
     status: status && status !== "all" ? status : undefined,
+    userType: userType ?? undefined,
   });
   return NextResponse.json(result);
 }

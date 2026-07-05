@@ -1,0 +1,47 @@
+Actinium-SM MTIL Template Catalog
+Version: 0.2 — Phase 1 Main Propulsion
+Last updated: 2026-07-05
+
+Code: lib/mtil/phases/phase1/templateCatalog.ts
+Export: GET /api/admin/mtil/phase1?format=csv&sheet=templates
+
+ 1. TMP-ENG-ME-0001  me_unit_overhaul           Main Engine Unit Overhaul
+ 2. TMP-ENG-ME-0002  me_cyl_head_overhaul       Cylinder Head Overhaul
+ 3. TMP-ENG-ME-0003  me_exh_valve_overhaul      Exhaust Valve Overhaul
+ 4. TMP-ENG-ME-0004  me_piston_overhaul         Piston Overhaul
+ 5. TMP-ENG-ME-0005  me_fuel_pump_overhaul      Fuel Pump Overhaul
+ 6. TMP-ENG-ME-0006  me_fuel_injector_overhaul  Fuel Injector Overhaul
+ 7. TMP-ENG-ME-0007  me_turbo_overhaul          Turbocharger Overhaul
+ 8. TMP-ENG-ME-0008  me_crank_deflection        Crankshaft Deflection Measurement
+ 9. TMP-ENG-ME-0009  me_main_bearing            Main Bearing Inspection
+10. TMP-ENG-ME-0010  me_crankpin_bearing        Crankpin Bearing Inspection
+11. TMP-ENG-ME-0011  me_crosshead_bearing       Crosshead Bearing Inspection
+12. TMP-ENG-ME-0012  me_thrust_block            Thrust Block Inspection
+13. TMP-ENG-ME-0013  me_inter_shaft_bearing     Intermediate Shaft Bearing Inspection
+14. TMP-ENG-ME-0014  me_inter_shaft_align       Intermediate Shaft Alignment
+15. TMP-ENG-ME-0015  me_stern_bearing           Stern Tube Bearing Inspection
+16. TMP-ENG-ME-0016  me_stern_seal_renewal      Stern Tube Seal Renewal
+17. TMP-ENG-ME-0017  me_maneuvering_5yr         Maneuvering System 5-Year Maintenance
+18. TMP-ENG-ME-0018  me_pneumatic_5yr           Pneumatic Control System 5-Year Maintenance
+19. TMP-ENG-ME-0019  me_start_air_valve         Starting Air Valve Overhaul
+20. TMP-ENG-ME-0020  me_governor_cal            Governor Calibration
+21. TMP-ENG-ME-0021  me_remote_control_test     Remote Control System Test
+22. TMP-ENG-ME-0022  me_emergency_stop          Emergency Stop Test
+23. TMP-ENG-ME-0023  me_overspeed_trip          Overspeed Trip Test
+24. TMP-ENG-ME-0024  me_performance_test        Main Engine Performance Test
+25. TMP-ENG-ME-0025  me_sea_trial               Sea Trial Verification
+
+Each template includes at runtime:
+- Auto-filled vessel and machinery details
+- Running hours and last overhaul
+- Before / During / After photos
+- Report attachments
+- Measurement table with tolerances
+- Inspection checklist
+- Spares used (via standard job repair section)
+- QA/QC and class hold points
+- Approval workflow
+
+Supplemental templates (matrix coverage): me_cylinder_survey, me_lube_system,
+me_cooling_system, me_fuel_system, me_general_inspect, me_instrument_test,
+me_reversing, me_safety_test

@@ -50,6 +50,9 @@ export async function listCompanies(query: ListQuery = {}) {
   if (query.category) {
     where.category = query.category;
   }
+  if (query.excludeCategories?.length) {
+    where.category = { notIn: query.excludeCategories };
+  }
 
   const [total, rows] = await Promise.all([
     prisma.company.count({ where }),

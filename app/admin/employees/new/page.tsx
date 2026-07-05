@@ -6,17 +6,28 @@ import { getCompany } from "@/lib/db/companies";
 
 export const dynamic = "force-dynamic";
 
-type Props = { searchParams: Promise<{ companyId?: string }> };
+type Props = { searchParams: Promise<{ companyId?: string; userType?: string }> };
 
 export default async function NewEmployeePage({ searchParams }: Props) {
-  const { companyId } = await searchParams;
+  const { companyId, userType } = await searchParams;
   const company = companyId ? await getCompany(companyId) : null;
+  const userTypeFilter =
+    userType === "external" || userType === "shipyard" || userType === "office" || userType === "vessel"
+      ? userType
+      : undefined;
+
+  const title =
+    userTypeFilter === "external"
+      ? "Register external contact"
+      : userTypeFilter === "shipyard"
+        ? "Register shipyard contact"
+        : "Register employee";
 
   return (
     <PageShell>
       <PageHeader
-        title="Register employee"
-        description="New employees are created in Waiting status. Assign vessels next to activate access."
+        title={title}
+        description="New records are created in Waiting status. Assign vessels or activate access when ready."
         actions={
           <Button
             variant="outline"
@@ -38,6 +49,7 @@ export default async function NewEmployeePage({ searchParams }: Props) {
       <EmployeeForm
         mode="create"
         defaultCompanyId={companyId}
+        userTypeFilter={userTypeFilter}
         defaultCompany={
           company ? { id: company.id, name: company.name, code: company.code } : undefined
         }

@@ -8,15 +8,24 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { ORGANIZATION_MODULES } from "@/lib/admin/organizationModules";
 
 export const dynamic = "force-dynamic";
+
+const organizationModules = [
+  ORGANIZATION_MODULES.companies,
+  ORGANIZATION_MODULES.shipyards,
+  ORGANIZATION_MODULES.externalVendors,
+  { ...ORGANIZATION_MODULES.companies, id: "vessels", label: "Vessels", labelSingular: "Vessel", basePath: "/admin/vessels", registerLabel: "Register vessel", description: "Fleet units under each company" },
+  { ...ORGANIZATION_MODULES.companies, id: "employees", label: "Employees", labelSingular: "Employee", basePath: "/admin/employees", registerLabel: "Register employee", description: "Office staff, vessel assignment, and portal access" },
+] as const;
 
 export default function AdminOverviewPage() {
   return (
     <PageShell>
       <PageHeader
         title="Administration"
-        description="Manage companies, vessels, employees, roles, and page access for your organization."
+        description="Register and manage companies, shipyards, external vendors, vessels, employees, roles, and page access."
         actions={
           <Button render={<Link href="/admin/companies/new" />} nativeButton={false}>
             Register company
@@ -26,52 +35,36 @@ export default function AdminOverviewPage() {
 
       <AdminOverviewCards />
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {organizationModules.map((module) => (
+          <Card key={module.basePath}>
+            <CardHeader>
+              <CardTitle className="text-base">{module.label}</CardTitle>
+              <CardDescription>{module.description}</CardDescription>
+              <Button
+                variant="link"
+                className="h-auto w-fit p-0"
+                render={<Link href={module.basePath} />}
+                nativeButton={false}
+              >
+                Open {module.label.toLowerCase()} →
+              </Button>
+            </CardHeader>
+          </Card>
+        ))}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Companies</CardTitle>
+            <CardTitle className="text-base">Crew credentials</CardTitle>
             <CardDescription>
-              Master and sub companies with active, waiting, and inactive status.
+              Onboard login IDs and page access assignments by vessel.
             </CardDescription>
             <Button
               variant="link"
               className="h-auto w-fit p-0"
-              render={<Link href="/admin/companies" />}
+              render={<Link href="/admin/crew-credentials" />}
               nativeButton={false}
             >
-              Open companies →
-            </Button>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Vessels</CardTitle>
-            <CardDescription>
-              Register fleet units under each company and manage vessel status.
-            </CardDescription>
-            <Button
-              variant="link"
-              className="h-auto w-fit p-0"
-              render={<Link href="/admin/vessels" />}
-              nativeButton={false}
-            >
-              Open vessels →
-            </Button>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Employees</CardTitle>
-            <CardDescription>
-              Register staff, assign vessels, and activate access after assignment.
-            </CardDescription>
-            <Button
-              variant="link"
-              className="h-auto w-fit p-0"
-              render={<Link href="/admin/employees" />}
-              nativeButton={false}
-            >
-              Open employees →
+              Open crew credentials →
             </Button>
           </CardHeader>
         </Card>
@@ -79,7 +72,7 @@ export default function AdminOverviewPage() {
           <CardHeader>
             <CardTitle className="text-base">Roles</CardTitle>
             <CardDescription>
-              View the 33 system roles — office, vessel, and external users.
+              View the system role catalog — office, vessel, shipyard, and external users.
             </CardDescription>
             <Button
               variant="link"

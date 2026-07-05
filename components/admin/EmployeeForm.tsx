@@ -18,9 +18,12 @@ import {
 import type { EntityStatus } from "@prisma/client";
 import {
   DESIGNATION_OPTIONS,
+  filterDesignationsByUserType,
+  formatDesignationLabel,
   getDesignationByCode,
   getDesignationByLabel,
 } from "@/lib/admin/designations";
+import type { RbacUserType } from "@prisma/client";
 import {
   formatPhoneE164,
   isValidEmployeePhone,
@@ -38,6 +41,7 @@ type EmployeeFormProps = {
   mode: "create" | "edit";
   defaultCompanyId?: string;
   defaultCompany?: CompanyOption;
+  userTypeFilter?: RbacUserType;
 };
 
 function seedCompanies(
@@ -64,6 +68,7 @@ export function EmployeeForm({
   mode,
   defaultCompanyId,
   defaultCompany,
+  userTypeFilter,
 }: EmployeeFormProps) {
   const router = useRouter();
   const parsedPhone = parseStoredPhone(initial?.phone);
@@ -108,9 +113,10 @@ export function EmployeeForm({
   );
 
   const designationItems = useMemo(() => {
-    const items = DESIGNATION_OPTIONS.map((option) => ({
+    const source = filterDesignationsByUserType(userTypeFilter);
+    const items = source.map((option) => ({
       value: option.value,
-      label: option.label,
+      label: formatDesignationLabel(option),
       searchText: option.searchText,
     }));
     if (initial?.designation && !getDesignationByLabel(initial.designation)) {
@@ -121,7 +127,7 @@ export function EmployeeForm({
       });
     }
     return items;
-  }, [initial?.designation]);
+  }, [initial?.designation, userTypeFilter]);
 
   function handleDesignationChange(code: string) {
     setDesignationCode(code);

@@ -1,7 +1,12 @@
 import { ShipyardMobileNav, ShipyardSidebar } from "@/components/shipyard/ShipyardSidebar";
 import { ModuleScrollArea } from "@/components/layout/ModuleScrollArea";
+import { enforceOfficePageAccess } from "@/lib/auth/officePageAccess";
+import { headers } from "next/headers";
 
-export default function ShipyardLayout({ children }: { children: React.ReactNode }) {
+export default async function ShipyardLayout({ children }: { children: React.ReactNode }) {
+  const pathname = (await headers()).get("x-pathname") ?? "/shipyard";
+  await enforceOfficePageAccess(pathname);
+
   return (
     <div className="dd-module-layout">
       <div className="shrink-0">

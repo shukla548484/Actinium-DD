@@ -1,0 +1,25 @@
+Actinium-SM MTIL Change Log
+Version: 0.2
+Last updated: 2026-07-05
+
+Changes Covered:
+1. Confirmed that every phase must end with updated TXT documentation.
+2. Confirmed need for full phased delivery.
+3. Confirmed MTIL as a commercial-grade technical intelligence library.
+4. Confirmed that Excel will be the authoring format.
+5. Confirmed that PostgreSQL import will be the final system target.
+6. Added missing Main Engine job families (maneuvering 5yr, pneumatic 5yr, thrust block,
+   intermediate shaft bearing, shaft alignment, stern tube bearing/seals, emergency stop,
+   overspeed trip, remote control test).
+7. Implemented v0.2 commercial ID standards (JOB, TMP, INS, MEA, RFQ, BUD).
+8. Built 25-template Phase 1 catalog with dynamic form resolution.
+9. Added crankshaft, remote control, and performance/trials systems to taxonomy.
+10. Workbook export split into jobs, templates, measurements, and checklists CSV sheets.
+
+Open Changes (future phases):
+- Template UI preview images for Phase 1 forms
+- Excel import pipeline (POST /api/admin/mtil/import)
+- Full RFQ and budget module wiring (Phase 9)
+- Maker-specific template variants
+- Class requirement mapping expansion
+- Vessel type filtering at runtime

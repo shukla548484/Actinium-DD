@@ -1,13 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { NavItemLink } from "@/components/layout/NavItemLink";
 import {
   adminNavGroups,
   adminNavItems,
   resolveAdminNavId,
 } from "@/lib/navigation/adminNavItems";
-import { cn } from "@/lib/utils";
 
 /** Vertical admin sub-menu — visible only inside the Admin module. */
 export function AdminSidebar() {
@@ -34,25 +33,17 @@ export function AdminSidebar() {
                 {group}
               </p>
               <ul className="space-y-0.5">
-                {items.map((item) => {
-                  const isActive = active === item.id;
-                  return (
-                    <li key={item.id}>
-                      <Link
-                        href={item.href}
-                        title={item.description}
-                        className={cn(
-                          "flex items-center rounded-md px-2 py-2 text-sm transition-colors",
-                          isActive
-                            ? "bg-background font-medium text-foreground shadow-sm"
-                            : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
-                        )}
-                      >
-                        {item.label}
-                      </Link>
-                    </li>
-                  );
-                })}
+                {items.map((item) => (
+                  <li key={item.id}>
+                    <NavItemLink
+                      href={item.href}
+                      label={item.label}
+                      icon={item.icon}
+                      title={item.description}
+                      active={active === item.id}
+                    />
+                  </li>
+                ))}
               </ul>
             </div>
           );
@@ -73,20 +64,18 @@ export function AdminMobileNav() {
       aria-label="Admin sections"
     >
       {adminNavItems.map((item) => {
+        const Icon = item.icon;
         const isActive = active === item.id;
         return (
-          <Link
+          <NavItemLink
             key={item.id}
             href={item.href}
-            className={cn(
-              "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium",
-              isActive
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:bg-background/60",
-            )}
-          >
-            {item.label}
-          </Link>
+            label={item.label}
+            icon={Icon}
+            active={isActive}
+            size="xs"
+            className="shrink-0 rounded-full px-3 py-1.5"
+          />
         );
       })}
     </nav>

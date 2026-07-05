@@ -1,14 +1,24 @@
 import { NextResponse } from "next/server";
-import { createProject, listProjects } from "@/lib/db/index";
+import { createProject } from "@/lib/db/index";
+import {
+  assertScopedProjectAccess,
+  listScopedProjects,
+  requireProjectsApiAccess,
+} from "@/lib/projects/projectScope";
 
 export const runtime = "nodejs";
 
 export async function GET() {
-  const projects = await listProjects();
+  const denied = await requireProjectsApiAccess();
+  if (denied) return denied;
+
+  const projects = await listScopedProjects();
   return NextResponse.json({ projects });
 }
 
 export async function POST(request: Request) {
+  const denied = await requireProjectsApiAccess("page.office.projects.new");
+  if (denied) return denied;
   const body = (await request.json()) as {
     name?: string;
     vesselName?: string;

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireSuperintendentApiAccess } from "@/lib/auth/superintendentAccess";
+import { mapVesselJobCreateInput } from "@/lib/db/superintendent/vesselJobInput";
 import {
   createDdVesselJob,
   listDdVesselJobs,
@@ -69,11 +70,9 @@ export async function POST(request: Request) {
   const { submit, ...createData } = parsed.data;
   const status = submit ? "submitted" : (createData.status ?? "draft");
 
-  const vesselJob = await createDdVesselJob({
-    ...createData,
-    vesselId,
-    status,
-  });
+  const vesselJob = await createDdVesselJob(
+    mapVesselJobCreateInput(parsed.data, vesselId, status),
+  );
 
   return NextResponse.json({ vesselJob }, { status: 201 });
 }

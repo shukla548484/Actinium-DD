@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { PageHeader, PageShell } from "@/components/layout/PageShell";
-import { WorkshopJobBoard } from "@/components/shipyard/WorkshopJobBoard";
+import { WorkshopJobBoardInteractive } from "@/components/shipyard/WorkshopJobBoardInteractive";
 import { listYardWorkProjects, listWorkshopJobs } from "@/lib/db/yardExecution";
 import { getWorkshopBySlug } from "@/lib/shipyard/workshops";
 
@@ -27,7 +27,7 @@ export default async function WorkshopDetailPage({
         title={workshop.name}
         description={`${workshop.typicalScope}${active ? ` · ${active.project.name}` : ""}`}
       />
-      <WorkshopJobBoard jobs={jobs} showWorkshop={false} />
+      <WorkshopJobBoardInteractive jobs={jobs} showWorkshop={false} />
     </PageShell>
   );
 }

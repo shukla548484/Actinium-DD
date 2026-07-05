@@ -4,6 +4,7 @@ import { notDeleted } from "@/lib/db/superintendent/pagination";
 import { getEnabledModules } from "./projectTemplates";
 import { resolveModuleMeta } from "./projectModules";
 import type { DdProjectModuleId } from "./projectModules";
+import { getVesselScopeIntegrationStats } from "@/lib/db/superintendent/vesselJobs";
 import {
   projectBudgetHref,
   projectMonitoringHref,
@@ -40,6 +41,9 @@ export type ProjectWorkspaceSummary = {
     documentRequirements: number;
     rfqSteps: number;
     progressPct: number | null;
+    vesselJobsIntegrated: number;
+    vesselJobsAutoImported: number;
+    vesselJobsPendingBank: number;
   };
   scopePreview: { title: string; workshop: string | null; category: string }[];
 };
@@ -114,7 +118,8 @@ export async function getProjectWorkspaceSummary(
 
   if (!project) return null;
 
-  const [documentRequirements, rfqSteps, scopeJobs, workshopGroups] = await Promise.all([
+  const [documentRequirements, rfqSteps, scopeJobs, workshopGroups, vesselScopeStats] =
+    await Promise.all([
     prisma.ddChecklistItem.count({
       where: { dryDockProjectId, category: "Documents", ...notDeleted },
     }),
@@ -132,6 +137,7 @@ export async function getProjectWorkspaceSummary(
       where: { dryDockProjectId, ...notDeleted, workshop: { not: null } },
       _count: { _all: true },
     }),
+    getVesselScopeIntegrationStats(dryDockProjectId),
   ]);
 
   const counts = {
@@ -175,6 +181,9 @@ export async function getProjectWorkspaceSummary(
       documentRequirements,
       rfqSteps,
       progressPct: project.progressPct,
+      vesselJobsIntegrated: vesselScopeStats?.integratedTotal ?? 0,
+      vesselJobsAutoImported: vesselScopeStats?.autoImportedAtProvision ?? 0,
+      vesselJobsPendingBank: vesselScopeStats?.pendingInBank ?? 0,
     },
     scopePreview: scopeJobs.map((j) => ({
       title: j.title,

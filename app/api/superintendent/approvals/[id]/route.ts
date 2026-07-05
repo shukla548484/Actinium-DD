@@ -3,6 +3,8 @@ import { requireSuperintendentApiAccess } from "@/lib/auth/superintendentAccess"
 import { notDeleted } from "@/lib/superintendent/helpers";
 import { assertChildDryDockProjectInScope } from "@/lib/superintendent/childRouteScope";
 import { ddApprovalRequestUpdateSchema, parseBody } from "@/lib/superintendent/validation";
+import { writeAuditLog } from "@/lib/db/audit";
+import { resolvePurchaseOrderApproval } from "@/lib/superintendent/purchaseOrderApproval";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +38,16 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
   if (!access.ok) return access.response;
 
   const approval = await prisma.ddApprovalRequest.update({ where: { id }, data: parsed.data });
+  if (parsed.data.status === "approved" || parsed.data.status === "rejected") {
+    await resolvePurchaseOrderApproval(existing.approvalType, parsed.data.status);
+    await writeAuditLog({
+      action: parsed.data.status,
+      entityType: "dd_approval",
+      entityId: approval.id,
+      summary: `${existing.title} → ${parsed.data.status}`,
+      metadata: { approvalType: existing.approvalType, amount: existing.amount },
+    });
+  }
   return NextResponse.json({ approval });
 }
 

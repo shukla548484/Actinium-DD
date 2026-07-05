@@ -1,19 +1,52 @@
 "use client";
 
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { PageHeader, PageShell } from "@/components/layout/PageShell";
-import { ProjectInputsPanel } from "@/components/superintendent/ProjectInputsPanel";
+import { VesselWorkspaceHub } from "@/components/superintendent/VesselWorkspaceHub";
+import { useProjectVessel } from "@/components/superintendent/useProjectVessel";
+import { Button } from "@/components/ui/button";
 
-export default function VesselInputsPage() {
+export default function VesselWorkspacePage() {
   const { id } = useParams<{ id: string }>();
+  const { vessel, loading } = useProjectVessel(id);
 
   return (
     <PageShell size="wide">
       <PageHeader
-        title="Vessel pre-docking inputs"
-        description="Complete mandatory sections before dry dock. Submit each section for superintendent review."
+        title="Vessel"
+        description={
+          vessel
+            ? `${vessel.name} (${vessel.code}) — onboard data feeding this dry dock project.`
+            : "Onboard machinery, defects, jobs, and requisitions for dry dock preparation."
+        }
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              render={<Link href={`/superintendent/projects/${id}/inputs/vessel-portal`} />}
+              nativeButton={false}
+            >
+              Vessel portal
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              render={<Link href={`/superintendent/projects/${id}/inputs/review`} />}
+              nativeButton={false}
+            >
+              Review queue
+            </Button>
+          </>
+        }
       />
-      <ProjectInputsPanel dryDockProjectId={id} pageKey="vessel" />
+
+      {loading ? (
+        <p className="text-sm text-muted-foreground">Loading vessel context…</p>
+      ) : (
+        <VesselWorkspaceHub dryDockProjectId={id} />
+      )}
     </PageShell>
   );
 }

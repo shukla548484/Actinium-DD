@@ -143,7 +143,9 @@ export function EmployeeListPanel() {
             <TableHeader>
               <TableRow>
                 <TableHead>Code</TableHead>
-                <TableHead>Name</TableHead>
+                <TableHead>Designation</TableHead>
+                <TableHead>Role ID</TableHead>
+                <TableHead>Approval</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Company</TableHead>
                 <TableHead>Status</TableHead>
@@ -154,7 +156,7 @@ export function EmployeeListPanel() {
             <TableBody>
               {employees.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center text-muted-foreground">
                     No employees found
                   </TableCell>
                 </TableRow>
@@ -169,6 +171,15 @@ export function EmployeeListPanel() {
                       {e.designation ? (
                         <p className="text-xs text-muted-foreground">{e.designation}</p>
                       ) : null}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {e.roleNo ?? "—"}
+                      {e.roleCode ? (
+                        <p className="font-sans text-muted-foreground">{e.roleCode}</p>
+                      ) : null}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {e.approvalLevel != null ? `A${e.approvalLevel}` : "—"}
                     </TableCell>
                     <TableCell className="text-sm">{e.email}</TableCell>
                     <TableCell className="text-sm">{e.companyName}</TableCell>

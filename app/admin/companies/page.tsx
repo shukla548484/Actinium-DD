@@ -1,23 +1,26 @@
 import Link from "next/link";
-import { CompanyListPanel } from "@/components/admin/CompanyListPanel";
+import { OrganizationCompanyListPanel } from "@/components/admin/OrganizationCompanyListPanel";
 import { PageHeader, PageShell } from "@/components/layout/PageShell";
 import { Button } from "@/components/ui/button";
+import { ORGANIZATION_MODULES } from "@/lib/admin/organizationModules";
 
 export const dynamic = "force-dynamic";
+
+const module = ORGANIZATION_MODULES.companies;
 
 export default function AdminCompaniesPage() {
   return (
     <PageShell size="wide">
       <PageHeader
-        title="Company management"
-        description="Register master and sub companies, manage status, and view fleet structure."
+        title={`${module.label} management`}
+        description={module.description}
         actions={
-          <Button render={<Link href="/admin/companies/new" />} nativeButton={false}>
-            Register company
+          <Button render={<Link href={`${module.basePath}/new`} />} nativeButton={false}>
+            {module.registerLabel}
           </Button>
         }
       />
-      <CompanyListPanel />
+      <OrganizationCompanyListPanel module={module} />
     </PageShell>
   );
 }

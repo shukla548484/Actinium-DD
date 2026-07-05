@@ -1,9 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { cn } from "@/lib/utils";
+import { LayoutDashboard } from "lucide-react";
+import { NavItemLink } from "@/components/layout/NavItemLink";
+import {
+  PROJECT_INPUT_LINK_ICONS,
+  PROJECT_MODULE_ICONS,
+} from "@/lib/navigation/projectModuleIcons";
 import type { WorkspaceModuleCard } from "@/lib/superintendent/engine/workspaceSummary";
 
 type Props = {
@@ -49,14 +53,46 @@ export function ProjectWorkspaceNav({ dryDockProjectId }: Props) {
   );
 
   const inputLinks = [
-    { href: `/superintendent/projects/${dryDockProjectId}/inputs/vessel-portal`, label: "Vessel portal" },
-    { href: `/superintendent/projects/${dryDockProjectId}/inputs/vessel`, label: "Vessel inputs" },
-    { href: `/superintendent/projects/${dryDockProjectId}/inputs/superintendent`, label: "Superintendent" },
-    { href: `/superintendent/projects/${dryDockProjectId}/inputs/workshop`, label: "Workshop" },
-    { href: `/superintendent/projects/${dryDockProjectId}/inputs/procurement`, label: "Procurement" },
-    { href: `/superintendent/projects/${dryDockProjectId}/inputs/closeout`, label: "Closeout inputs" },
-    { href: `/superintendent/projects/${dryDockProjectId}/inputs/review`, label: "Input review" },
-    { href: `/superintendent/projects/${dryDockProjectId}/inputs/readiness`, label: "Readiness" },
+    {
+      href: `/superintendent/projects/${dryDockProjectId}/inputs/vessel-portal`,
+      label: "Vessel portal",
+      icon: PROJECT_INPUT_LINK_ICONS.vesselPortal,
+    },
+    {
+      href: `/superintendent/projects/${dryDockProjectId}/inputs/vessel`,
+      label: "Vessel",
+      icon: PROJECT_INPUT_LINK_ICONS.vessel,
+    },
+    {
+      href: `/superintendent/projects/${dryDockProjectId}/inputs/superintendent`,
+      label: "Superintendent",
+      icon: PROJECT_INPUT_LINK_ICONS.superintendent,
+    },
+    {
+      href: `/superintendent/projects/${dryDockProjectId}/inputs/workshop`,
+      label: "Workshop",
+      icon: PROJECT_INPUT_LINK_ICONS.workshop,
+    },
+    {
+      href: `/superintendent/projects/${dryDockProjectId}/inputs/procurement`,
+      label: "Procurement",
+      icon: PROJECT_INPUT_LINK_ICONS.procurement,
+    },
+    {
+      href: `/superintendent/projects/${dryDockProjectId}/inputs/closeout`,
+      label: "Closeout inputs",
+      icon: PROJECT_INPUT_LINK_ICONS.closeout,
+    },
+    {
+      href: `/superintendent/projects/${dryDockProjectId}/inputs/review`,
+      label: "Input review",
+      icon: PROJECT_INPUT_LINK_ICONS.review,
+    },
+    {
+      href: `/superintendent/projects/${dryDockProjectId}/inputs/readiness`,
+      label: "Readiness",
+      icon: PROJECT_INPUT_LINK_ICONS.readiness,
+    },
   ];
 
   return (
@@ -64,54 +100,45 @@ export function ProjectWorkspaceNav({ dryDockProjectId }: Props) {
       className="flex gap-1 overflow-x-auto border-b bg-muted/30 px-2 py-2"
       aria-label="Project workspace modules"
     >
-      <Link
+      <NavItemLink
         href={dashboardHref}
-        className={cn(
-          "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-          isDashboard
-            ? "bg-background text-foreground shadow-sm"
-            : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
-        )}
-      >
-        Dashboard
-      </Link>
+        label="Dashboard"
+        icon={LayoutDashboard}
+        active={isDashboard}
+        size="xs"
+        className="shrink-0 rounded-full px-3 py-1.5"
+      />
       {primary.map((mod) => {
         const hrefPath = mod.href.split("?")[0] ?? "";
         const active =
           pathname === hrefPath ||
           (hrefPath.startsWith(`/superintendent/projects/${dryDockProjectId}/`) &&
             pathname === hrefPath);
+        const Icon = PROJECT_MODULE_ICONS[mod.id as keyof typeof PROJECT_MODULE_ICONS] ?? LayoutDashboard;
         return (
-          <Link
+          <NavItemLink
             key={mod.id}
             href={mod.href}
-            className={cn(
-              "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-              active
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
-            )}
-          >
-            {mod.label}
-            {mod.count != null ? ` (${mod.count})` : ""}
-          </Link>
+            label={`${mod.label}${mod.count != null ? ` (${mod.count})` : ""}`}
+            icon={Icon}
+            active={active}
+            size="xs"
+            className="shrink-0 rounded-full px-3 py-1.5"
+          />
         );
       })}
       {inputLinks.map((link) => {
         const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
         return (
-          <Link
+          <NavItemLink
             key={link.href}
             href={link.href}
-            className={cn(
-              "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-              active
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
-            )}
-          >
-            {link.label}
-          </Link>
+            label={link.label}
+            icon={link.icon}
+            active={active}
+            size="xs"
+            className="shrink-0 rounded-full px-3 py-1.5"
+          />
         );
       })}
     </nav>

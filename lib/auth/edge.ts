@@ -13,7 +13,12 @@ export function sessionMaxAgeSec(): number {
   return SESSION_MAX_AGE_SEC;
 }
 
-function parsePayloadPart(payload: string): { exp?: number } | null {
+function parsePayloadPart(payload: string): {
+  exp?: number;
+  isVesselCrew?: boolean;
+  officeBootstrap?: boolean;
+  rbacUserType?: string;
+} | null {
   const padded = payload + "=".repeat((4 - (payload.length % 4)) % 4);
   const b64 = padded.replace(/-/g, "+").replace(/_/g, "/");
   try {
@@ -31,10 +36,24 @@ function bytesToBase64Url(bytes: Uint8Array): string {
 
 /** Edge-safe session verification (middleware). */
 export async function verifySessionTokenEdge(token: string | undefined | null): Promise<boolean> {
-  if (!isAuthEnabled()) return true;
-  if (!token) return false;
+  return (await parseSessionTokenEdge(token)) != null;
+}
+
+/** Edge-safe session payload for middleware routing. */
+export async function parseSessionTokenEdge(
+  token: string | undefined | null,
+): Promise<{
+  exp: number;
+  isVesselCrew?: boolean;
+  officeBootstrap?: boolean;
+  rbacUserType?: string;
+} | null> {
+  if (!isAuthEnabled()) {
+    return { exp: Date.now() + sessionMaxAgeSec() * 1000 };
+  }
+  if (!token) return null;
   const [payload, sig] = token.split(".");
-  if (!payload || !sig) return false;
+  if (!payload || !sig) return null;
 
   const key = await crypto.subtle.importKey(
     "raw",
@@ -45,8 +64,14 @@ export async function verifySessionTokenEdge(token: string | undefined | null): 
   );
   const mac = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
   const expected = bytesToBase64Url(new Uint8Array(mac));
-  if (sig !== expected) return false;
+  if (sig !== expected) return null;
 
   const data = parsePayloadPart(payload);
-  return typeof data?.exp === "number" && data.exp > Date.now();
+  if (typeof data?.exp !== "number" || data.exp <= Date.now()) return null;
+  return {
+    exp: data.exp,
+    isVesselCrew: data.isVesselCrew,
+    officeBootstrap: data.officeBootstrap,
+    rbacUserType: data.rbacUserType,
+  };
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useShipAccessContext } from "@/components/shipAccess/ShipAccessScopeBar";
 import { PageHeader, PageShell } from "@/components/layout/PageShell";
 import { Button } from "@/components/ui/button";
@@ -19,11 +20,24 @@ import { VESSEL_JOB_STATUS_ITEMS } from "@/lib/superintendent/constants";
 import type { DdVesselJobDto } from "@/lib/superintendent/types";
 
 export default function ShipAccessJobsPage() {
+  return (
+    <Suspense fallback={<p className="p-6 text-sm text-muted-foreground">Loading jobs…</p>}>
+      <ShipAccessJobsContent />
+    </Suspense>
+  );
+}
+
+function ShipAccessJobsContent() {
   const ctx = useShipAccessContext();
-  const [status, setStatus] = useState("all");
+  const searchParams = useSearchParams();
+  const [status, setStatus] = useState(searchParams.get("status") ?? "all");
   const [jobs, setJobs] = useState<DdVesselJobDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setStatus(searchParams.get("status") ?? "all");
+  }, [searchParams]);
 
   const load = useCallback(async () => {
     if (!ctx.vesselId) {
@@ -98,12 +112,13 @@ export default function ShipAccessJobsPage() {
                   <TableHead>Priority</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Submitted</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {jobs.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center text-muted-foreground">
                       No jobs yet.{" "}
                       <Link href="/ship-access/jobs/new" className="text-primary hover:underline">
                         Create your first job
@@ -119,6 +134,20 @@ export default function ShipAccessJobsPage() {
                       <TableCell className="capitalize">{job.status.replace(/_/g, " ")}</TableCell>
                       <TableCell className="text-muted-foreground">
                         {job.submittedAt ? new Date(job.submittedAt).toLocaleDateString() : "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {job.status === "draft" ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            render={<Link href={`/ship-access/jobs/${job.id}/edit`} />}
+                            nativeButton={false}
+                          >
+                            Edit
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))

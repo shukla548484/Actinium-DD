@@ -9,7 +9,7 @@ import { sessionCookieOptions } from "@/lib/auth/session";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const denied = await requireShipAccessApiAccess();
+  const denied = await requireShipAccessApiAccess(request);
   if (denied) return denied;
 
   const body = (await request.json()) as { vesselId?: string };

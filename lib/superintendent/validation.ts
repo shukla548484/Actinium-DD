@@ -340,6 +340,34 @@ export const ddPurchaseOrderUpdateSchema = ddPurchaseOrderCreateSchema
   .omit({ dryDockProjectId: true })
   .refine((data) => Object.keys(data).length > 0, { message: "No fields to update" });
 
+export const ddInvoiceStatusSchema = z.enum([
+  "draft",
+  "submitted",
+  "verified",
+  "approved",
+  "paid",
+  "rejected",
+]);
+
+export const ddInvoiceCreateSchema = z.object({
+  dryDockProjectId: z.string().min(1, "Dry dock project is required"),
+  purchaseOrderId: z.string().nullable().optional(),
+  invoiceNumber: z.string().nullable().optional(),
+  supplier: z.string().nullable().optional(),
+  description: z.string().nullable().optional(),
+  amount: z.number().optional(),
+  currency: z.string().optional(),
+  status: ddInvoiceStatusSchema.optional(),
+  invoiceDate: optionalDate,
+  dueDate: optionalDate,
+  notes: z.string().nullable().optional(),
+});
+
+export const ddInvoiceUpdateSchema = ddInvoiceCreateSchema
+  .partial()
+  .omit({ dryDockProjectId: true })
+  .refine((data) => Object.keys(data).length > 0, { message: "No fields to update" });
+
 export const ddResourceAllocationCreateSchema = z.object({
   dryDockProjectId: z.string().min(1, "Dry dock project is required"),
   title: z.string().min(1, "Title is required"),
@@ -438,20 +466,71 @@ export const ddVesselJobSourceSchema = z.enum([
   "defect_report",
 ]);
 
+export const vesselConditionRatingSchema = z.enum([
+  "excellent",
+  "good",
+  "monitor",
+  "poor",
+  "critical",
+]);
+
+export const vesselJobReviewActionSchema = z.enum([
+  "approved",
+  "rejected",
+  "returned",
+  "modified",
+]);
+
 export const ddVesselJobCreateSchema = z.object({
   vesselId: z.string().min(1, "Vessel is required"),
   targetDryDockProjectId: z.string().nullable().optional(),
+  standardJobLibraryId: z.string().nullable().optional(),
   jobCode: z.string().nullable().optional(),
   title: z.string().min(1, "Title is required"),
   category: z.string().min(1, "Category is required"),
+  department: z.string().nullable().optional(),
+  systemKey: z.string().nullable().optional(),
+  machineryKey: z.string().nullable().optional(),
+  componentKey: z.string().nullable().optional(),
   workshop: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
   priority: ddJobPrioritySchema.optional(),
   source: ddVesselJobSourceSchema.optional(),
   status: ddVesselJobStatusSchema.optional(),
+  conditionRating: vesselConditionRatingSchema.nullable().optional(),
+  conditionDescription: z.string().nullable().optional(),
+  observedDefect: z.string().nullable().optional(),
+  measurements: z.record(z.unknown()).nullable().optional(),
+  repairRecommendation: z.string().nullable().optional(),
+  replacementParts: z.string().nullable().optional(),
+  consumables: z.string().nullable().optional(),
+  estimatedManhours: z.number().nullable().optional(),
+  estimatedCost: z.number().nullable().optional(),
+  classAttendance: z.boolean().optional(),
+  makerAttendance: z.boolean().optional(),
+  operationalRisk: z.string().nullable().optional(),
+  safetyRisk: z.string().nullable().optional(),
+  environmentalRisk: z.string().nullable().optional(),
+  criticality: z.string().nullable().optional(),
+  lastOverhaulDate: optionalDate,
+  runningHoursAtSurvey: z.number().int().nullable().optional(),
+  linkedDefectId: z.string().nullable().optional(),
+  linkedPmsReference: z.string().nullable().optional(),
+  formData: z.record(z.unknown()).nullable().optional(),
+  photoCount: z.number().int().optional(),
   createdByName: z.string().nullable().optional(),
   createdByRole: ddInputResponsibleRoleSchema.optional(),
   submit: z.boolean().optional(),
+});
+
+export const ddVesselJobCeReviewSchema = z.object({
+  action: vesselJobReviewActionSchema,
+  reviewedBy: z.string().min(1),
+  notes: z.string().nullable().optional(),
+});
+
+export const ddVesselJobMasterReviewSchema = ddVesselJobCeReviewSchema.extend({
+  carryForward: z.boolean().optional(),
 });
 
 export const ddVesselJobUpdateSchema = ddVesselJobCreateSchema

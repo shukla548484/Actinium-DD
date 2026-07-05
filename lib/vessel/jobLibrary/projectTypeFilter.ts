@@ -1,0 +1,92 @@
+import type { DryDockProjectType } from "@prisma/client";
+
+/** Department root codes shown for each dry dock project type. */
+const ROOT_DEPARTMENTS_BY_PROJECT_TYPE: Partial<Record<DryDockProjectType, Set<string>>> = {
+  special_survey: new Set([
+    "mtil_p1_main_propulsion",
+    "machinery_jobs",
+    "hull_jobs",
+    "tank_jobs",
+    "pipe_jobs",
+    "valve_jobs",
+    "electrical_jobs",
+    "deck_machinery",
+    "safety_jobs",
+    "navigation_jobs",
+    "cargo_jobs",
+    "instrumentation_jobs",
+    "accommodation_jobs",
+  ]),
+  intermediate_survey: new Set([
+    "machinery_jobs",
+    "hull_jobs",
+    "pipe_jobs",
+    "valve_jobs",
+    "electrical_jobs",
+    "safety_jobs",
+    "navigation_jobs",
+    "instrumentation_jobs",
+  ]),
+  damage_repair: new Set([
+    "machinery_jobs",
+    "hull_jobs",
+    "electrical_jobs",
+    "safety_jobs",
+    "navigation_jobs",
+  ]),
+  occasional_repair: new Set([
+    "machinery_jobs",
+    "hull_jobs",
+    "tank_jobs",
+    "cargo_jobs",
+    "deck_machinery",
+    "safety_jobs",
+  ]),
+  underwater_survey: new Set(["hull_jobs", "tank_jobs", "pipe_jobs", "valve_jobs"]),
+  new_installation: new Set([
+    "new_installations",
+    "machinery_jobs",
+    "electrical_jobs",
+    "instrumentation_jobs",
+  ]),
+  emergency_docking: new Set([
+    "machinery_jobs",
+    "hull_jobs",
+    "safety_jobs",
+    "navigation_jobs",
+    "electrical_jobs",
+  ]),
+  layup_reactivation: new Set([
+    "machinery_jobs",
+    "hull_jobs",
+    "tank_jobs",
+    "cargo_jobs",
+    "accommodation_jobs",
+    "deck_machinery",
+    "safety_jobs",
+  ]),
+  conversion_modification: new Set([
+    "new_installations",
+    "machinery_jobs",
+    "hull_jobs",
+    "electrical_jobs",
+    "instrumentation_jobs",
+    "cargo_jobs",
+  ]),
+  warranty_repair: new Set([
+    "machinery_jobs",
+    "electrical_jobs",
+    "instrumentation_jobs",
+    "safety_jobs",
+  ]),
+};
+
+export function filterJobLibraryRootsByProjectType<T extends { code: string }>(
+  nodes: T[],
+  projectType?: string | null,
+): T[] {
+  if (!projectType) return nodes;
+  const allowed = ROOT_DEPARTMENTS_BY_PROJECT_TYPE[projectType as DryDockProjectType];
+  if (!allowed) return nodes;
+  return nodes.filter((n) => allowed.has(n.code));
+}

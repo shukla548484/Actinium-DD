@@ -1,0 +1,24 @@
+Actinium-SM MTIL Known Gaps
+Version: 0.2
+Last updated: 2026-07-05
+
+Resolved in Phase 1 v0.2:
+[x] Phase 1 detailed workbook (6 CSV sheets: jobs, templates, measurements, checklists, scope, spares)
+[x] Measurement tolerance database (Phase 1 — 27 fields)
+[x] 25-template Phase 1 catalog with all missing ME job families
+[x] v0.2 commercial ID standards aligned with lib/jobs/catalogSchema.ts
+[x] JobScopeStep seeding (232 scope steps)
+[x] JobSpareMapping seeding (217 spare lines)
+[x] JobCatalogListItem controlled lists (126 items)
+[x] PostgreSQL bridge via seedJobCatalogPhase1()
+
+Current Known Gaps:
+1. Full 5,000-job library not yet populated (Phase 1 ~620 jobs complete).
+2. Dynamic template UI preview images pending.
+3. Maker-specific spare part catalogs pending.
+4. RFQ mapping pending full procurement module wiring (Phase 9).
+5. Budget mapping pending full budget module wiring (Phase 9).
+6. Vessel type applicability stored but not filtered at runtime.
+7. Class requirement mapping needs expansion beyond Phase 1.
+8. Excel import pipeline not yet built (export only).
+9. Target scale: 250+ templates, 2,500+ checklist items, 2,000+ measurements.

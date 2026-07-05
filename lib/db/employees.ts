@@ -12,6 +12,87 @@ import { getRoleByCode } from "@/lib/db/rbac";
 
 const notDeleted = { deletedAt: null };
 
+function tombstoneEmail(recordId: string, originalEmail: string) {
+  const localPart = originalEmail.split("@")[0]?.slice(0, 24) ?? "user";
+  return `deleted.${recordId}.${Date.now()}.${localPart}@removed.actinium-dd.local`;
+}
+
+function tombstoneLoginId(userId: string, loginId: string) {
+  return `deleted.${userId}.${Date.now()}.${loginId}`.slice(0, 120);
+}
+
+/** Clear unique fields on soft-deleted rows so email/login ids can be reused. */
+export async function releaseEmployeeUniqueFields(employeeId: string) {
+  const employee = await prisma.employee.findFirst({
+    where: { id: employeeId },
+    select: {
+      id: true,
+      email: true,
+      vesselLoginId: true,
+      userId: true,
+      user: { select: { id: true, email: true, loginId: true } },
+    },
+  });
+  if (!employee) return;
+
+  const nextEmployeeEmail = tombstoneEmail(employee.id, employee.email);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.employee.update({
+      where: { id: employee.id },
+      data: {
+        email: nextEmployeeEmail,
+        vesselLoginId: null,
+      },
+    });
+
+    if (employee.userId && employee.user) {
+      await tx.user.update({
+        where: { id: employee.userId },
+        data: {
+          email: tombstoneEmail(employee.user.id, employee.user.email),
+          ...(employee.user.loginId
+            ? { loginId: tombstoneLoginId(employee.user.id, employee.user.loginId) }
+            : {}),
+        },
+      });
+    }
+  });
+}
+
+async function assertEmailAvailable(email: string, excludeEmployeeId?: string) {
+  const existing = await prisma.employee.findFirst({
+    where: {
+      email: email.toLowerCase(),
+      ...(excludeEmployeeId ? { id: { not: excludeEmployeeId } } : {}),
+      ...notDeleted,
+    },
+    select: { id: true },
+  });
+  if (existing) {
+    throw new Error("An employee with this email is already registered");
+  }
+}
+
+/** Release legacy soft-deleted emails, then verify the address is free for a new employee. */
+export async function prepareEmailForRegistration(email: string, excludeEmployeeId?: string) {
+  const normalized = email.trim().toLowerCase();
+  const softDeleted = await prisma.employee.findMany({
+    where: {
+      email: normalized,
+      deletedAt: { not: null },
+      ...(excludeEmployeeId ? { id: { not: excludeEmployeeId } } : {}),
+    },
+    select: { id: true },
+  });
+
+  for (const row of softDeleted) {
+    await releaseEmployeeUniqueFields(row.id);
+  }
+
+  await assertEmailAvailable(normalized, excludeEmployeeId);
+}
+
 function mapEmployee(row: {
   id: string;
   companyId: string;
@@ -25,10 +106,11 @@ function mapEmployee(row: {
   status: EntityStatus;
   roleId: string | null;
   userId: string | null;
+  vesselLoginId?: string | null;
   createdAt: Date;
   updatedAt: Date;
   company?: { name: string } | null;
-  role?: { name: string } | null;
+  role?: { name: string; code?: string | null; roleNo?: number | null; approvalLevel?: number | null } | null;
   user?: { loginId: string | null } | null;
   _count?: { vesselAssignments: number };
   vesselAssignments?: {
@@ -50,8 +132,12 @@ function mapEmployee(row: {
     status: row.status,
     roleId: row.roleId,
     roleName: row.role?.name ?? null,
+    roleNo: row.role?.roleNo ?? null,
+    roleCode: row.role?.code ?? null,
+    approvalLevel: row.role?.approvalLevel ?? null,
     userId: row.userId,
     loginId: row.user?.loginId ?? row.employeeCode,
+    vesselLoginId: row.vesselLoginId ?? null,
     vesselCount: row._count?.vesselAssignments,
     vessels: row.vesselAssignments?.map((a) => ({
       id: a.vessel.id,
@@ -82,6 +168,9 @@ export async function listEmployees(query: ListQuery = {}) {
   if (query.status && query.status !== "all") {
     where.status = query.status;
   }
+  if (query.userType) {
+    where.role = { userType: query.userType };
+  }
 
   const [total, rows] = await Promise.all([
     prisma.employee.count({ where }),
@@ -92,7 +181,7 @@ export async function listEmployees(query: ListQuery = {}) {
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
       include: {
         company: { select: { name: true } },
-        role: { select: { name: true } },
+        role: { select: { name: true, code: true, roleNo: true, approvalLevel: true } },
         user: { select: { loginId: true } },
         _count: { select: { vesselAssignments: true } },
       },
@@ -193,7 +282,7 @@ export async function getEmployee(id: string) {
     where: { id, ...notDeleted },
     include: {
       company: { select: { id: true, name: true, code: true } },
-      role: { select: { id: true, name: true, code: true } },
+      role: { select: { id: true, name: true, code: true, roleNo: true, approvalLevel: true } },
       user: { select: { id: true, loginId: true } },
       _count: { select: { vesselAssignments: true } },
       vesselAssignments: {
@@ -233,20 +322,6 @@ async function resolveRoleIdFromDesignation(
   return role?.id ?? null;
 }
 
-async function assertEmailAvailable(email: string, excludeEmployeeId?: string) {
-  const existing = await prisma.employee.findFirst({
-    where: {
-      email: email.toLowerCase(),
-      ...(excludeEmployeeId ? { id: { not: excludeEmployeeId } } : {}),
-      ...notDeleted,
-    },
-    select: { id: true },
-  });
-  if (existing) {
-    throw new Error("An employee with this email is already registered");
-  }
-}
-
 async function nextEmployeeCode(companyId: string): Promise<string> {
   const company = await prisma.company.findFirst({
     where: { id: companyId, ...notDeleted },
@@ -276,7 +351,7 @@ export async function createEmployee(input: {
   department?: string | null;
   status?: EntityStatus;
 }) {
-  await assertEmailAvailable(input.email);
+  await prepareEmailForRegistration(input.email);
   const roleId = await resolveRoleIdFromDesignation(input.designation);
   const employeeCode = await nextEmployeeCode(input.companyId);
 
@@ -318,7 +393,7 @@ export async function createEmployee(input: {
       },
       include: {
         company: { select: { name: true } },
-        role: { select: { name: true } },
+        role: { select: { name: true, code: true, roleNo: true, approvalLevel: true } },
         user: { select: { loginId: true } },
         _count: { select: { vesselAssignments: true } },
       },
@@ -342,7 +417,7 @@ export async function updateEmployee(
   }>,
 ) {
   if (input.email != null) {
-    await assertEmailAvailable(input.email, id);
+    await prepareEmailForRegistration(input.email, id);
   }
 
   let roleId: string | null | undefined;
@@ -397,10 +472,24 @@ export async function setEmployeeStatus(id: string, status: EntityStatus) {
 }
 
 export async function deleteEmployee(id: string) {
+  const employee = await prisma.employee.findFirst({
+    where: { id, ...notDeleted },
+    select: { id: true, userId: true },
+  });
+  if (!employee) return;
+
+  await releaseEmployeeUniqueFields(id);
   await prisma.employee.update({
     where: { id },
     data: { deletedAt: new Date() },
   });
+
+  if (employee.userId) {
+    await prisma.user.update({
+      where: { id: employee.userId },
+      data: { deletedAt: new Date(), status: "disabled" },
+    });
+  }
 }
 
 export async function getAssignVesselsData(employeeId: string) {

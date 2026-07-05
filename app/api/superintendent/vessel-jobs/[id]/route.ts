@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireSuperintendentApiAccess } from "@/lib/auth/superintendentAccess";
+import { mapVesselJobUpdateInput } from "@/lib/db/superintendent/vesselJobInput";
 import {
   getDdVesselJob,
   softDeleteDdVesselJob,
@@ -48,7 +49,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   const parsed = parseBody(ddVesselJobUpdateSchema, await request.json());
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
 
-  const vesselJob = await updateDdVesselJob(id, parsed.data);
+  const vesselJob = await updateDdVesselJob(id, mapVesselJobUpdateInput(parsed.data));
   return NextResponse.json({ vesselJob });
 }
 

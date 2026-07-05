@@ -25,12 +25,17 @@ export async function GET(request: Request) {
 
   const status = searchParams.get("status") as EntityStatus | "all" | null;
   const category = searchParams.get("category") as import("@prisma/client").CompanyCategory | null;
+  const excludeCategories = searchParams
+    .get("excludeCategories")
+    ?.split(",")
+    .filter(Boolean) as import("@prisma/client").CompanyCategory[] | undefined;
   const result = await listCompanies({
     page: Number(searchParams.get("page") ?? 1),
     limit: Number(searchParams.get("limit") ?? 20),
     search: searchParams.get("search") ?? undefined,
     status: status && status !== "all" ? status : undefined,
     category: category ?? undefined,
+    excludeCategories,
   });
   return NextResponse.json(result);
 }

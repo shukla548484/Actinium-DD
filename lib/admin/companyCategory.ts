@@ -4,6 +4,7 @@ export const COMPANY_CATEGORY_OPTIONS: { value: CompanyCategory; label: string }
   { value: "shipyard", label: "Shipyard" },
   { value: "ship_management", label: "Ship management company" },
   { value: "ship_owner", label: "Ship owner" },
+  { value: "external_vendor", label: "External vendor" },
   { value: "other", label: "Other" },
 ];
 

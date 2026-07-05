@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Bell, Menu, Search } from "lucide-react";
+import { Bell, ClipboardList, Menu, Search } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +22,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { NavBrandMark } from "@/components/layout/NavBrandMark";
+import { TopNavSubmenuLink } from "@/components/layout/NavItemLink";
 import { cn } from "@/lib/utils";
 import {
   getTopNavSections,
@@ -45,6 +46,10 @@ export interface TopNavBarProps {
   activeNav?: TopNavId;
   onNavigate?: (id: TopNavId) => void;
   showChangePassword?: boolean;
+  navItems?: TopNavItem[];
+  homeHref?: string;
+  showTasksPending?: boolean;
+  showSearch?: boolean;
 }
 
 function ModuleDropdown({
@@ -138,18 +143,15 @@ function ModuleDropdown({
             const subActive =
               pathname === sub.href || pathname.startsWith(`${sub.href}/`);
             return (
-              <Link
+              <TopNavSubmenuLink
                 key={`${sub.href}-${sub.label}`}
                 href={sub.href}
-                role="menuitem"
+                label={sub.label}
+                icon={sub.icon}
+                description={sub.description}
+                active={subActive}
                 onClick={onClose}
-                className={cn(
-                  "block px-4 py-2.5 text-sm text-popover-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
-                  subActive && "bg-accent/50 font-medium",
-                )}
-              >
-                {sub.label}
-              </Link>
+              />
             );
           }),
         )}
@@ -198,6 +200,7 @@ function TasksPendingLink({
       )}
       title={tasksNavItem.description}
     >
+      <ClipboardList className="size-5 shrink-0" aria-hidden />
       <span>{tasksNavItem.label}</span>
       {pendingTasksCount > 0 ? (
         <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
@@ -219,6 +222,10 @@ export function TopNavBar({
   activeNav: _activeNav,
   onNavigate,
   showChangePassword = false,
+  navItems = priorityNavItems,
+  homeHref = "/projects",
+  showTasksPending = true,
+  showSearch = true,
 }: TopNavBarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -251,8 +258,8 @@ export function TopNavBar({
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     const q = searchQuery.trim();
-    if (q) router.push(`/projects?search=${encodeURIComponent(q)}`);
-    else router.push("/projects");
+    if (q) router.push(`${homeHref}?search=${encodeURIComponent(q)}`);
+    else router.push(homeHref);
   }
 
   const initials = userName
@@ -299,12 +306,14 @@ export function TopNavBar({
     >
       <div className="flex h-12 items-center gap-2 overflow-visible px-3 md:px-4 lg:px-6">
         <div className="mr-1 shrink-0 md:mr-2">
-          <NavBrandMark homeHref="/projects" company={{ name: companyName }} />
+          <NavBrandMark homeHref={homeHref} company={{ name: companyName }} />
         </div>
 
         <div className="hidden min-w-0 flex-1 items-center gap-0.5 overflow-visible md:flex">
-          {priorityNavItems.map(renderModule)}
-          <TasksPendingLink pathname={pathname} pendingTasksCount={pendingTasksCount} />
+          {navItems.map(renderModule)}
+          {showTasksPending ? (
+            <TasksPendingLink pathname={pathname} pendingTasksCount={pendingTasksCount} />
+          ) : null}
         </div>
 
         <div className="flex flex-1 items-center md:hidden">
@@ -326,7 +335,7 @@ export function TopNavBar({
                 <SheetTitle className="text-lg">Modules</SheetTitle>
               </SheetHeader>
               <div className="dropdown-scroll space-y-4 overflow-y-auto px-4 py-3">
-                {priorityNavItems.map((item) => (
+                {navItems.map((item) => (
                   <div key={item.id}>
                     <p className="mb-1 flex items-center gap-2 px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       <item.icon className="size-4" />
@@ -335,14 +344,18 @@ export function TopNavBar({
                     <div className="space-y-0.5 pl-2">
                       {getTopNavSections(item).flatMap((g) =>
                         g.items.map((sub) => (
-                          <Link
+                          <TopNavSubmenuLink
                             key={sub.href + sub.label}
                             href={sub.href}
+                            label={sub.label}
+                            icon={sub.icon}
+                            description={sub.description}
+                            active={
+                              pathname === sub.href || pathname.startsWith(`${sub.href}/`)
+                            }
                             onClick={() => setMobileOpen(false)}
-                            className="block rounded-md px-3 py-2 text-sm hover:bg-accent"
-                          >
-                            {sub.label}
-                          </Link>
+                            className="rounded-md hover:bg-accent"
+                          />
                         )),
                       )}
                       {!getTopNavSections(item).length && item.href ? (
@@ -357,34 +370,39 @@ export function TopNavBar({
                     </div>
                   </div>
                 ))}
-                <div>
-                  <Link
-                    href={tasksNavItem.href}
-                    onClick={() => setMobileOpen(false)}
-                    className="flex items-center gap-2 rounded-md px-2 py-2 text-sm font-medium hover:bg-accent"
-                  >
-                    {tasksNavItem.label}
-                    {pendingTasksCount > 0 ? (
-                      <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                        {pendingTasksCount > 99 ? "99+" : pendingTasksCount}
-                      </span>
-                    ) : null}
-                  </Link>
-                </div>
+                {showTasksPending ? (
+                  <div>
+                    <Link
+                      href={tasksNavItem.href}
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center gap-2 rounded-md px-2 py-2 text-sm font-medium hover:bg-accent"
+                    >
+                      <ClipboardList className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                      {tasksNavItem.label}
+                      {pendingTasksCount > 0 ? (
+                        <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                          {pendingTasksCount > 99 ? "99+" : pendingTasksCount}
+                        </span>
+                      ) : null}
+                    </Link>
+                  </div>
+                ) : null}
               </div>
             </SheetContent>
           </Sheet>
         </div>
 
-        <form onSubmit={handleSearch} className="relative hidden w-52 shrink-0 lg:block xl:w-64">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-sidebar-foreground/50" />
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search pages, modules, features…"
-            className="h-8 border-sidebar-border bg-sidebar-accent/50 pl-8 text-sm text-sidebar-foreground placeholder:text-sidebar-foreground/50"
-          />
-        </form>
+        {showSearch ? (
+          <form onSubmit={handleSearch} className="relative hidden w-52 shrink-0 lg:block xl:w-64">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-sidebar-foreground/50" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search pages, modules, features…"
+              className="h-8 border-sidebar-border bg-sidebar-accent/50 pl-8 text-sm text-sidebar-foreground placeholder:text-sidebar-foreground/50"
+            />
+          </form>
+        ) : null}
 
         <div className="ml-auto flex shrink-0 items-center gap-1 pl-1 sm:gap-2">
           {syncLabel !== undefined ? (
@@ -407,7 +425,7 @@ export function TopNavBar({
             size="icon-sm"
             className="relative text-sidebar-foreground hover:bg-sidebar-accent"
             title="Notifications"
-            render={<Link href="/projects" />}
+            render={<Link href={homeHref} />}
             nativeButton={false}
           >
             <Bell className="size-5" />

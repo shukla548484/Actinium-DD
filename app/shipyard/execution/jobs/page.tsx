@@ -1,5 +1,5 @@
 import { PageHeader, PageShell } from "@/components/layout/PageShell";
-import { WorkshopJobBoard } from "@/components/shipyard/WorkshopJobBoard";
+import { WorkshopJobBoardInteractive } from "@/components/shipyard/WorkshopJobBoardInteractive";
 import { listYardWorkProjects, listWorkshopJobs } from "@/lib/db/yardExecution";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +15,7 @@ export default async function JobBoardPage() {
         title="Job board"
         description="All workshop jobs across the active project — filter by workshop, priority, and blocking status."
       />
-      <WorkshopJobBoard jobs={jobs} />
+      <WorkshopJobBoardInteractive jobs={jobs} />
     </PageShell>
   );
 }

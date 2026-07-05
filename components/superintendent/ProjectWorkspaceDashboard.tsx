@@ -45,6 +45,9 @@ export function ProjectWorkspaceDashboard({ dryDockProjectId }: Props) {
           { label: "Documents", value: String(kpis.documentRequirements) },
           { label: "RFQ steps", value: String(kpis.rfqSteps) },
           { label: "Checklist", value: String(kpis.checklistItems) },
+          { label: "Vessel jobs in scope", value: String(kpis.vesselJobsIntegrated) },
+          { label: "Auto-imported", value: String(kpis.vesselJobsAutoImported) },
+          { label: "Pending vessel bank", value: String(kpis.vesselJobsPendingBank) },
         ].map((kpi) => (
           <Card key={kpi.label}>
             <CardHeader className="pb-2">

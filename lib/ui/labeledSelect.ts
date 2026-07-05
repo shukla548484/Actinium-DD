@@ -33,8 +33,9 @@ export const COMPANY_TYPE_ITEMS: LabeledOption[] = [
 
 export const PAGE_ACCESS_TYPE_ITEMS: LabeledOption[] = [
   { value: "all", label: "All types" },
+  { value: "system", label: "System" },
   { value: "office", label: "Office" },
   { value: "vessel", label: "Vessel" },
-  { value: "external", label: "External" },
-  { value: "system", label: "System" },
+  { value: "shipyard", label: "Shipyard" },
+  { value: "external", label: "External (vendors)" },
 ];

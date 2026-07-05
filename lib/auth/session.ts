@@ -14,6 +14,8 @@ export type SessionPayload = {
   userId?: string;
   loginId?: string;
   officeBootstrap?: boolean;
+  isVesselCrew?: boolean;
+  rbacUserType?: import("@prisma/client").RbacUserType;
 };
 
 export function verifyOfficePassword(password: string): boolean {

@@ -16,8 +16,8 @@ export function AdminUsersPlaceholder() {
       <CardHeader>
         <CardTitle>User management</CardTitle>
         <CardDescription>
-          Invite office staff, assign roles, and set vessel or project scope. This connects to
-          per-user login in the next RBAC phase.
+          Invite users by type — System, Office, Vessel, Shipyard, or External (vendors and other
+          external parties). Assign roles and scope; effective permissions come from role page access.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -36,9 +36,11 @@ export function AdminUsersPlaceholder() {
           plus any company overrides.
         </p>
         <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
-          <li>Company Admin assigns roles to shore staff</li>
-          <li>Technical Superintendent scoped to assigned vessels</li>
-          <li>Shipyard users bound to a single yard invite / project</li>
+          <li>System — platform administration</li>
+          <li>Office — shore staff and technical superintendents</li>
+          <li>Vessel — onboard crew via ship access portal</li>
+          <li>Shipyard — dockyard execution and workshops</li>
+          <li>External — vendors, makers, class, and other third parties</li>
         </ul>
       </CardContent>
     </Card>

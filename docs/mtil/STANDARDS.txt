@@ -1,0 +1,36 @@
+Actinium-SM MTIL Standards
+Version: 0.2
+Last updated: 2026-07-05
+
+ID Standards:
+- Job ID:        JOB-ENG-ME-0001
+- Template ID:   TMP-ENG-ME-0001
+- Inspection ID: INS-ENG-ME-0001
+- Measurement ID: MEA-ENG-ME-0001
+- RFQ ID:        RFQ-ENG-ME-0001
+- Budget Code:   BUD-DD-ENG-0001
+
+Legacy internal code (stable DB keys):
+- MTIL-P1-{SYSTEM}-{COMPONENT}-{ACTION}-{SEQ}
+
+Core Fields for Each Job:
+- Job ID
+- Department
+- System / Machinery / Component / Sub Component
+- Standard Job Name
+- Vessel Type Applicability
+- Project Type Applicability
+- Dynamic Template ID
+- Workshop
+- Budget Category / RFQ Category
+- Required Measurements
+- Required Attachments / Photos / Reports
+- Class Hold Point / QA-QC Hold Point
+- Permit Required
+- Priority / Responsible User / Approval Workflow
+
+Template Rule:
+One reusable dynamic template supports many jobs.
+The system must not create thousands of different form layouts.
+
+Code location: lib/mtil/standards.ts, lib/mtil/workbookSchema.ts

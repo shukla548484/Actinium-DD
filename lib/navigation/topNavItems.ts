@@ -1,6 +1,18 @@
 import type { LucideIcon } from "lucide-react";
-import { Anchor, Building2, ClipboardList, Compass, Settings, Ship, ShoppingCart } from "lucide-react";
-import { shipAccessNavChildren } from "@/lib/navigation/shipAccessNavItems";
+import {
+  Anchor,
+  Building2,
+  ClipboardList,
+  Compass,
+  FolderPlus,
+  List,
+  PlusCircle,
+  Settings,
+  Ship,
+  ShoppingCart,
+} from "lucide-react";
+import { adminNavItems } from "@/lib/navigation/adminNavItems";
+import { shipAccessNavItems } from "@/lib/navigation/shipAccessNavItems";
 import { shipyardNavChildren } from "@/lib/navigation/shipyardNavItems";
 import { superintendentNavItems } from "@/lib/navigation/superintendentNavItems";
 
@@ -18,6 +30,7 @@ export interface TopNavChild {
   href: string;
   label: string;
   description?: string;
+  icon: LucideIcon;
 }
 
 export interface TopNavSection {
@@ -45,15 +58,12 @@ export const topNavItems: TopNavItem[] = [
     description: "Organization, catalog & access control",
     icon: Settings,
     tier: "priority",
-    children: [
-      { href: "/admin", label: "Overview" },
-      { href: "/admin/companies", label: "Companies" },
-      { href: "/admin/vessels", label: "Vessels" },
-      { href: "/admin/employees", label: "Employees" },
-      { href: "/admin/master-catalog", label: "Master catalog" },
-      { href: "/admin/roles", label: "Roles" },
-      { href: "/admin/access", label: "Page access" },
-    ],
+    children: adminNavItems.map((item) => ({
+      href: item.href,
+      label: item.label,
+      description: item.description,
+      icon: item.icon,
+    })),
   },
   {
     id: "jobs",
@@ -63,8 +73,8 @@ export const topNavItems: TopNavItem[] = [
     icon: Ship,
     tier: "priority",
     children: [
-      { href: "/projects", label: "All projects" },
-      { href: "/projects/new", label: "New project" },
+      { href: "/projects", label: "All projects", icon: List },
+      { href: "/projects/new", label: "New project", icon: PlusCircle },
     ],
   },
   {
@@ -74,7 +84,11 @@ export const topNavItems: TopNavItem[] = [
     description: "Workshop execution, planning & daily progress",
     icon: Anchor,
     tier: "priority",
-    children: [...shipyardNavChildren],
+    children: shipyardNavChildren.map((item) => ({
+      href: item.href,
+      label: item.label,
+      icon: item.icon,
+    })),
   },
   {
     id: "shipAccess",
@@ -83,7 +97,12 @@ export const topNavItems: TopNavItem[] = [
     description: "Onboard portal — propose dry dock scope jobs",
     icon: Compass,
     tier: "priority",
-    children: [...shipAccessNavChildren],
+    children: shipAccessNavItems.map((item) => ({
+      href: item.href,
+      label: item.label,
+      description: item.description,
+      icon: item.icon,
+    })),
   },
   {
     id: "purchase",
@@ -93,8 +112,8 @@ export const topNavItems: TopNavItem[] = [
     icon: ShoppingCart,
     tier: "priority",
     children: [
-      { href: "/projects", label: "Tender projects" },
-      { href: "/projects/new", label: "New tender" },
+      { href: "/projects", label: "Tender projects", icon: List },
+      { href: "/projects/new", label: "New tender", icon: FolderPlus },
     ],
   },
   {
@@ -104,11 +123,13 @@ export const topNavItems: TopNavItem[] = [
     description: "Fleet company & vessel scope",
     icon: Building2,
     tier: "priority",
-    children: [
-      { href: "/admin/companies", label: "Company management" },
-      { href: "/admin/vessels", label: "Vessel management" },
-      { href: "/admin/employees", label: "Employee management" },
-    ],
+    children: adminNavItems
+      .filter((item) => ["companies", "vessels", "employees"].includes(item.id))
+      .map((item) => ({
+        href: item.href,
+        label: item.label === "Companies" ? "Company management" : item.label === "Vessels" ? "Vessel management" : "Employee management",
+        icon: item.icon,
+      })),
   },
   {
     id: "superintendent",
@@ -121,6 +142,7 @@ export const topNavItems: TopNavItem[] = [
       href: item.href,
       label: item.label,
       description: item.description,
+      icon: item.icon,
     })),
   },
 ];

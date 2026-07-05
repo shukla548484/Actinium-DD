@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
+import { requireShipyardApiAccess, requireWorkshopJobAccess } from "@/lib/auth/shipyardAccess";
 import { addJobDependency, removeJobDependency } from "@/lib/db/yardExecution";
 
 export async function POST(
   req: Request,
   ctx: { params: Promise<{ jobId: string }> },
 ) {
+  const { jobId: successorJobId } = await ctx.params;
+  const denied = await requireWorkshopJobAccess(successorJobId, req);
+  if (denied) return denied;
+
   try {
-    const { jobId: successorJobId } = await ctx.params;
     const body = (await req.json()) as { predecessorJobId?: string; lagDays?: number };
     if (!body.predecessorJobId) {
       return NextResponse.json({ error: "predecessorJobId required" }, { status: 400 });
@@ -25,8 +29,11 @@ export async function DELETE(
   req: Request,
   ctx: { params: Promise<{ jobId: string }> },
 ) {
+  const { jobId: successorJobId } = await ctx.params;
+  const denied = await requireWorkshopJobAccess(successorJobId, req);
+  if (denied) return denied;
+
   try {
-    const { jobId: successorJobId } = await ctx.params;
     const body = (await req.json()) as { predecessorJobId?: string };
     if (!body.predecessorJobId) {
       return NextResponse.json({ error: "predecessorJobId required" }, { status: 400 });

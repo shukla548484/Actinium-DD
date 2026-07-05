@@ -63,6 +63,7 @@ enum RbacUserType {
   system
   office
   vessel
+  shipyard
   external
 }
 
@@ -106,6 +107,7 @@ enum CompanyCategory {
   shipyard
   ship_management
   ship_owner
+  external_vendor
   other
 }
 
@@ -166,7 +168,13 @@ model Vessel {
   projects          Project[]        @relation("ProjectVessel")
   dryDockProjects   DryDockProject[]
   vesselJobs        DdVesselJob[]
+  vesselDefects     VesselDefect[]
+  vesselRequisitions VesselRequisition[]
   technicalProfile  VesselTechnicalProfile?
+  machineryAssets   VesselMachineryAsset[]
+  machineryRunningHoursEntries VesselMachineryRunningHoursEntry[]
+  machineryParameterEntries    VesselMachineryParameterEntry[]
+  machineryConditionReports    VesselMachineryConditionReport[]
 
   nextDryDockDue    DateTime?        @map("next_dry_dock_due")
   lastDryDockDate   DateTime?        @map("last_dry_dock_date")
@@ -194,6 +202,8 @@ model Employee {
   status          EntityStatus   @default(wait)
   roleId          String?        @map("role_id")
   userId          String?        @unique @map("user_id")
+  /// Onboard crew sign-in id (e.g. AAA-BBB-CE01). Office login id remains employeeCode.
+  vesselLoginId   String?        @unique @map("vessel_login_id")
   originNode      SyncOriginNode @default(office) @map("origin_node")
   officeChangedAt DateTime       @default(now()) @map("office_changed_at")
   relayChangedAt  DateTime?      @map("relay_changed_at")
@@ -205,12 +215,27 @@ model Employee {
   role            Role?            @relation(fields: [roleId], references: [id], onDelete: SetNull)
   user            User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
   vesselAssignments EmployeeVessel[]
+  crewPageAccess    EmployeeCrewPageAccess[]
 
   @@index([companyId])
   @@index([status])
   @@index([deletedAt])
   @@index([officeChangedAt])
   @@map("employees")
+}
+
+/// Admin-assigned onboard pages for a crew employee (exclusive — not role defaults).
+model EmployeeCrewPageAccess {
+  id            String   @id @default(cuid())
+  employeeId    String   @map("employee_id")
+  permissionKey String   @map("permission_key")
+  assignedAt    DateTime @default(now()) @map("assigned_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, permissionKey])
+  @@index([employeeId])
+  @@map("employee_crew_page_access")
 }
 
 model EmployeeVessel {
@@ -252,12 +277,21 @@ model Organization {
 /// System role catalog (organizationId null) or company-cloned roles.
 model Role {
   id              String         @id @default(cuid())
-  /// Spreadsheet Role ID (1, 2, … 39). Globally unique for system catalog rows.
+  /// Spreadsheet Role ID (1001–6019). Globally unique for system catalog rows.
   roleNo          Int?           @unique @map("role_no")
   code            String
   name            String
   userType        RbacUserType   @map("user_type")
+  /// Designation tier 1–6 (system=1 … external=6).
   hierarchyLevel  Int            @map("hierarchy_level")
+  /// Category band: system | company | department | office | vessel | external
+  categoryTier    String?        @map("category_tier")
+  /// Sign-off authority 1–5 (higher = more approval power).
+  approvalLevel   Int            @default(1) @map("approval_level")
+  /// Role code of the reporting manager.
+  reportsToCode   String?        @map("reports_to_code")
+  /// Full job scope from designation catalog.
+  jobScope        String?        @map("job_scope") @db.Text
   sortOrder       Int            @default(0) @map("sort_order")
   designation     String?
   department      String?
@@ -1039,6 +1073,15 @@ enum DdPoStatus {
   cancelled
 }
 
+enum DdInvoiceStatus {
+  draft
+  submitted
+  verified
+  approved
+  paid
+  rejected
+}
+
 enum DdResourceType {
   crane
   scaffolding
@@ -1061,6 +1104,11 @@ model VesselTechnicalProfile {
   mainEngine      String?   @map("main_engine")
   auxiliaryEngine String?   @map("auxiliary_engine")
   boilerInfo      String?   @map("boiler_info")
+  mainEngineRunningHours      Int?      @map("main_engine_running_hours")
+  auxiliaryEngineRunningHours Int?    @map("auxiliary_engine_running_hours")
+  boilerRunningHours          Int?      @map("boiler_running_hours")
+  runningHoursUpdatedAt       DateTime? @map("running_hours_updated_at")
+  runningHoursUpdatedBy       String?   @map("running_hours_updated_by")
   defectSummary   String?   @map("defect_summary")
   pmsSummary      String?   @map("pms_summary")
   sparesSummary   String?   @map("spares_summary")
@@ -1129,9 +1177,12 @@ model DryDockProject {
   approvals       DdApprovalRequest[]
   inputSubmissions DdInputSubmission[]
   purchaseOrders  DdPurchaseOrder[]
+  invoices        DdInvoice[]
   resources       DdResourceAllocation[]
   vesselJobsTarget     DdVesselJob[] @relation("VesselJobTarget")
   vesselJobsIntegrated DdVesselJob[] @relation("VesselJobIntegrated")
+  vesselRequisitionsTarget     VesselRequisition[] @relation("VesselRequisitionTarget")
+  vesselRequisitionsIntegrated VesselRequisition[] @relation("VesselRequisitionIntegrated")
 
   @@index([vesselId])
   @@index([status])
@@ -1202,6 +1253,317 @@ enum DdVesselJobSource {
   defect_report
 }
 
+enum JobLibraryNodeType {
+  department
+  category
+  system
+  machinery
+  component
+  standard_job
+}
+
+enum VesselConditionRating {
+  excellent
+  good
+  monitor
+  poor
+  critical
+}
+
+enum VesselJobReviewAction {
+  approved
+  rejected
+  returned
+  modified
+}
+
+/// Fleet-wide master job library — hierarchical tree for dynamic scope building.
+model JobLibraryNode {
+  id                String             @id @default(cuid())
+  parentId          String?            @map("parent_id")
+  nodeType          JobLibraryNodeType @map("node_type")
+  code              String
+  name              String
+  description       String?            @db.Text
+  department        String?
+  workshop          String?
+  sortOrder         Int                @default(0) @map("sort_order")
+  isActive          Boolean            @default(true) @map("is_active")
+  referenceCode     String?            @map("reference_code")
+  defaultPriority   DdJobPriority?     @map("default_priority")
+  estimatedManhours Float?             @map("estimated_manhours")
+  inputTemplate     Json?              @map("input_template")
+  mtilPhase         Int?               @map("mtil_phase")
+  mtilJobCode       String?            @unique @map("mtil_job_code")
+  dynamicTemplateKey String?           @map("dynamic_template_key")
+  mtilMeta          Json?              @map("mtil_meta")
+  deletedAt         DateTime?          @map("deleted_at")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+
+  parent       JobLibraryNode?  @relation("JobLibraryTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children     JobLibraryNode[] @relation("JobLibraryTree")
+  vesselJobs   DdVesselJob[]
+  machineryAssets VesselMachineryAsset[]
+  masterJobLibrary MasterJobLibrary?
+
+  @@unique([parentId, code])
+  @@index([nodeType])
+  @@index([department])
+  @@index([mtilPhase])
+  @@index([dynamicTemplateKey])
+  @@index([deletedAt])
+  @@map("job_library_nodes")
+}
+
+/// Vessel machinery register — tracks assets, hours, and condition over time.
+model VesselMachineryAsset {
+  id                   String                 @id @default(cuid())
+  vesselId             String                 @map("vessel_id")
+  libraryNodeId        String?                @map("library_node_id")
+  department           String
+  name                 String
+  maker                String?
+  model                String?
+  serialNumber         String?                @map("serial_number")
+  installedAt          DateTime?              @map("installed_at")
+  currentRunningHours  Int?                   @map("current_running_hours")
+  lastOverhaulDate     DateTime?              @map("last_overhaul_date")
+  nextDueHours         Int?                   @map("next_due_hours")
+  nextDueDate          DateTime?              @map("next_due_date")
+  conditionRating      VesselConditionRating? @map("condition_rating")
+  healthScore          Int?                   @map("health_score")
+  notes                String?                @db.Text
+  deletedAt            DateTime?              @map("deleted_at")
+  createdAt            DateTime               @default(now()) @map("created_at")
+  updatedAt            DateTime               @updatedAt @map("updated_at")
+
+  vessel            Vessel                           @relation(fields: [vesselId], references: [id], onDelete: Cascade)
+  libraryNode       JobLibraryNode?                  @relation(fields: [libraryNodeId], references: [id], onDelete: SetNull)
+  runningHoursLogs  VesselMachineryRunningHoursEntry[]
+  parameterLogs     VesselMachineryParameterEntry[]
+  conditionReports  VesselMachineryConditionReport[]
+
+  @@index([vesselId, department])
+  @@index([deletedAt])
+  @@map("vessel_machinery_assets")
+}
+
+model VesselMachineryRunningHoursEntry {
+  id                 String   @id @default(cuid())
+  vesselId           String   @map("vessel_id")
+  machineryAssetId   String   @map("machinery_asset_id")
+  department         String
+  currentHours       Int      @map("current_hours")
+  lastRecordedHours  Int?     @map("last_recorded_hours")
+  hourDifference     Int?     @map("hour_difference")
+  lastJobDoneDate    DateTime? @map("last_job_done_date")
+  nextDueHours       Int?     @map("next_due_hours")
+  nextDueDate        DateTime? @map("next_due_date")
+  enteredBy          String   @map("entered_by")
+  verifiedBy         String?  @map("verified_by")
+  recordedAt         DateTime @default(now()) @map("recorded_at")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  vessel         Vessel               @relation(fields: [vesselId], references: [id], onDelete: Cascade)
+  machineryAsset VesselMachineryAsset @relation(fields: [machineryAssetId], references: [id], onDelete: Cascade)
+
+  @@index([vesselId, recordedAt])
+  @@index([machineryAssetId])
+  @@map("vessel_machinery_running_hours_entries")
+}
+
+model VesselMachineryParameterEntry {
+  id               String   @id @default(cuid())
+  vesselId         String   @map("vessel_id")
+  machineryAssetId String   @map("machinery_asset_id")
+  parameterKey     String   @map("parameter_key")
+  parameterLabel   String   @map("parameter_label")
+  value            String
+  unit             String?
+  recordedAt       DateTime @default(now()) @map("recorded_at")
+  enteredBy        String   @map("entered_by")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  vessel         Vessel               @relation(fields: [vesselId], references: [id], onDelete: Cascade)
+  machineryAsset VesselMachineryAsset @relation(fields: [machineryAssetId], references: [id], onDelete: Cascade)
+
+  @@index([vesselId, recordedAt])
+  @@index([machineryAssetId, parameterKey])
+  @@map("vessel_machinery_parameter_entries")
+}
+
+model VesselMachineryConditionReport {
+  id               String                @id @default(cuid())
+  vesselId         String                @map("vessel_id")
+  machineryAssetId String?               @map("machinery_asset_id")
+  department       String?
+  overallRating    VesselConditionRating   @map("overall_rating")
+  summary          String?               @db.Text
+  deficiencies     String?               @db.Text
+  recommendations  String?               @db.Text
+  reportedBy       String                @map("reported_by")
+  reportedAt       DateTime              @default(now()) @map("reported_at")
+  createdAt        DateTime              @default(now()) @map("created_at")
+
+  vessel         Vessel                @relation(fields: [vesselId], references: [id], onDelete: Cascade)
+  machineryAsset VesselMachineryAsset? @relation(fields: [machineryAssetId], references: [id], onDelete: SetNull)
+
+  @@index([vesselId, reportedAt])
+  @@map("vessel_machinery_condition_reports")
+}
+
+enum VesselDefectEquipmentSystem {
+  main_engine
+  auxiliary_engine
+  boiler
+  electrical
+  navigation
+  deck
+  cargo
+  safety
+  piping
+  pumps
+  hull
+  other
+}
+
+enum VesselDefectStatus {
+  draft
+  submitted
+  master_approved
+  rejected
+  cancelled
+}
+
+/// Vessel-scoped machinery defect reported onboard; locked after master approval.
+model VesselDefect {
+  id                           String                       @id @default(cuid())
+  vesselId                     String                       @map("vessel_id")
+  equipmentSystem              VesselDefectEquipmentSystem  @map("equipment_system")
+  equipmentLabel               String?                      @map("equipment_label")
+  location                     String?
+  title                        String
+  description                  String?                      @db.Text
+  priority                     DdJobPriority                @default(medium)
+  status                       VesselDefectStatus           @default(draft)
+  reportedByEmployeeId         String?                      @map("reported_by_employee_id")
+  reportedByName               String?                      @map("reported_by_name")
+  submittedAt                  DateTime?                    @map("submitted_at")
+  masterApprovedAt             DateTime?                    @map("master_approved_at")
+  masterApprovedByName         String?                      @map("master_approved_by_name")
+  masterApprovedByEmployeeId   String?                      @map("master_approved_by_employee_id")
+  rejectedAt                   DateTime?                    @map("rejected_at")
+  rejectedByName               String?                      @map("rejected_by_name")
+  rejectionReason              String?                      @map("rejection_reason") @db.Text
+  cancelledAt                  DateTime?                    @map("cancelled_at")
+  cancelledByName              String?                      @map("cancelled_by_name")
+  linkedVesselJobId            String?               @map("linked_vessel_job_id")
+  deletedAt                    DateTime?             @map("deleted_at")
+  createdAt                    DateTime              @default(now()) @map("created_at")
+  updatedAt                    DateTime              @updatedAt @map("updated_at")
+
+  vessel           Vessel              @relation(fields: [vesselId], references: [id], onDelete: Cascade)
+  linkedVesselJob  DdVesselJob?        @relation("DefectLinkedJob", fields: [linkedVesselJobId], references: [id], onDelete: SetNull)
+  requisition      VesselRequisition?
+
+  @@index([vesselId, status])
+  @@index([deletedAt])
+  @@map("vessel_defects")
+}
+
+enum VesselRequisitionType {
+  spr
+}
+
+enum VesselRequisitionPurpose {
+  routine_maintenance
+  defect_closer
+}
+
+enum VesselRequisitionStatus {
+  draft
+  submitted
+  master_approved
+  rejected
+  cancelled
+  converted
+}
+
+enum VesselRequisitionLineUrgency {
+  low
+  normal
+  high
+  urgent
+}
+
+/// Vessel-scoped spares requisition raised from Master-approved defects.
+model VesselRequisition {
+  id                           String                    @id @default(cuid())
+  vesselId                     String                    @map("vessel_id")
+  vesselDefectId               String                    @unique @map("vessel_defect_id")
+  targetDryDockProjectId       String?                   @map("target_dry_dock_project_id")
+  integratedDryDockProjectId   String?                   @map("integrated_dry_dock_project_id")
+  requisitionNumber            String                    @map("requisition_number")
+  heading                      String
+  description                  String?                   @db.Text
+  requisitionType              VesselRequisitionType     @default(spr) @map("requisition_type")
+  requisitionPurpose           VesselRequisitionPurpose  @default(defect_closer) @map("requisition_purpose")
+  portOfSupply                 String?                   @map("port_of_supply")
+  status                       VesselRequisitionStatus   @default(draft)
+  requestedByEmployeeId        String?                   @map("requested_by_employee_id")
+  requestedByName              String?                   @map("requested_by_name")
+  submittedAt                  DateTime?                 @map("submitted_at")
+  masterApprovedAt             DateTime?                 @map("master_approved_at")
+  masterApprovedByName         String?                   @map("master_approved_by_name")
+  masterApprovedByEmployeeId   String?                   @map("master_approved_by_employee_id")
+  rejectedAt                   DateTime?                 @map("rejected_at")
+  rejectedByName               String?                   @map("rejected_by_name")
+  rejectionReason              String?                   @map("rejection_reason") @db.Text
+  cancelledAt                  DateTime?                 @map("cancelled_at")
+  cancelledByName              String?                   @map("cancelled_by_name")
+  convertedAt                  DateTime?                 @map("converted_at")
+  convertedByName              String?                   @map("converted_by_name")
+  deletedAt                    DateTime?                 @map("deleted_at")
+  createdAt                    DateTime                  @default(now()) @map("created_at")
+  updatedAt                    DateTime                  @updatedAt @map("updated_at")
+
+  vessel                 Vessel                   @relation(fields: [vesselId], references: [id], onDelete: Cascade)
+  vesselDefect           VesselDefect             @relation(fields: [vesselDefectId], references: [id], onDelete: Cascade)
+  targetDryDockProject   DryDockProject?          @relation("VesselRequisitionTarget", fields: [targetDryDockProjectId], references: [id], onDelete: SetNull)
+  integratedDryDockProject DryDockProject?        @relation("VesselRequisitionIntegrated", fields: [integratedDryDockProjectId], references: [id], onDelete: SetNull)
+  lines                  VesselRequisitionLine[]
+
+  @@index([vesselId, status])
+  @@index([deletedAt])
+  @@map("vessel_requisitions")
+}
+
+model VesselRequisitionLine {
+  id                      String                       @id @default(cuid())
+  requisitionId           String                       @map("requisition_id")
+  partName                String                       @map("part_name")
+  partNumber              String?                      @map("part_number")
+  description             String?                      @db.Text
+  quantity                Float                        @default(1)
+  unit                    String                       @default("pcs")
+  urgency                 VesselRequisitionLineUrgency @default(normal)
+  equipmentLabel          String?                      @map("equipment_label")
+  remarks                 String?
+  sortOrder               Int                          @default(0) @map("sort_order")
+  integratedDdSparesItemId String?                     @map("integrated_dd_spares_item_id")
+  deletedAt               DateTime?                    @map("deleted_at")
+  createdAt               DateTime                     @default(now()) @map("created_at")
+  updatedAt               DateTime                     @updatedAt @map("updated_at")
+
+  requisition            VesselRequisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  integratedDdSparesItem DdSparesItem?     @relation(fields: [integratedDdSparesItemId], references: [id], onDelete: SetNull)
+
+  @@index([requisitionId])
+  @@index([deletedAt])
+  @@map("vessel_requisition_lines")
+}
+
 /// Vessel-scoped job held in the superintendent-curated bank until integrated into a dry dock project.
 model DdVesselJob {
   id                         String                @id @default(cuid())
@@ -1228,6 +1590,40 @@ model DdVesselJob {
   rejectedByName             String?               @map("rejected_by_name")
   rejectionReason            String?               @map("rejection_reason") @db.Text
   carryForwardReason         String?               @map("carry_forward_reason") @db.Text
+  standardJobLibraryId       String?               @map("standard_job_library_id")
+  department                 String?
+  systemKey                  String?               @map("system_key")
+  machineryKey               String?               @map("machinery_key")
+  componentKey               String?               @map("component_key")
+  conditionRating            VesselConditionRating? @map("condition_rating")
+  conditionDescription       String?               @map("condition_description") @db.Text
+  observedDefect             String?               @map("observed_defect") @db.Text
+  measurements               Json?
+  repairRecommendation       String?               @map("repair_recommendation") @db.Text
+  replacementParts           String?               @map("replacement_parts") @db.Text
+  consumables                String?               @db.Text
+  estimatedManhours          Float?                @map("estimated_manhours")
+  estimatedCost              Float?                @map("estimated_cost")
+  classAttendance            Boolean               @default(false) @map("class_attendance")
+  makerAttendance            Boolean               @default(false) @map("maker_attendance")
+  operationalRisk            String?               @map("operational_risk")
+  safetyRisk                 String?               @map("safety_risk")
+  environmentalRisk          String?               @map("environmental_risk")
+  criticality                String?
+  lastOverhaulDate           DateTime?             @map("last_overhaul_date")
+  runningHoursAtSurvey       Int?                  @map("running_hours_at_survey")
+  ceReviewAction             VesselJobReviewAction? @map("ce_review_action")
+  ceReviewedAt               DateTime?             @map("ce_reviewed_at")
+  ceReviewedBy               String?               @map("ce_reviewed_by")
+  ceReviewNotes              String?               @map("ce_review_notes") @db.Text
+  masterReviewAction         VesselJobReviewAction? @map("master_review_action")
+  masterReviewedAt           DateTime?             @map("master_reviewed_at")
+  masterReviewedBy           String?               @map("master_reviewed_by")
+  linkedDefectId             String?               @map("linked_defect_id")
+  linkedPmsReference         String?               @map("linked_pms_reference")
+  formData                   Json?                 @map("form_data")
+  attachmentMeta             Json?                 @map("attachment_meta")
+  photoCount                 Int                   @default(0) @map("photo_count")
   deletedAt                  DateTime?             @map("deleted_at")
   createdAt                  DateTime              @default(now()) @map("created_at")
   updatedAt                  DateTime              @updatedAt @map("updated_at")
@@ -1236,10 +1632,13 @@ model DdVesselJob {
   targetDryDockProject     DryDockProject? @relation("VesselJobTarget", fields: [targetDryDockProjectId], references: [id], onDelete: SetNull)
   integratedDryDockProject DryDockProject? @relation("VesselJobIntegrated", fields: [integratedDryDockProjectId], references: [id], onDelete: SetNull)
   integratedDdJob          DdJob?          @relation(fields: [integratedDdJobId], references: [id], onDelete: SetNull)
+  standardJobLibrary       JobLibraryNode? @relation(fields: [standardJobLibraryId], references: [id], onDelete: SetNull)
+  linkedDefects            VesselDefect[]  @relation("DefectLinkedJob")
 
   @@index([vesselId, status])
   @@index([targetDryDockProjectId])
   @@index([integratedDryDockProjectId])
+  @@index([standardJobLibraryId])
   @@index([deletedAt])
   @@map("dd_vessel_jobs")
 }
@@ -1449,6 +1848,7 @@ model DdSparesItem {
   updatedAt         DateTime      @updatedAt @map("updated_at")
 
   dryDockProject DryDockProject @relation(fields: [dryDockProjectId], references: [id], onDelete: Cascade)
+  integratedRequisitionLines VesselRequisitionLine[]
 
   @@index([dryDockProjectId])
   @@index([deletedAt])
@@ -1473,10 +1873,57 @@ model DdPurchaseOrder {
   updatedAt         DateTime   @updatedAt @map("updated_at")
 
   dryDockProject DryDockProject @relation(fields: [dryDockProjectId], references: [id], onDelete: Cascade)
+  invoices       DdInvoice[]
 
   @@index([dryDockProjectId])
   @@index([deletedAt])
   @@map("dd_purchase_orders")
+}
+
+model DdInvoice {
+  id               String          @id @default(cuid())
+  dryDockProjectId String          @map("dry_dock_project_id")
+  purchaseOrderId  String?         @map("purchase_order_id")
+  invoiceNumber    String?         @map("invoice_number")
+  supplier         String?
+  description      String?
+  amount           Float           @default(0)
+  currency         String          @default("USD")
+  status           DdInvoiceStatus @default(draft)
+  invoiceDate      DateTime?       @map("invoice_date")
+  dueDate          DateTime?       @map("due_date")
+  verifiedBy       String?         @map("verified_by")
+  verifiedAt       DateTime?       @map("verified_at")
+  notes            String?
+  deletedAt        DateTime?       @map("deleted_at")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  dryDockProject DryDockProject  @relation(fields: [dryDockProjectId], references: [id], onDelete: Cascade)
+  purchaseOrder  DdPurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+
+  @@index([dryDockProjectId])
+  @@index([purchaseOrderId])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("dd_invoices")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?  @map("user_id")
+  userLabel  String?  @map("user_label")
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String?  @map("entity_id")
+  summary    String?
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
 }
 
 model DdResourceAllocation {
@@ -1574,4 +2021,392 @@ model DdInputSubmission {
   @@index([status])
   @@index([deletedAt])
   @@map("dd_input_submissions")
+}
+
+// ─── Job catalog library (dynamic template engine) ───────────────────────────
+// Spreadsheet tabs 01–09 + Lists — drives runtime form generation for standard jobs.
+
+enum JobCatalogDepartment {
+  engine
+  deck
+  electrical
+  hull
+  safety
+  cargo
+  accommodation
+}
+
+enum JobCatalogWorkshop {
+  machinery
+  pipe
+  steel
+  hull
+  paint
+  electrical
+  deck
+  safety
+  qa_qc
+}
+
+enum JobTemplateCategory {
+  machinery_overhaul
+  inspection
+  survey
+  repair
+  testing
+  cleaning
+  documentation
+  general
+}
+
+enum JobMeasurementInputType {
+  number
+  text
+  dropdown
+  date
+}
+
+enum JobChecklistResponseType {
+  pass_fail_na
+  yes_no
+  text
+  number
+}
+
+enum JobScopeResponsibleParty {
+  owner
+  yard
+  maker
+  class
+}
+
+enum JobAttachmentType {
+  photo
+  report
+  certificate
+  drawing
+  video
+  manual
+}
+
+enum JobAttachmentStage {
+  before
+  during
+  after
+  final
+}
+
+enum JobSpareItemType {
+  spare
+  consumable
+  tool
+  material
+}
+
+enum JobQuantityBasis {
+  per_job
+  per_unit
+  as_required
+}
+
+enum JobPricingBasis {
+  lump_sum
+  per_unit
+  per_day
+  per_meter
+}
+
+enum JobUiLayoutType {
+  card_tabs
+  wizard
+  single_form
+  split_panels
+}
+
+enum JobCatalogListType {
+  project_types
+  vessel_types
+  departments
+  workshops
+  risk_levels
+  attachment_types
+  job_statuses
+  user_roles
+}
+
+enum JobWorkflowStatus {
+  draft
+  submitted
+  reviewed
+  approved
+  rfq
+  awarded
+  in_progress
+  completed
+  closed
+  cancelled
+}
+
+/// 01_Master_Job_Library — 33 fields
+model MasterJobLibrary {
+  id                       String                @id @default(cuid())
+  jobId                    String                @unique @map("job_id")
+  libraryVersion           String                @map("library_version")
+  department               JobCatalogDepartment
+  systemGroup              String                @map("system_group")
+  machinery                String
+  component                String
+  subComponent             String?               @map("sub_component")
+  standardJobName          String                @map("standard_job_name")
+  jobDescription           String                @map("job_description") @db.Text
+  applicableVesselTypes    String[]              @default([]) @map("applicable_vessel_types")
+  applicableProjectTypes   DryDockProjectType[]  @default([]) @map("applicable_project_types")
+  surveyType               String?               @map("survey_type")
+  workshop                 JobCatalogWorkshop
+  responsibleUserRole      String                @map("responsible_user_role")
+  reviewRole               String                @map("review_role")
+  approvalRole             String                @map("approval_role")
+  templateId               String                @map("template_id")
+  measurementSetId         String?               @map("measurement_set_id")
+  inspectionChecklistId    String?               @map("inspection_checklist_id")
+  scopeOfWorkId            String?               @map("scope_of_work_id")
+  rfqCategory              String                @map("rfq_category")
+  budgetCategory           String                @map("budget_category")
+  dryDockCostCode          String                @map("dry_dock_cost_code")
+  mandatoryFlag            Boolean               @default(false) @map("mandatory_flag")
+  classHoldPoint           Boolean               @default(false) @map("class_hold_point")
+  makerAttendanceRequired  Boolean               @default(false) @map("maker_attendance_required")
+  permitRequired           String[]              @default([]) @map("permit_required")
+  photoRequired            Boolean               @default(false) @map("photo_required")
+  attachmentRequired       Boolean               @default(false) @map("attachment_required")
+  standardManHours         Float?                @map("standard_man_hours")
+  riskLevel                DdRiskLevel           @map("risk_level")
+  activeFlag               Boolean               @default(true) @map("active_flag")
+  remarks                  String?               @db.Text
+  jobLibraryNodeId         String?               @unique @map("job_library_node_id")
+  createdAt                DateTime              @default(now()) @map("created_at")
+  updatedAt                DateTime              @updatedAt @map("updated_at")
+
+  template       JobDynamicTemplate   @relation(fields: [templateId], references: [templateId])
+  jobLibraryNode JobLibraryNode?      @relation(fields: [jobLibraryNodeId], references: [id], onDelete: SetNull)
+  spareMappings  JobSpareMapping[]
+  rfqMappings    JobRfqBudgetMapping[]
+
+  @@index([department])
+  @@index([workshop])
+  @@index([templateId])
+  @@index([measurementSetId])
+  @@index([inspectionChecklistId])
+  @@index([scopeOfWorkId])
+  @@index([activeFlag])
+  @@map("master_job_library")
+}
+
+/// 02_Dynamic_Template_Library — 14 fields
+model JobDynamicTemplate {
+  id                  String              @id @default(cuid())
+  templateId          String              @unique @map("template_id")
+  templateName        String              @map("template_name")
+  templateCategory    JobTemplateCategory @map("template_category")
+  version             String
+  formSections        Json                @map("form_sections")
+  autoFillFields      Json                @map("auto_fill_fields")
+  manualInputFields   Json                @map("manual_input_fields")
+  requiredPhotos      Json                @map("required_photos")
+  requiredAttachments Json                @map("required_attachments")
+  measurementSetId    String?             @map("measurement_set_id")
+  checklistId         String?             @map("checklist_id")
+  approvalWorkflowId  String              @map("approval_workflow_id")
+  uiLayoutType        JobUiLayoutType     @map("ui_layout_type")
+  activeFlag          Boolean             @default(true) @map("active_flag")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+
+  approvalWorkflow       JobApprovalWorkflow    @relation(fields: [approvalWorkflowId], references: [workflowId])
+  masterJobs             MasterJobLibrary[]
+  measurements           JobMeasurement[]
+  checklistItems         JobChecklistItem[]
+  scopeSteps             JobScopeStep[]
+  attachmentRequirements JobAttachmentRequirement[]
+  spareMappings          JobSpareMapping[]
+
+  @@index([templateCategory])
+  @@index([measurementSetId])
+  @@index([checklistId])
+  @@index([approvalWorkflowId])
+  @@index([activeFlag])
+  @@map("job_dynamic_templates")
+}
+
+/// 03_Measurement_Library — 11 fields
+model JobMeasurement {
+  id              String                  @id @default(cuid())
+  measurementId   String                  @unique @map("measurement_id")
+  measurementSetId String               @map("measurement_set_id")
+  templateId      String                  @map("template_id")
+  measurementName String                  @map("measurement_name")
+  unit            String
+  minLimit        Float?                  @map("min_limit")
+  maxLimit        Float?                  @map("max_limit")
+  targetValue     String?                 @map("target_value")
+  inputType       JobMeasurementInputType @map("input_type")
+  mandatoryFlag   Boolean                 @default(false) @map("mandatory_flag")
+  remarks         String?                 @db.Text
+  createdAt       DateTime                @default(now()) @map("created_at")
+  updatedAt       DateTime                @updatedAt @map("updated_at")
+
+  template JobDynamicTemplate @relation(fields: [templateId], references: [templateId], onDelete: Cascade)
+
+  @@index([measurementSetId])
+  @@index([templateId])
+  @@map("job_measurements")
+}
+
+/// 04_Inspection_Checklist — 10 fields
+model JobChecklistItem {
+  id                  String                   @id @default(cuid())
+  checklistItemId     String                   @unique @map("checklist_item_id")
+  checklistId         String                   @map("checklist_id")
+  templateId          String                   @map("template_id")
+  sequenceNo          Int                      @map("sequence_no")
+  inspectionItem      String                   @map("inspection_item")
+  acceptanceCriteria  String                   @map("acceptance_criteria") @db.Text
+  responseType        JobChecklistResponseType @map("response_type")
+  photoRequiredOnFail Boolean                  @default(false) @map("photo_required_on_fail")
+  mandatoryFlag       Boolean                  @default(false) @map("mandatory_flag")
+  remarks             String?                  @db.Text
+  createdAt           DateTime                 @default(now()) @map("created_at")
+  updatedAt           DateTime                 @updatedAt @map("updated_at")
+
+  template JobDynamicTemplate @relation(fields: [templateId], references: [templateId], onDelete: Cascade)
+
+  @@index([checklistId])
+  @@index([templateId, sequenceNo])
+  @@map("job_checklist_items")
+}
+
+/// 05_Scope_of_Work — 9 fields
+model JobScopeStep {
+  id                String                   @id @default(cuid())
+  scopeStepId       String                   @unique @map("scope_step_id")
+  scopeOfWorkId     String                   @map("scope_of_work_id")
+  templateId        String                   @map("template_id")
+  sequenceNo        Int                      @map("sequence_no")
+  workStep          String                   @map("work_step") @db.Text
+  responsibleParty  JobScopeResponsibleParty @map("responsible_party")
+  permitRequired    String?                  @map("permit_required")
+  qaHoldPoint       Boolean                  @default(false) @map("qa_hold_point")
+  classHoldPoint    Boolean                  @default(false) @map("class_hold_point")
+  createdAt         DateTime                 @default(now()) @map("created_at")
+  updatedAt         DateTime                 @updatedAt @map("updated_at")
+
+  template JobDynamicTemplate @relation(fields: [templateId], references: [templateId], onDelete: Cascade)
+
+  @@index([scopeOfWorkId])
+  @@index([templateId, sequenceNo])
+  @@map("job_scope_steps")
+}
+
+/// 06_Attachments_Photos — 8 fields
+model JobAttachmentRequirement {
+  id                      String             @id @default(cuid())
+  attachmentRequirementId String             @unique @map("attachment_requirement_id")
+  templateId              String             @map("template_id")
+  attachmentType          JobAttachmentType  @map("attachment_type")
+  attachmentName          String             @map("attachment_name")
+  stage                   JobAttachmentStage
+  mandatoryFlag           Boolean            @default(false) @map("mandatory_flag")
+  allowedFileTypes        String             @map("allowed_file_types")
+  remarks                 String?            @db.Text
+  createdAt               DateTime           @default(now()) @map("created_at")
+  updatedAt               DateTime           @updatedAt @map("updated_at")
+
+  template JobDynamicTemplate @relation(fields: [templateId], references: [templateId], onDelete: Cascade)
+
+  @@index([templateId])
+  @@map("job_attachment_requirements")
+}
+
+/// 07_Spares_Materials — 10 fields
+model JobSpareMapping {
+  id              String           @id @default(cuid())
+  spareMapId      String           @unique @map("spare_map_id")
+  jobId           String           @map("job_id")
+  templateId      String           @map("template_id")
+  itemType        JobSpareItemType @map("item_type")
+  itemName        String           @map("item_name")
+  quantityBasis   JobQuantityBasis @map("quantity_basis")
+  recommendedQty  Float?           @map("recommended_qty")
+  ownerSupplyFlag Boolean          @default(false) @map("owner_supply_flag")
+  yardSupplyFlag  Boolean          @default(false) @map("yard_supply_flag")
+  remarks         String?          @db.Text
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  masterJob MasterJobLibrary   @relation(fields: [jobId], references: [jobId], onDelete: Cascade)
+  template  JobDynamicTemplate @relation(fields: [templateId], references: [templateId], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([templateId])
+  @@map("job_spare_mappings")
+}
+
+/// 08_RFQ_Budget_Mapping — 10 fields
+model JobRfqBudgetMapping {
+  id                      String          @id @default(cuid())
+  mappingId               String          @unique @map("mapping_id")
+  jobId                   String          @map("job_id")
+  rfqSection              String          @map("rfq_section")
+  quoteComparisonSection  String          @map("quote_comparison_section")
+  budgetCategory          String          @map("budget_category")
+  costCode                String          @map("cost_code")
+  workshop                String
+  pricingBasis            JobPricingBasis @map("pricing_basis")
+  discountApplicable      Boolean         @default(false) @map("discount_applicable")
+  netItemFlag             Boolean         @default(false) @map("net_item_flag")
+  createdAt               DateTime        @default(now()) @map("created_at")
+  updatedAt               DateTime        @updatedAt @map("updated_at")
+
+  masterJob MasterJobLibrary @relation(fields: [jobId], references: [jobId], onDelete: Cascade)
+
+  @@index([jobId])
+  @@map("job_rfq_budget_mappings")
+}
+
+/// 09_Workflow_Roles — 9 fields
+model JobApprovalWorkflow {
+  id                    String   @id @default(cuid())
+  workflowId            String   @unique @map("workflow_id")
+  templateId            String   @map("template_id")
+  createdByRole         String   @map("created_by_role")
+  reviewByRole          String   @map("review_by_role")
+  approveByRole         String   @map("approve_by_role")
+  shipyardUpdateRole    String?  @map("shipyard_update_role")
+  classApprovalRequired Boolean  @default(false) @map("class_approval_required")
+  ownerApprovalRequired Boolean  @default(false) @map("owner_approval_required")
+  statusFlow            String   @map("status_flow")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  templates JobDynamicTemplate[]
+
+  @@index([templateId])
+  @@map("job_approval_workflows")
+}
+
+/// Lists — 8 controlled enum lists (project types, vessel types, etc.)
+model JobCatalogListItem {
+  id        String             @id @default(cuid())
+  listType  JobCatalogListType @map("list_type")
+  value     String
+  label     String
+  sortOrder Int                @default(0) @map("sort_order")
+  isActive  Boolean            @default(true) @map("is_active")
+  createdAt DateTime           @default(now()) @map("created_at")
+  updatedAt DateTime           @updatedAt @map("updated_at")
+
+  @@unique([listType, value])
+  @@index([listType, sortOrder])
+  @@index([isActive])
+  @@map("job_catalog_list_items")
 }

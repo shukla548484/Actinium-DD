@@ -32,6 +32,9 @@ export default async function VesselDetailPage({ params }: Props) {
         description={`${vessel.code} · ${vessel.company?.name ?? vessel.companyName}`}
         actions={
           <div className="flex gap-2">
+            <Button render={<Link href={`/admin/crew-credentials/${id}`} />} nativeButton={false}>
+              Crew credentials
+            </Button>
             <Button render={<Link href={`/admin/vessels/${id}/edit`} />} nativeButton={false}>
               Edit
             </Button>

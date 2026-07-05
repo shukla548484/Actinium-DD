@@ -1,0 +1,56 @@
+import type { LucideIcon } from "lucide-react";
+import {
+  Anchor,
+  CalendarRange,
+  CheckCircle,
+  ClipboardCheck,
+  ClipboardList,
+  Clock,
+  FileSpreadsheet,
+  FileText,
+  FolderKanban,
+  LayoutDashboard,
+  Package,
+  ShieldCheck,
+  Ship,
+  Users,
+  Wallet,
+  Wrench,
+} from "lucide-react";
+import type { DdProjectModuleId } from "@/lib/superintendent/engine/projectModules";
+
+export const PROJECT_MODULE_ICONS: Record<DdProjectModuleId, LucideIcon> = {
+  overview: LayoutDashboard,
+  scope: ClipboardList,
+  workshops: Wrench,
+  jobs: ClipboardList,
+  timeline: CalendarRange,
+  budget: Wallet,
+  procurement: Package,
+  rfq: FileText,
+  resources: Users,
+  permits: ShieldCheck,
+  inspections: ClipboardCheck,
+  survey: ClipboardCheck,
+  spares: Package,
+  daily_progress: FileSpreadsheet,
+  delays: Clock,
+  variations: FileText,
+  approvals: CheckCircle,
+  shipyard: Anchor,
+  sea_trial: Ship,
+  documents: FileText,
+  reports: FileSpreadsheet,
+  closeout: FolderKanban,
+};
+
+export const PROJECT_INPUT_LINK_ICONS = {
+  vesselPortal: Ship,
+  vessel: Anchor,
+  superintendent: ClipboardList,
+  workshop: Wrench,
+  procurement: Package,
+  closeout: CheckCircle,
+  review: ClipboardCheck,
+  readiness: ShieldCheck,
+} as const satisfies Record<string, LucideIcon>;

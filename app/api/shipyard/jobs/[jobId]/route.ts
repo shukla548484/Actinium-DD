@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
+import { requireWorkshopJobAccess } from "@/lib/auth/shipyardAccess";
 import { updateWorkshopJob } from "@/lib/db/yardExecution";
 
 export async function PATCH(
   req: Request,
   ctx: { params: Promise<{ jobId: string }> },
 ) {
+  const { jobId } = await ctx.params;
+  const denied = await requireWorkshopJobAccess(jobId, req);
+  if (denied) return denied;
+
   try {
-    const { jobId } = await ctx.params;
     const body = (await req.json()) as Record<string, unknown>;
     const job = await updateWorkshopJob(jobId, {
       status: body.status as Parameters<typeof updateWorkshopJob>[1]["status"],

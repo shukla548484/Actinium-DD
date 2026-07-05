@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { requireSuperintendentApiAccess } from "@/lib/auth/superintendentAccess";
 import { assertDryDockProjectInScope } from "@/lib/superintendent/scope";
 import { notDeleted } from "@/lib/superintendent/helpers";
 import { prisma } from "@/lib/prisma";
+import { saveLocalUpload } from "@/lib/storage/localUpload";
 
 export const dynamic = "force-dynamic";
 
@@ -50,23 +49,19 @@ export async function POST(request: Request, ctx: RouteCtx) {
   const file = formData.get("file") as File | null;
   if (!file) return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
 
-  const bytes = Buffer.from(await file.arrayBuffer());
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const dir = path.join(process.cwd(), "public", "uploads", "superintendent", "checklist", checklistItemId);
-  await mkdir(dir, { recursive: true });
-  const storedName = `${Date.now()}-${safeName}`;
-  await writeFile(path.join(dir, storedName), bytes);
-
-  const fileUrl = `/uploads/superintendent/checklist/${checklistItemId}/${storedName}`;
+  const saved = await saveLocalUpload({
+    file,
+    segments: ["superintendent", "checklist", checklistItemId],
+  });
   const caption = (formData.get("caption") as string | null)?.trim() || null;
 
   const attachment = await prisma.ddChecklistAttachment.create({
     data: {
       checklistItemId,
-      fileName: file.name,
-      fileUrl,
-      mimeType: file.type || null,
-      fileSize: bytes.length,
+      fileName: saved.fileName,
+      fileUrl: saved.fileUrl,
+      mimeType: saved.mimeType,
+      fileSize: saved.fileSize,
       caption,
     },
   });

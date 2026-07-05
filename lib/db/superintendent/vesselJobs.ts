@@ -45,6 +45,42 @@ function mapVesselJob(row: VesselJobRow): DdVesselJobDto {
     rejectedByName: row.rejectedByName,
     rejectionReason: row.rejectionReason,
     carryForwardReason: row.carryForwardReason,
+    standardJobLibraryId: row.standardJobLibraryId,
+    department: row.department,
+    systemKey: row.systemKey,
+    machineryKey: row.machineryKey,
+    componentKey: row.componentKey,
+    conditionRating: row.conditionRating,
+    conditionDescription: row.conditionDescription,
+    observedDefect: row.observedDefect,
+    measurements: row.measurements as Record<string, unknown> | null,
+    repairRecommendation: row.repairRecommendation,
+    replacementParts: row.replacementParts,
+    consumables: row.consumables,
+    estimatedManhours: row.estimatedManhours,
+    estimatedCost: row.estimatedCost,
+    classAttendance: row.classAttendance,
+    makerAttendance: row.makerAttendance,
+    operationalRisk: row.operationalRisk,
+    safetyRisk: row.safetyRisk,
+    environmentalRisk: row.environmentalRisk,
+    criticality: row.criticality,
+    lastOverhaulDate: row.lastOverhaulDate?.toISOString() ?? null,
+    runningHoursAtSurvey: row.runningHoursAtSurvey,
+    ceReviewAction: row.ceReviewAction,
+    ceReviewedAt: row.ceReviewedAt?.toISOString() ?? null,
+    ceReviewedBy: row.ceReviewedBy,
+    ceReviewNotes: row.ceReviewNotes,
+    masterReviewAction: row.masterReviewAction,
+    masterReviewedAt: row.masterReviewedAt?.toISOString() ?? null,
+    masterReviewedBy: row.masterReviewedBy,
+    linkedDefectId: row.linkedDefectId,
+    linkedPmsReference: row.linkedPmsReference,
+    formData: row.formData as Record<string, unknown> | null,
+    attachmentMeta: Array.isArray(row.attachmentMeta)
+      ? (row.attachmentMeta as import("@/lib/db/vesselJobAttachments").VesselJobAttachmentMeta[])
+      : null,
+    photoCount: row.photoCount,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -134,34 +170,102 @@ export async function getDdVesselJob(id: string) {
 export async function createDdVesselJob(input: {
   vesselId: string;
   targetDryDockProjectId?: string | null;
+  standardJobLibraryId?: string | null;
   jobCode?: string | null;
   title: string;
   category: string;
+  department?: string | null;
+  systemKey?: string | null;
+  machineryKey?: string | null;
+  componentKey?: string | null;
   workshop?: string | null;
   description?: string | null;
   priority?: DdJobPriority;
   source?: DdVesselJobSource;
   status?: DdVesselJobStatus;
+  conditionRating?: import("@prisma/client").VesselConditionRating | null;
+  conditionDescription?: string | null;
+  observedDefect?: string | null;
+  measurements?: import("@prisma/client").Prisma.InputJsonValue;
+  repairRecommendation?: string | null;
+  replacementParts?: string | null;
+  consumables?: string | null;
+  estimatedManhours?: number | null;
+  estimatedCost?: number | null;
+  classAttendance?: boolean;
+  makerAttendance?: boolean;
+  operationalRisk?: string | null;
+  safetyRisk?: string | null;
+  environmentalRisk?: string | null;
+  criticality?: string | null;
+  lastOverhaulDate?: Date | null;
+  runningHoursAtSurvey?: number | null;
+  linkedDefectId?: string | null;
+  linkedPmsReference?: string | null;
+  formData?: import("@prisma/client").Prisma.InputJsonValue;
+  photoCount?: number;
   createdByName?: string | null;
   createdByRole?: DdInputResponsibleRole | null;
 }) {
-  const row = await prisma.ddVesselJob.create({
-    data: {
-      vesselId: input.vesselId,
-      targetDryDockProjectId: input.targetDryDockProjectId?.trim() || null,
-      jobCode: input.jobCode?.trim() || null,
-      title: input.title.trim(),
-      category: input.category.trim(),
-      workshop: input.workshop?.trim() || null,
-      description: input.description?.trim() || null,
-      priority: input.priority ?? "medium",
-      source: input.source ?? "vessel",
-      status: input.status ?? "draft",
-      createdByName: input.createdByName?.trim() || null,
-      createdByRole: input.createdByRole ?? null,
-      submittedAt: input.status === "submitted" ? new Date() : null,
-    },
-    include: { vessel: { select: { name: true, code: true } } },
+  const row = await prisma.$transaction(async (tx) => {
+    const created = await tx.ddVesselJob.create({
+      data: {
+        vesselId: input.vesselId,
+        targetDryDockProjectId: input.targetDryDockProjectId?.trim() || null,
+        standardJobLibraryId: input.standardJobLibraryId ?? null,
+        jobCode: input.jobCode?.trim() || null,
+        title: input.title.trim(),
+        category: input.category.trim(),
+        department: input.department?.trim() || null,
+        systemKey: input.systemKey?.trim() || null,
+        machineryKey: input.machineryKey?.trim() || null,
+        componentKey: input.componentKey?.trim() || null,
+        workshop: input.workshop?.trim() || null,
+        description: input.description?.trim() || null,
+        priority: input.priority ?? "medium",
+        source: input.source ?? "vessel",
+        status: input.status ?? "draft",
+        conditionRating: input.conditionRating ?? null,
+        conditionDescription: input.conditionDescription?.trim() || null,
+        observedDefect: input.observedDefect?.trim() || null,
+        measurements: input.measurements ?? undefined,
+        repairRecommendation: input.repairRecommendation?.trim() || null,
+        replacementParts: input.replacementParts?.trim() || null,
+        consumables: input.consumables?.trim() || null,
+        estimatedManhours: input.estimatedManhours ?? null,
+        estimatedCost: input.estimatedCost ?? null,
+        classAttendance: input.classAttendance ?? false,
+        makerAttendance: input.makerAttendance ?? false,
+        operationalRisk: input.operationalRisk?.trim() || null,
+        safetyRisk: input.safetyRisk?.trim() || null,
+        environmentalRisk: input.environmentalRisk?.trim() || null,
+        criticality: input.criticality?.trim() || null,
+        lastOverhaulDate: input.lastOverhaulDate ?? null,
+        runningHoursAtSurvey: input.runningHoursAtSurvey ?? null,
+        linkedDefectId: input.linkedDefectId ?? null,
+        linkedPmsReference: input.linkedPmsReference?.trim() || null,
+        formData: input.formData ?? undefined,
+        photoCount: input.photoCount ?? 0,
+        createdByName: input.createdByName?.trim() || null,
+        createdByRole: input.createdByRole ?? null,
+        submittedAt: input.status === "submitted" ? new Date() : null,
+      },
+      include: { vessel: { select: { name: true, code: true } } },
+    });
+
+    if (input.linkedDefectId) {
+      await tx.vesselDefect.updateMany({
+        where: {
+          id: input.linkedDefectId,
+          vesselId: input.vesselId,
+          ...notDeleted,
+          linkedVesselJobId: null,
+        },
+        data: { linkedVesselJobId: created.id },
+      });
+    }
+
+    return created;
   });
   return mapVesselJob(row);
 }
@@ -170,14 +274,40 @@ export async function updateDdVesselJob(
   id: string,
   input: Partial<{
     targetDryDockProjectId: string | null;
+    standardJobLibraryId: string | null;
     jobCode: string | null;
     title: string;
     category: string;
+    department: string | null;
+    systemKey: string | null;
+    machineryKey: string | null;
+    componentKey: string | null;
     workshop: string | null;
     description: string | null;
     priority: DdJobPriority;
     source: DdVesselJobSource;
     status: DdVesselJobStatus;
+    conditionRating: import("@prisma/client").VesselConditionRating | null;
+    conditionDescription: string | null;
+    observedDefect: string | null;
+    measurements: import("@prisma/client").Prisma.InputJsonValue;
+    repairRecommendation: string | null;
+    replacementParts: string | null;
+    consumables: string | null;
+    estimatedManhours: number | null;
+    estimatedCost: number | null;
+    classAttendance: boolean;
+    makerAttendance: boolean;
+    operationalRisk: string | null;
+    safetyRisk: string | null;
+    environmentalRisk: string | null;
+    criticality: string | null;
+    lastOverhaulDate: Date | null;
+    runningHoursAtSurvey: number | null;
+    linkedDefectId: string | null;
+    linkedPmsReference: string | null;
+    formData: import("@prisma/client").Prisma.InputJsonValue;
+    photoCount: number;
   }>,
 ) {
   const row = await prisma.ddVesselJob.update({
@@ -186,18 +316,212 @@ export async function updateDdVesselJob(
       ...(input.targetDryDockProjectId !== undefined
         ? { targetDryDockProjectId: input.targetDryDockProjectId?.trim() || null }
         : {}),
+      ...(input.standardJobLibraryId !== undefined
+        ? { standardJobLibraryId: input.standardJobLibraryId }
+        : {}),
       ...(input.jobCode !== undefined ? { jobCode: input.jobCode?.trim() || null } : {}),
       ...(input.title !== undefined ? { title: input.title.trim() } : {}),
       ...(input.category !== undefined ? { category: input.category.trim() } : {}),
+      ...(input.department !== undefined ? { department: input.department?.trim() || null } : {}),
+      ...(input.systemKey !== undefined ? { systemKey: input.systemKey?.trim() || null } : {}),
+      ...(input.machineryKey !== undefined ? { machineryKey: input.machineryKey?.trim() || null } : {}),
+      ...(input.componentKey !== undefined ? { componentKey: input.componentKey?.trim() || null } : {}),
       ...(input.workshop !== undefined ? { workshop: input.workshop?.trim() || null } : {}),
       ...(input.description !== undefined ? { description: input.description?.trim() || null } : {}),
       ...(input.priority !== undefined ? { priority: input.priority } : {}),
       ...(input.source !== undefined ? { source: input.source } : {}),
       ...(input.status !== undefined ? { status: input.status } : {}),
+      ...(input.conditionRating !== undefined ? { conditionRating: input.conditionRating } : {}),
+      ...(input.conditionDescription !== undefined
+        ? { conditionDescription: input.conditionDescription?.trim() || null }
+        : {}),
+      ...(input.observedDefect !== undefined ? { observedDefect: input.observedDefect?.trim() || null } : {}),
+      ...(input.measurements !== undefined ? { measurements: input.measurements } : {}),
+      ...(input.repairRecommendation !== undefined
+        ? { repairRecommendation: input.repairRecommendation?.trim() || null }
+        : {}),
+      ...(input.replacementParts !== undefined
+        ? { replacementParts: input.replacementParts?.trim() || null }
+        : {}),
+      ...(input.consumables !== undefined ? { consumables: input.consumables?.trim() || null } : {}),
+      ...(input.estimatedManhours !== undefined ? { estimatedManhours: input.estimatedManhours } : {}),
+      ...(input.estimatedCost !== undefined ? { estimatedCost: input.estimatedCost } : {}),
+      ...(input.classAttendance !== undefined ? { classAttendance: input.classAttendance } : {}),
+      ...(input.makerAttendance !== undefined ? { makerAttendance: input.makerAttendance } : {}),
+      ...(input.operationalRisk !== undefined
+        ? { operationalRisk: input.operationalRisk?.trim() || null }
+        : {}),
+      ...(input.safetyRisk !== undefined ? { safetyRisk: input.safetyRisk?.trim() || null } : {}),
+      ...(input.environmentalRisk !== undefined
+        ? { environmentalRisk: input.environmentalRisk?.trim() || null }
+        : {}),
+      ...(input.criticality !== undefined ? { criticality: input.criticality?.trim() || null } : {}),
+      ...(input.lastOverhaulDate !== undefined ? { lastOverhaulDate: input.lastOverhaulDate } : {}),
+      ...(input.runningHoursAtSurvey !== undefined
+        ? { runningHoursAtSurvey: input.runningHoursAtSurvey }
+        : {}),
+      ...(input.linkedDefectId !== undefined ? { linkedDefectId: input.linkedDefectId } : {}),
+      ...(input.linkedPmsReference !== undefined
+        ? { linkedPmsReference: input.linkedPmsReference?.trim() || null }
+        : {}),
+      ...(input.formData !== undefined ? { formData: input.formData } : {}),
+      ...(input.photoCount !== undefined ? { photoCount: input.photoCount } : {}),
     },
     include: { vessel: { select: { name: true, code: true } } },
   });
   return mapVesselJob(row);
+}
+
+export async function ceReviewDdVesselJob(
+  id: string,
+  input: {
+    action: import("@prisma/client").VesselJobReviewAction;
+    reviewedBy: string;
+    notes?: string | null;
+  },
+) {
+  const existing = await prisma.ddVesselJob.findFirst({ where: { id, ...notDeleted } });
+  if (!existing) return { ok: false as const, error: "Vessel job not found", status: 404 };
+  if (existing.status !== "submitted" && existing.status !== "draft") {
+    return { ok: false as const, error: "Job is not awaiting CE review", status: 400 };
+  }
+
+  const now = new Date();
+  const statusMap = {
+    approved: "approved" as const,
+    rejected: "rejected" as const,
+    returned: "draft" as const,
+    modified: "submitted" as const,
+  };
+
+  const row = await prisma.ddVesselJob.update({
+    where: { id },
+    data: {
+      ceReviewAction: input.action,
+      ceReviewedAt: now,
+      ceReviewedBy: input.reviewedBy.trim(),
+      ceReviewNotes: input.notes?.trim() || null,
+      status: statusMap[input.action],
+      ...(input.action === "approved"
+        ? { approvedAt: now, approvedByName: input.reviewedBy.trim() }
+        : {}),
+      ...(input.action === "rejected"
+        ? {
+            rejectedAt: now,
+            rejectedByName: input.reviewedBy.trim(),
+            rejectionReason: input.notes?.trim() || null,
+          }
+        : {}),
+    },
+    include: { vessel: { select: { name: true, code: true } } },
+  });
+  return { ok: true as const, vesselJob: mapVesselJob(row) };
+}
+
+export async function masterReviewDdVesselJob(
+  id: string,
+  input: {
+    action: import("@prisma/client").VesselJobReviewAction;
+    reviewedBy: string;
+    notes?: string | null;
+    carryForward?: boolean;
+  },
+) {
+  const existing = await prisma.ddVesselJob.findFirst({ where: { id, ...notDeleted } });
+  if (!existing) return { ok: false as const, error: "Vessel job not found", status: 404 };
+  if (existing.status !== "approved") {
+    return {
+      ok: false as const,
+      error: "Only CE-approved jobs can receive Master review",
+      status: 400,
+    };
+  }
+
+  const now = new Date();
+  const statusMap = {
+    approved: input.carryForward ? ("carry_forward" as const) : ("approved" as const),
+    rejected: "rejected" as const,
+    returned: "submitted" as const,
+    modified: "approved" as const,
+  };
+
+  const row = await prisma.ddVesselJob.update({
+    where: { id },
+    data: {
+      masterReviewAction: input.action,
+      masterReviewedAt: now,
+      masterReviewedBy: input.reviewedBy.trim(),
+      status: statusMap[input.action],
+      ...(input.action === "rejected"
+        ? {
+            rejectedAt: now,
+            rejectedByName: input.reviewedBy.trim(),
+            rejectionReason: input.notes?.trim() || null,
+          }
+        : {}),
+      ...(input.action === "approved" && input.carryForward
+        ? { carryForwardReason: input.notes?.trim() || "Master endorsed for next dry dock" }
+        : {}),
+    },
+    include: { vessel: { select: { name: true, code: true } } },
+  });
+  return { ok: true as const, vesselJob: mapVesselJob(row) };
+}
+
+export async function getVesselScopeIntegrationStats(dryDockProjectId: string) {
+  const project = await prisma.dryDockProject.findFirst({
+    where: { id: dryDockProjectId, ...notDeleted },
+    select: { id: true, vesselId: true, workspaceProvisionedAt: true },
+  });
+  if (!project) return null;
+
+  const [integratedTotal, autoImported, pendingBank, fromDefects, fromPms] = await Promise.all([
+    prisma.ddVesselJob.count({
+      where: { integratedDryDockProjectId: dryDockProjectId, ...notDeleted },
+    }),
+    prisma.ddVesselJob.count({
+      where: {
+        integratedDryDockProjectId: dryDockProjectId,
+        integratedByName: "System (project provision)",
+        ...notDeleted,
+      },
+    }),
+    prisma.ddVesselJob.count({
+      where: {
+        vesselId: project.vesselId,
+        integratedDryDockProjectId: null,
+        status: { in: ["submitted", "approved", "carry_forward"] },
+        ...notDeleted,
+        OR: [
+          { targetDryDockProjectId: dryDockProjectId },
+          { targetDryDockProjectId: null },
+        ],
+      },
+    }),
+    prisma.ddVesselJob.count({
+      where: {
+        integratedDryDockProjectId: dryDockProjectId,
+        linkedDefectId: { not: null },
+        ...notDeleted,
+      },
+    }),
+    prisma.ddVesselJob.count({
+      where: {
+        integratedDryDockProjectId: dryDockProjectId,
+        linkedPmsReference: { not: null },
+        ...notDeleted,
+      },
+    }),
+  ]);
+
+  return {
+    integratedTotal,
+    autoImportedAtProvision: autoImported,
+    pendingInBank: pendingBank,
+    integratedFromDefects: fromDefects,
+    integratedFromPms: fromPms,
+    workspaceProvisionedAt: project.workspaceProvisionedAt?.toISOString() ?? null,
+  };
 }
 
 export async function submitDdVesselJob(id: string, submittedByName?: string | null) {
@@ -350,10 +674,11 @@ export async function integrateDdVesselJobs(input: {
           title: vj.title,
           category: vj.category,
           workshop: vj.workshop,
-          description: vj.description,
+          description: vj.repairRecommendation ?? vj.description,
           priority: vj.priority,
           status: "planned",
           progressPct: 0,
+          budgetAmount: vj.estimatedCost,
           sortOrder: nextSort++,
         },
       });
@@ -378,6 +703,43 @@ export async function integrateDdVesselJobs(input: {
   await syncDryDockProjectProgress(project.id);
 
   return { ok: true as const, integrated: results };
+}
+
+/** Import CE-approved / carry-forward vessel jobs into a newly provisioned project. */
+export async function autoIntegrateApprovedVesselJobs(
+  dryDockProjectId: string,
+  integratedByName = "System (project provision)",
+): Promise<{ integratedCount: number }> {
+  const project = await prisma.dryDockProject.findFirst({
+    where: { id: dryDockProjectId, ...notDeleted },
+    select: { id: true, vesselId: true },
+  });
+  if (!project) return { integratedCount: 0 };
+
+  const eligible = await prisma.ddVesselJob.findMany({
+    where: {
+      vesselId: project.vesselId,
+      ...notDeleted,
+      integratedDryDockProjectId: null,
+      status: { in: ["approved", "carry_forward"] },
+      OR: [
+        { targetDryDockProjectId: dryDockProjectId },
+        { targetDryDockProjectId: null },
+      ],
+    },
+    select: { id: true },
+  });
+
+  if (eligible.length === 0) return { integratedCount: 0 };
+
+  const result = await integrateDdVesselJobs({
+    vesselJobIds: eligible.map((j) => j.id),
+    dryDockProjectId,
+    integratedByName,
+  });
+
+  if (!result.ok) return { integratedCount: 0 };
+  return { integratedCount: result.integrated.length };
 }
 
 export async function softDeleteDdVesselJob(id: string) {

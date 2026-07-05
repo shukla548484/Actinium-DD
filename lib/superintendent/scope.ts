@@ -1,6 +1,12 @@
 import { cookies } from "next/headers";
 import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { getSessionUserId } from "@/lib/auth/session";
+import {
+  buildUserScope,
+  dryDockProjectScopeWhere as rbacDryDockProjectScopeWhere,
+  resolveScopedVesselIds,
+} from "@/lib/rbac/scopeRules";
 import { notDeleted } from "@/lib/superintendent/helpers";
 import { prisma } from "@/lib/prisma";
 
@@ -10,19 +16,25 @@ export const SUPERINTENDENT_EMPLOYEE_COOKIE = "superintendent_employee_id";
 export async function getScopedVesselIds(): Promise<string[] | undefined> {
   const jar = await cookies();
   const employeeId = jar.get(SUPERINTENDENT_EMPLOYEE_COOKIE)?.value?.trim();
-  if (!employeeId) return undefined;
 
-  const assignments = await prisma.employeeVessel.findMany({
-    where: {
-      employeeId,
-      signOffDate: null,
-      employee: { ...notDeleted, status: "active" },
-      vessel: { ...notDeleted, status: "active" },
-    },
-    select: { vesselId: true },
-  });
+  if (employeeId) {
+    const assignments = await prisma.employeeVessel.findMany({
+      where: {
+        employeeId,
+        signOffDate: null,
+        employee: { ...notDeleted, status: "active" },
+        vessel: { ...notDeleted, status: "active" },
+      },
+      select: { vesselId: true },
+    });
+    return assignments.map((a) => a.vesselId);
+  }
 
-  return assignments.map((a) => a.vesselId);
+  const userId = await getSessionUserId();
+  if (!userId) return [];
+
+  const scope = await buildUserScope(userId);
+  return resolveScopedVesselIds(scope);
 }
 
 export function vesselScopeWhere(
@@ -36,18 +48,18 @@ export function vesselScopeWhere(
 export function dryDockProjectScopeWhere(
   vesselIds: string[] | undefined,
 ): Prisma.DryDockProjectWhereInput {
-  if (vesselIds === undefined) return {};
-  if (vesselIds.length === 0) return { vesselId: { in: [] } };
-  return { vesselId: { in: vesselIds } };
+  return rbacDryDockProjectScopeWhere(vesselIds);
 }
 
 export async function assertDryDockProjectInScope(
   dryDockProjectId: string,
 ): Promise<{ ok: true; vesselId: string } | { ok: false; response: NextResponse }> {
+  const userId = await getSessionUserId();
   const vesselIds = await getScopedVesselIds();
+
   const project = await prisma.dryDockProject.findFirst({
     where: { id: dryDockProjectId, ...notDeleted },
-    select: { vesselId: true },
+    select: { vesselId: true, projectId: true },
   });
   if (!project) {
     return {
@@ -55,12 +67,20 @@ export async function assertDryDockProjectInScope(
       response: NextResponse.json({ error: "Dry dock project not found" }, { status: 404 }),
     };
   }
+
   if (vesselIds !== undefined && !vesselIds.includes(project.vesselId)) {
+    if (userId) {
+      const scope = await buildUserScope(userId);
+      if (project.projectId && scope.projectIds.includes(project.projectId)) {
+        return { ok: true, vesselId: project.vesselId };
+      }
+    }
     return {
       ok: false,
       response: NextResponse.json({ error: "Forbidden — vessel not in your scope" }, { status: 403 }),
     };
   }
+
   return { ok: true, vesselId: project.vesselId };
 }
 

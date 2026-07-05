@@ -30,6 +30,7 @@ type EntityActionsProps = {
   viewHref: string;
   editHref: string;
   assignVesselsHref?: string;
+  listRedirectPath?: string;
   onChanged?: () => void;
 };
 
@@ -46,6 +47,7 @@ export function EntityActionsMenu({
   viewHref,
   editHref,
   assignVesselsHref,
+  listRedirectPath,
   onChanged,
 }: EntityActionsProps) {
   const router = useRouter();
@@ -76,13 +78,13 @@ export function EntityActionsMenu({
       await fetch(`${API_BASE[entityType]}/${id}`, { method: "DELETE" });
       setDeleteOpen(false);
       onChanged?.();
-      if (entityType === "company") router.push("/admin/companies");
-      else if (entityType === "vessel") router.push("/admin/vessels");
-      else router.push("/admin/employees");
+      if (entityType === "company") router.push(listRedirectPath ?? "/admin/companies");
+      else if (entityType === "vessel") router.push(listRedirectPath ?? "/admin/vessels");
+      else router.push(listRedirectPath ?? "/admin/employees");
     } finally {
       setBusy(false);
     }
-  }, [entityType, id, onChanged, router]);
+  }, [entityType, id, listRedirectPath, onChanged, router]);
 
   return (
     <>

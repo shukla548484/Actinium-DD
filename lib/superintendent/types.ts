@@ -1,3 +1,4 @@
+import type { VesselJobAttachmentMeta } from "@/lib/db/vesselJobAttachments";
 import type {
   DdApprovalStatus,
   DdInputResponsibleRole,
@@ -8,6 +9,8 @@ import type {
   DdSurveyStatus,
   DdVesselJobSource,
   DdVesselJobStatus,
+  VesselConditionRating,
+  VesselJobReviewAction,
   DryDockProjectPriority,
   DryDockProjectStatus,
   DryDockProjectType,
@@ -142,6 +145,40 @@ export type DdVesselJobDto = {
   rejectedByName: string | null;
   rejectionReason: string | null;
   carryForwardReason: string | null;
+  standardJobLibraryId: string | null;
+  department: string | null;
+  systemKey: string | null;
+  machineryKey: string | null;
+  componentKey: string | null;
+  conditionRating: VesselConditionRating | null;
+  conditionDescription: string | null;
+  observedDefect: string | null;
+  measurements: Record<string, unknown> | null;
+  repairRecommendation: string | null;
+  replacementParts: string | null;
+  consumables: string | null;
+  estimatedManhours: number | null;
+  estimatedCost: number | null;
+  classAttendance: boolean;
+  makerAttendance: boolean;
+  operationalRisk: string | null;
+  safetyRisk: string | null;
+  environmentalRisk: string | null;
+  criticality: string | null;
+  lastOverhaulDate: string | null;
+  runningHoursAtSurvey: number | null;
+  ceReviewAction: VesselJobReviewAction | null;
+  ceReviewedAt: string | null;
+  ceReviewedBy: string | null;
+  ceReviewNotes: string | null;
+  masterReviewAction: VesselJobReviewAction | null;
+  masterReviewedAt: string | null;
+  masterReviewedBy: string | null;
+  linkedDefectId: string | null;
+  linkedPmsReference: string | null;
+  formData: Record<string, unknown> | null;
+  attachmentMeta: VesselJobAttachmentMeta[] | null;
+  photoCount: number;
   createdAt: string;
   updatedAt: string;
 };

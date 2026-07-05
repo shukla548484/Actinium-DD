@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { rbacUserTypeLabel } from "@/lib/rbac/userTypes";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -28,16 +29,13 @@ type RoleRow = {
   name: string;
   userType: string;
   hierarchyLevel: number;
+  categoryTier: string | null;
+  approvalLevel: number;
+  reportsToCode: string | null;
+  jobScope: string | null;
   department: string | null;
   permissionCount: number;
   userCount: number;
-};
-
-const USER_TYPE_LABEL: Record<string, string> = {
-  system: "System",
-  office: "Office",
-  vessel: "Vessel",
-  external: "External",
 };
 
 export function RoleListPanel() {
@@ -56,16 +54,17 @@ export function RoleListPanel() {
   }
 
   return (
-    <TableCard title="System roles" description="33-role catalog from your RBAC spreadsheet">
+    <TableCard title="System roles" description="48-role designation catalog (Role ID 1001–6019)">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-12">No.</TableHead>
-            <TableHead>Role</TableHead>
+            <TableHead className="w-16">Role ID</TableHead>
+            <TableHead>Designation</TableHead>
             <TableHead>Code</TableHead>
             <TableHead>Type</TableHead>
-            <TableHead className="w-16">Level</TableHead>
-            <TableHead>Department</TableHead>
+            <TableHead className="w-14">Tier</TableHead>
+            <TableHead className="w-14">Approval</TableHead>
+            <TableHead>Reports to</TableHead>
             <TableHead className="text-right">Permissions</TableHead>
             <TableHead className="w-28" />
           </TableRow>
@@ -76,13 +75,21 @@ export function RoleListPanel() {
               <TableCell className="font-mono text-muted-foreground">
                 {role.roleNo ?? "—"}
               </TableCell>
-              <TableCell className="font-medium">{role.name}</TableCell>
+              <TableCell>
+                <div className="font-medium">{role.name}</div>
+                {role.jobScope ? (
+                  <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{role.jobScope}</p>
+                ) : null}
+              </TableCell>
               <TableCell className="font-mono text-xs">{role.code}</TableCell>
               <TableCell>
-                <Badge variant="outline">{USER_TYPE_LABEL[role.userType] ?? role.userType}</Badge>
+                <Badge variant="outline">{rbacUserTypeLabel(role.userType)}</Badge>
               </TableCell>
               <TableCell>{role.hierarchyLevel}</TableCell>
-              <TableCell className="text-muted-foreground">{role.department ?? "—"}</TableCell>
+              <TableCell>{role.approvalLevel}</TableCell>
+              <TableCell className="font-mono text-xs text-muted-foreground">
+                {role.reportsToCode ?? "—"}
+              </TableCell>
               <TableCell className="text-right tabular-nums">{role.permissionCount}</TableCell>
               <TableCell className="text-right">
                 <Button
@@ -112,6 +119,8 @@ export function AdminOverviewCards() {
     pagePermissionCount: number;
     userCount: number;
     companyCount: number;
+    shipyardCount: number;
+    externalVendorCount: number;
     vesselCount: number;
     employeeCount: number;
   } | null>(null);
@@ -125,10 +134,11 @@ export function AdminOverviewCards() {
   const items = stats
     ? [
         { label: "Companies", value: stats.companyCount },
+        { label: "Shipyards", value: stats.shipyardCount },
+        { label: "External vendors", value: stats.externalVendorCount },
         { label: "Vessels", value: stats.vesselCount },
         { label: "Employees", value: stats.employeeCount },
         { label: "System roles", value: stats.roleCount },
-        { label: "Page permissions", value: stats.pagePermissionCount },
         { label: "Users", value: stats.userCount },
       ]
     : [];

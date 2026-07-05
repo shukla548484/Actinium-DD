@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getSessionPayload, getSessionUserId } from "@/lib/auth/session";
+import { buildUserScope, resolveScopedVesselIds } from "@/lib/rbac/scopeRules";
 import { notDeleted } from "@/lib/superintendent/helpers";
 import { prisma } from "@/lib/prisma";
 
@@ -27,17 +28,8 @@ export async function getShipAccessVesselIds(): Promise<string[]> {
   const userId = await getSessionUserId();
   if (!userId) return [];
 
-  const employee = await prisma.employee.findFirst({
-    where: { userId, ...notDeleted, status: "active" },
-    select: {
-      vesselAssignments: {
-        where: { signOffDate: null, vessel: { ...notDeleted, status: "active" } },
-        select: { vesselId: true },
-      },
-    },
-  });
-
-  if (!employee) {
+  const scope = await buildUserScope(userId);
+  if (scope.unrestricted) {
     const rows = await prisma.vessel.findMany({
       where: { ...notDeleted, status: "active" },
       select: { id: true },
@@ -46,7 +38,8 @@ export async function getShipAccessVesselIds(): Promise<string[]> {
     return rows.map((r) => r.id);
   }
 
-  return employee.vesselAssignments.map((a) => a.vesselId);
+  const vesselIds = await resolveScopedVesselIds(scope);
+  return vesselIds ?? [];
 }
 
 export async function listShipAccessVessels(): Promise<ShipAccessVessel[]> {

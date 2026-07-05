@@ -53,8 +53,12 @@ export type EmployeeDto = {
   status: EntityStatus;
   roleId: string | null;
   roleName?: string | null;
+  roleNo?: number | null;
+  roleCode?: string | null;
+  approvalLevel?: number | null;
   userId?: string | null;
   loginId?: string | null;
+  vesselLoginId?: string | null;
   vesselCount?: number;
   vessels?: { id: string; code: string; name: string; isWatchKeeper: boolean }[];
   createdAt: string;
@@ -68,4 +72,6 @@ export type ListQuery = {
   status?: EntityStatus | "all";
   companyId?: string;
   category?: CompanyCategory;
+  excludeCategories?: CompanyCategory[];
+  userType?: import("@prisma/client").RbacUserType;
 };

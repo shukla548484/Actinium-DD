@@ -3,6 +3,7 @@
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ProjectChecklistModulePage } from "@/components/superintendent/ProjectChecklistModulePage";
+import { VesselRequisitionBankPanel } from "@/components/superintendent/VesselRequisitionBankPanel";
 import { PageHeader, PageShell } from "@/components/layout/PageShell";
 import { fmtDate, fmtMoney } from "@/lib/superintendent/formatters";
 import { Button } from "@/components/ui/button";
@@ -96,11 +97,17 @@ export default function ProjectProcurementPage() {
       />
 
       <div className="space-y-6">
+        <VesselRequisitionBankPanel dryDockProjectId={id} />
+
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Purchase orders</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Setting a PO to <strong>issued</strong> creates an approval request in the approvals inbox.
+              Required sign-off level depends on PO amount (see RBAC approval levels).
+            </p>
             <form className="grid gap-3 md:grid-cols-4" onSubmit={(e) => void createPo(e)}>
               <div className="space-y-1">
                 <Label>Supplier</Label>

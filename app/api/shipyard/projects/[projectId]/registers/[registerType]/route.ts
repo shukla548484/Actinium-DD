@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireShipyardApiAccess } from "@/lib/auth/shipyardAccess";
 import {
   createYardRegisterEntry,
   listYardRegisterEntries,
@@ -9,6 +10,9 @@ export async function GET(
   _req: Request,
   ctx: { params: Promise<{ projectId: string; registerType: string }> },
 ) {
+  const denied = await requireShipyardApiAccess(_req);
+  if (denied) return denied;
+
   const { projectId, registerType } = await ctx.params;
   if (!isYardRegisterType(registerType)) {
     return NextResponse.json({ error: "Unknown register type" }, { status: 400 });
@@ -21,6 +25,9 @@ export async function POST(
   req: Request,
   ctx: { params: Promise<{ projectId: string; registerType: string }> },
 ) {
+  const denied = await requireShipyardApiAccess(req);
+  if (denied) return denied;
+
   try {
     const { projectId, registerType } = await ctx.params;
     if (!isYardRegisterType(registerType)) {

@@ -26,6 +26,10 @@ export async function listRolesWithPermissionCounts(userType?: RbacUserType) {
     name: r.name,
     userType: r.userType,
     hierarchyLevel: r.hierarchyLevel,
+    categoryTier: r.categoryTier,
+    approvalLevel: r.approvalLevel,
+    reportsToCode: r.reportsToCode,
+    jobScope: r.jobScope,
     designation: r.designation,
     department: r.department,
     description: r.description,
@@ -128,6 +132,8 @@ export async function getAdminStats() {
     pagePermissionCount,
     userCount,
     companyCount,
+    shipyardCount,
+    externalVendorCount,
     vesselCount,
     employeeCount,
   ] = await Promise.all([
@@ -135,7 +141,14 @@ export async function getAdminStats() {
     prisma.permission.count(),
     prisma.permission.count({ where: { module: "page" } }),
     prisma.user.count({ where: notDeleted }),
-    prisma.company.count({ where: notDeleted }),
+    prisma.company.count({
+      where: {
+        ...notDeleted,
+        category: { notIn: ["shipyard", "external_vendor"] },
+      },
+    }),
+    prisma.company.count({ where: { ...notDeleted, category: "shipyard" } }),
+    prisma.company.count({ where: { ...notDeleted, category: "external_vendor" } }),
     prisma.vessel.count({ where: notDeleted }),
     prisma.employee.count({ where: notDeleted }),
   ]);
@@ -146,6 +159,8 @@ export async function getAdminStats() {
     pagePermissionCount,
     userCount,
     companyCount,
+    shipyardCount,
+    externalVendorCount,
     vesselCount,
     employeeCount,
   };

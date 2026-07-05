@@ -7,7 +7,10 @@ import {
   verifyOfficePassword,
 } from "@/lib/auth/session";
 import { verifyEmployeeLogin } from "@/lib/db/employeeAuth";
+import { loginDestinationForUserType } from "@/lib/auth/portalAccess";
+import { SHIP_ACCESS_VESSEL_COOKIE } from "@/lib/shipAccess/scope";
 import { prisma } from "@/lib/prisma";
+import { notDeleted } from "@/lib/superintendent/helpers";
 
 export const runtime = "nodejs";
 
@@ -30,7 +33,7 @@ export async function POST(request: Request) {
   if (loginId) {
     const user = await verifyEmployeeLogin(loginId, password);
     if (!user) {
-      return NextResponse.json({ error: "Invalid employee ID or password." }, { status: 401 });
+      return NextResponse.json({ error: "Invalid login ID or password." }, { status: 401 });
     }
 
     await prisma.user.update({
@@ -44,13 +47,45 @@ export async function POST(request: Request) {
         loginId: user.loginId,
         displayName: user.displayName,
         employeeCode: user.employeeCode,
+        isVesselCrew: user.isVesselCrew,
+        rbacUserType: user.rbacUserType,
+        roleCode: user.roleCode,
+        vesselLoginId: user.vesselLoginId,
+        portalHome: loginDestinationForUserType(user.rbacUserType),
       },
     });
     res.cookies.set(
       COOKIE_NAME,
-      createSessionToken({ userId: user.userId, loginId: user.loginId }),
+      createSessionToken({
+        userId: user.userId,
+        loginId: user.loginId,
+        isVesselCrew: user.isVesselCrew,
+        rbacUserType: user.rbacUserType,
+      }),
       sessionCookieOptions(),
     );
+
+    if (user.isVesselCrew && user.employeeId) {
+      const assignment = await prisma.employeeVessel.findFirst({
+        where: {
+          employeeId: user.employeeId,
+          signOffDate: null,
+          vessel: { ...notDeleted, status: "active" },
+        },
+        orderBy: { assignedAt: "asc" },
+        select: { vesselId: true },
+      });
+      if (assignment) {
+        res.cookies.set(SHIP_ACCESS_VESSEL_COOKIE, assignment.vesselId, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          path: "/",
+          maxAge: 60 * 60 * 24 * 30,
+        });
+      }
+    }
+
     return res;
   }
 
@@ -58,7 +93,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid password." }, { status: 401 });
   }
 
-  const res = NextResponse.json({ ok: true, officeBootstrap: true });
-  res.cookies.set(COOKIE_NAME, createSessionToken({ officeBootstrap: true }), sessionCookieOptions());
+  const res = NextResponse.json({
+    ok: true,
+    officeBootstrap: true,
+    user: { rbacUserType: "office", portalHome: "/projects" },
+  });
+  res.cookies.set(
+    COOKIE_NAME,
+    createSessionToken({ officeBootstrap: true, rbacUserType: "office" }),
+    sessionCookieOptions(),
+  );
   return res;
 }

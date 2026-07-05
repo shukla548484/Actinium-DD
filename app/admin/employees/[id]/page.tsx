@@ -66,6 +66,17 @@ export default async function EmployeeDetailPage({ params }: Props) {
               <span className="text-muted-foreground">Login ID</span>
               <span className="font-mono">{employee.loginId ?? employee.employeeCode}</span>
             </div>
+            {employee.vesselLoginId ? (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Vessel login ID</span>
+                <span className="font-mono">{employee.vesselLoginId}</span>
+              </div>
+            ) : null}
+            {employee.vesselLoginId ? (
+              <p className="text-xs text-muted-foreground">
+                Onboard crew sign in with the vessel login ID only.
+              </p>
+            ) : null}
             <div className="flex justify-between">
               <span className="text-muted-foreground">Default password</span>
               <span>{DEFAULT_EMPLOYEE_PASSWORD}</span>
@@ -81,6 +92,25 @@ export default async function EmployeeDetailPage({ params }: Props) {
             <div className="flex justify-between">
               <span className="text-muted-foreground">Designation</span>
               <span>{employee.designation ?? "—"}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Role ID</span>
+              <span className="font-mono">
+                {employee.role?.roleNo ?? employee.roleNo ?? "—"}
+                {employee.role?.code ?? employee.roleCode ? (
+                  <span className="ml-2 font-sans text-muted-foreground">
+                    {employee.role?.code ?? employee.roleCode}
+                  </span>
+                ) : null}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Approval level</span>
+              <span className="font-mono">
+                {(employee.role?.approvalLevel ?? employee.approvalLevel) != null
+                  ? `A${employee.role?.approvalLevel ?? employee.approvalLevel}`
+                  : "—"}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Department</span>

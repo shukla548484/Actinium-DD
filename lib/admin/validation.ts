@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { getDesignationByLabel } from "@/lib/admin/designations";
+import { isVesselCrewRoleCode } from "@/lib/admin/vesselCrewRoles";
 import { PHONE_E164_REGEX } from "@/lib/admin/phone";
 
 export const entityStatusSchema = z.enum(["active", "wait", "inactive"]);
@@ -8,6 +9,7 @@ export const companyCategorySchema = z.enum([
   "shipyard",
   "ship_management",
   "ship_owner",
+  "external_vendor",
   "other",
 ]);
 
@@ -82,6 +84,39 @@ export const employeeUpdateSchema = employeeCreateSchema.partial().extend({
 export const assignVesselsSchema = z.object({
   vesselIds: z.array(z.string()).min(1, "Select at least one vessel"),
   watchKeeperVesselIds: z.array(z.string()).optional(),
+});
+
+export const crewCredentialCreateSchema = z.object({
+  roleCode: z
+    .string()
+    .trim()
+    .min(1, "Crew designation is required")
+    .refine((value) => isVesselCrewRoleCode(value), {
+      message: "Select a valid vessel crew designation",
+    }),
+  firstName: z.string().trim().min(1, "First name is required"),
+  lastName: z.string().trim().min(1, "Last name is required"),
+  email: employeeEmailSchema,
+  phone: employeePhoneSchema,
+  isWatchKeeper: z.boolean().optional(),
+});
+
+export const crewCredentialUpdateSchema = z.object({
+  roleCode: z
+    .string()
+    .trim()
+    .min(1, "Crew designation is required")
+    .refine((value) => isVesselCrewRoleCode(value), {
+      message: "Select a valid vessel crew designation",
+    })
+    .optional(),
+  firstName: z.string().trim().min(1, "First name is required").optional(),
+  lastName: z.string().trim().min(1, "Last name is required").optional(),
+  email: employeeEmailSchema.optional(),
+  phone: employeePhoneSchema.optional(),
+  isWatchKeeper: z.boolean().optional(),
+  status: entityStatusSchema.optional(),
+  resetPassword: z.boolean().optional(),
 });
 
 export const statusBodySchema = z.object({

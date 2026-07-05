@@ -1,3 +1,24 @@
+import type { LucideIcon } from "lucide-react";
+import {
+  AlertTriangle,
+  Anchor,
+  CalendarDays,
+  CheckCircle,
+  ClipboardCheck,
+  ClipboardList,
+  Clock,
+  FileSpreadsheet,
+  FileText,
+  Flag,
+  FolderKanban,
+  Inbox,
+  LayoutDashboard,
+  ListChecks,
+  Package,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
+
 export type SuperintendentNavId =
   | "overview"
   | "dashboard"
@@ -15,6 +36,7 @@ export type SuperintendentNavId =
   | "delays"
   | "progress"
   | "survey"
+  | "vesselRequisitionBank"
   | "spares"
   | "approvals"
   | "reports";
@@ -37,6 +59,7 @@ export interface SuperintendentNavItem {
   href: string;
   description: string;
   group: SuperintendentNavGroup;
+  icon: LucideIcon;
 }
 
 /** Technical Superintendent module sidebar navigation. */
@@ -47,6 +70,7 @@ export const superintendentNavItems: SuperintendentNavItem[] = [
     href: "/superintendent",
     description: "Fleet dry-dock overview and KPIs",
     group: "Overview",
+    icon: LayoutDashboard,
   },
   {
     id: "vessels",
@@ -54,6 +78,7 @@ export const superintendentNavItems: SuperintendentNavItem[] = [
     href: "/superintendent/vessels",
     description: "Vessels in your scope with readiness scores",
     group: "Overview",
+    icon: Anchor,
   },
   {
     id: "projects",
@@ -61,6 +86,7 @@ export const superintendentNavItems: SuperintendentNavItem[] = [
     href: "/superintendent/projects",
     description: "Active and planned dry dock executions",
     group: "Planning",
+    icon: FolderKanban,
   },
   {
     id: "checklist",
@@ -68,6 +94,7 @@ export const superintendentNavItems: SuperintendentNavItem[] = [
     href: "/superintendent/planning/checklist",
     description: "Readiness tasks before yard entry",
     group: "Planning",
+    icon: ListChecks,
   },
   {
     id: "milestones",
@@ -75,6 +102,7 @@ export const superintendentNavItems: SuperintendentNavItem[] = [
     href: "/superintendent/planning/milestones",
     description: "Key dates and gate reviews",
     group: "Planning",
+    icon: Flag,
   },
   {
     id: "risks",
@@ -82,6 +110,7 @@ export const superintendentNavItems: SuperintendentNavItem[] = [
     href: "/superintendent/planning/risks",
     description: "Identified risks and mitigations",
     group: "Planning",
+    icon: AlertTriangle,
   },
   {
     id: "jobs",
@@ -89,6 +118,7 @@ export const superintendentNavItems: SuperintendentNavItem[] = [
     href: "/superintendent/jobs",
     description: "Scope jobs by category and status",
     group: "Jobs",
+    icon: ClipboardList,
   },
   {
     id: "vesselJobBank",
@@ -96,6 +126,7 @@ export const superintendentNavItems: SuperintendentNavItem[] = [
     href: "/superintendent/vessel-jobs",
     description: "Ship-proposed jobs awaiting superintendent curation",
     group: "Jobs",
+    icon: Inbox,
   },
   {
     id: "budget",
@@ -103,6 +134,7 @@ export const superintendentNavItems: SuperintendentNavItem[] = [
     href: "/superintendent/budget",
     description: "Budget vs quoted vs actual by category",
     group: "Budget",
+    icon: Wallet,
   },
   {
     id: "variations",
@@ -110,6 +142,7 @@ export const superintendentNavItems: SuperintendentNavItem[] = [
     href: "/superintendent/budget/variations",
     description: "VO tracking and approval status",
     group: "Budget",
+    icon: FileText,
   },
   {
     id: "rfq",
@@ -117,6 +150,7 @@ export const superintendentNavItems: SuperintendentNavItem[] = [
     href: "/superintendent/rfq",
     description: "Linked tender projects and yard quotes",
     group: "RFQ",
+    icon: FileText,
   },
   {
     id: "dailyReports",
@@ -124,6 +158,7 @@ export const superintendentNavItems: SuperintendentNavItem[] = [
     href: "/superintendent/monitoring/daily-reports",
     description: "Yard daily progress and manpower",
     group: "Monitoring",
+    icon: CalendarDays,
   },
   {
     id: "delays",
@@ -131,6 +166,7 @@ export const superintendentNavItems: SuperintendentNavItem[] = [
     href: "/superintendent/monitoring/delays",
     description: "Open delay items and impact days",
     group: "Monitoring",
+    icon: Clock,
   },
   {
     id: "progress",
@@ -138,6 +174,7 @@ export const superintendentNavItems: SuperintendentNavItem[] = [
     href: "/superintendent/monitoring/progress",
     description: "Overall project completion trends",
     group: "Monitoring",
+    icon: TrendingUp,
   },
   {
     id: "survey",
@@ -145,6 +182,15 @@ export const superintendentNavItems: SuperintendentNavItem[] = [
     href: "/superintendent/survey",
     description: "Survey items and class references",
     group: "Survey",
+    icon: ClipboardCheck,
+  },
+  {
+    id: "vesselRequisitionBank",
+    label: "Vessel requisition bank",
+    href: "/superintendent/vessel-requisitions",
+    description: "Master-approved spares requisitions from the vessel portal",
+    group: "Spares",
+    icon: Inbox,
   },
   {
     id: "spares",
@@ -152,6 +198,7 @@ export const superintendentNavItems: SuperintendentNavItem[] = [
     href: "/superintendent/spares",
     description: "Required parts and delivery status",
     group: "Spares",
+    icon: Package,
   },
   {
     id: "approvals",
@@ -159,6 +206,7 @@ export const superintendentNavItems: SuperintendentNavItem[] = [
     href: "/superintendent/approvals",
     description: "Pending budget, scope, and VO approvals",
     group: "Approvals",
+    icon: CheckCircle,
   },
   {
     id: "reports",
@@ -166,6 +214,7 @@ export const superintendentNavItems: SuperintendentNavItem[] = [
     href: "/superintendent/reports",
     description: "Summary reports and Excel exports",
     group: "Reports",
+    icon: FileSpreadsheet,
   },
 ];
 
@@ -197,6 +246,7 @@ export function resolveSuperintendentNavId(pathname: string): SuperintendentNavI
   if (pathname.startsWith("/superintendent/monitoring/delays")) return "delays";
   if (pathname.startsWith("/superintendent/monitoring/progress")) return "progress";
   if (pathname.startsWith("/superintendent/survey")) return "survey";
+  if (pathname.startsWith("/superintendent/vessel-requisitions")) return "vesselRequisitionBank";
   if (pathname.startsWith("/superintendent/spares")) return "spares";
   if (pathname.startsWith("/superintendent/approvals")) return "approvals";
   if (pathname.startsWith("/superintendent/reports")) return "reports";

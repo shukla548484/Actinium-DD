@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { PERMISSIONS } from "@/lib/rbac/permissions";
 import { resolveRolePermissionKeys } from "@/lib/rbac/rolePermissions";
-import { SYSTEM_ROLES } from "@/lib/rbac/roles";
+import { LEGACY_ROLE_CODE_ALIASES, SYSTEM_ROLES } from "@/lib/rbac/roles";
 import type { AuthContext } from "@/lib/rbac/types";
 
 const notDeleted = { deletedAt: null };
@@ -21,8 +21,9 @@ export async function listPermissions(module?: string) {
 }
 
 export async function getRoleByCode(code: string, organizationId: string | null = null) {
+  const resolved = LEGACY_ROLE_CODE_ALIASES[code] ?? code;
   return prisma.role.findFirst({
-    where: { code, organizationId, ...notDeleted },
+    where: { code: resolved, organizationId, ...notDeleted },
   });
 }
 
@@ -101,6 +102,36 @@ export function canAccessPage(context: AuthContext | null, pagePermission: strin
   return can(context, pagePermission);
 }
 
+async function upsertSystemRole(role: (typeof SYSTEM_ROLES)[number]) {
+  const data = {
+    roleNo: role.roleNo,
+    code: role.code,
+    name: role.name,
+    userType: role.userType,
+    hierarchyLevel: role.hierarchyLevel,
+    categoryTier: role.categoryTier,
+    approvalLevel: role.approvalLevel,
+    reportsToCode: role.reportsToCode,
+    jobScope: role.jobScope,
+    sortOrder: role.sortOrder,
+    designation: role.designation,
+    department: role.department,
+    description: role.jobScope,
+    isSystem: true,
+    organizationId: null as null,
+  };
+
+  const existing = await prisma.role.findFirst({
+    where: { organizationId: null, code: role.code, ...notDeleted },
+  });
+
+  if (existing) {
+    return prisma.role.update({ where: { id: existing.id }, data });
+  }
+
+  return prisma.role.create({ data });
+}
+
 /** Idempotent seed — safe to run on every deploy. */
 export async function seedRbacCatalog() {
   const allPermissionKeys = PERMISSIONS.map((p) => p.key);
@@ -130,33 +161,7 @@ export async function seedRbacCatalog() {
   const permissionIdByKey = Object.fromEntries(permissionRows.map((p) => [p.key, p.id]));
 
   for (const role of SYSTEM_ROLES) {
-    const row = await prisma.role.upsert({
-      where: { roleNo: role.roleNo },
-      create: {
-        roleNo: role.roleNo,
-        code: role.code,
-        name: role.name,
-        userType: role.userType,
-        hierarchyLevel: role.hierarchyLevel,
-        sortOrder: role.sortOrder,
-        designation: role.designation,
-        department: role.department,
-        description: role.description,
-        isSystem: true,
-        organizationId: null,
-      },
-      update: {
-        code: role.code,
-        name: role.name,
-        userType: role.userType,
-        hierarchyLevel: role.hierarchyLevel,
-        sortOrder: role.sortOrder,
-        designation: role.designation,
-        department: role.department,
-        description: role.description,
-        isSystem: true,
-      },
-    });
+    const row = await upsertSystemRole(role);
 
     const keys = resolveRolePermissionKeys(role.code, allPermissionKeys);
     for (const key of keys) {
@@ -171,6 +176,13 @@ export async function seedRbacCatalog() {
       });
     }
   }
+
+  // Retire legacy role codes superseded by the new catalog.
+  const retiredCodes = Object.keys(LEGACY_ROLE_CODE_ALIASES);
+  await prisma.role.updateMany({
+    where: { organizationId: null, code: { in: retiredCodes }, ...notDeleted },
+    data: { deletedAt: new Date() },
+  });
 
   return {
     roles: SYSTEM_ROLES.length,

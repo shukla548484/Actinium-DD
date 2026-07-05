@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireShipyardApiAccess } from "@/lib/auth/shipyardAccess";
 import {
   deleteYardRegisterEntry,
   updateYardRegisterEntry,
@@ -9,6 +10,9 @@ export async function PATCH(
   req: Request,
   ctx: { params: Promise<{ projectId: string; registerType: string; entryId: string }> },
 ) {
+  const denied = await requireShipyardApiAccess(req);
+  if (denied) return denied;
+
   try {
     const { projectId, registerType, entryId } = await ctx.params;
     if (!isYardRegisterType(registerType)) {
@@ -29,6 +33,9 @@ export async function DELETE(
   _req: Request,
   ctx: { params: Promise<{ projectId: string; registerType: string; entryId: string }> },
 ) {
+  const denied = await requireShipyardApiAccess(_req);
+  if (denied) return denied;
+
   try {
     const { projectId, registerType, entryId } = await ctx.params;
     if (!isYardRegisterType(registerType)) {

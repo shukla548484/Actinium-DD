@@ -1,0 +1,45 @@
+Actinium-SM Marine Technical Intelligence Library (MTIL)
+Master Plan
+Version: 0.2
+Last updated: 2026-07-05
+
+Objective:
+Create a structured Dry Dock / PMS / RFQ / Budget / Quote Comparison intelligence library.
+
+Target:
+- 5,000+ standardized jobs
+- 250+ reusable dynamic templates
+- 2,500+ inspection checklist items
+- 2,000+ measurement fields
+- RFQ, budget, workshop, cost-code mapping
+- Import-ready Excel and PostgreSQL structure
+
+Phase Status:
+[COMPLETED] Phase 0 - Standards, architecture and planning
+[COMPLETED] Phase 1 - Main Propulsion Systems
+[PENDING] Phase 2 - Auxiliary Machinery
+[PENDING] Phase 3 - Pumps, Valves and Piping
+[PENDING] Phase 4 - Deck Machinery and Cargo Systems
+[PENDING] Phase 5 - Hull, Steel and Coatings
+[PENDING] Phase 6 - Electrical, Automation and Navigation
+[PENDING] Phase 7 - Safety and Accommodation
+[PENDING] Phase 8 - Dynamic Templates and Inspection Forms
+[PENDING] Phase 9 - RFQ, Cost Codes and Quote Mapping
+[PENDING] Phase 10 - AI Knowledge Base and Final Database
+
+Phase 1 Deliverables (completed):
+- 25 catalog dynamic templates (TMP-ENG-ME-0001 to 0025)
+- 600+ generated standardized jobs (JOB-ENG-ME-xxxx)
+- 27 measurement fields with tolerance database (MEA-ENG-ME-xxxx)
+- 100+ inspection checklist items (INS-ENG-ME-xxxx)
+- Excel workbook export (jobs, templates, measurements, checklists)
+- PostgreSQL seed via JobLibraryNode + mtilMeta
+
+Implementation:
+- lib/mtil/ — template engine, standards, workbook schema
+- lib/mtil/phases/phase1/ — taxonomy, generator, template catalog
+- Admin: /admin/job-library — seed + workbook download
+- API: GET /api/admin/mtil/phase1?format=csv&sheet=jobs|templates|measurements|checklists
+
+Next Action:
+Phase 2 — Auxiliary Machinery workbook and template library.

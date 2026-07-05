@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { NavItemLink } from "@/components/layout/NavItemLink";
 import {
   shipyardModuleSections,
   shipyardSectionForPath,
@@ -29,34 +29,33 @@ export function ShipyardSidebar() {
 
         {shipyardModuleSections.map((mod) => {
           const sectionActive = mod.id === section.id;
+          const SectionIcon = mod.icon;
           return (
             <div key={mod.id}>
-              <Link
+              <NavItemLink
                 href={mod.href}
+                label={mod.label}
+                icon={SectionIcon}
+                active={sectionActive}
                 className={cn(
-                  "mb-1 block rounded-md px-2 py-1.5 text-sm font-medium transition-colors",
-                  sectionActive
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
+                  "mb-1 font-medium",
+                  !sectionActive && "shadow-none",
                 )}
-              >
-                {mod.label}
-              </Link>
+              />
               {mod.items.length > 0 ? (
                 <ul className="ml-1 space-y-0.5 border-l pl-2">
                   {mod.items.map((item) => (
                     <li key={item.href}>
-                      <Link
+                      <NavItemLink
                         href={item.href}
+                        label={item.label}
+                        icon={item.icon}
+                        active={isLinkActive(pathname, item.href)}
+                        size="xs"
                         className={cn(
-                          "block rounded-md px-2 py-1.5 text-xs transition-colors",
-                          isLinkActive(pathname, item.href)
-                            ? "font-medium text-foreground"
-                            : "text-muted-foreground hover:text-foreground",
+                          isLinkActive(pathname, item.href) && "font-medium text-foreground shadow-none",
                         )}
-                      >
-                        {item.label}
-                      </Link>
+                      />
                     </li>
                   ))}
                 </ul>
@@ -79,18 +78,15 @@ export function ShipyardMobileNav() {
       aria-label="Shipyard sections"
     >
       {shipyardModuleSections.map((mod) => (
-        <Link
+        <NavItemLink
           key={mod.id}
           href={mod.href}
-          className={cn(
-            "shrink-0 rounded-md px-3 py-1.5 text-xs font-medium",
-            mod.id === section.id
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground",
-          )}
-        >
-          {mod.label}
-        </Link>
+          label={mod.label}
+          icon={mod.icon}
+          active={mod.id === section.id}
+          size="xs"
+          className="shrink-0 rounded-md px-3 py-1.5"
+        />
       ))}
     </nav>
   );

@@ -20,6 +20,9 @@ type Props = {
   readOnly?: boolean;
   /** API base path for vessel job bank (default: superintendent). */
   jobsApiBase?: string;
+  allowedCategories?: string[];
+  defaultCreatedByName?: string;
+  jobId?: string;
 };
 
 export function VesselJobSubmitForm({
@@ -27,11 +30,19 @@ export function VesselJobSubmitForm({
   vesselId,
   readOnly,
   jobsApiBase = "/api/superintendent/vessel-jobs",
+  allowedCategories,
+  defaultCreatedByName = "",
+  jobId,
 }: Props) {
-  const [category, setCategory] = useState("miscellaneous");
+  const categoryItems = allowedCategories?.length
+    ? JOB_CATEGORY_ITEMS.filter((item) => allowedCategories.includes(item.value))
+    : JOB_CATEGORY_ITEMS;
+  const defaultCategory = categoryItems[0]?.value ?? "miscellaneous";
+
+  const [category, setCategory] = useState(defaultCategory);
   const [priority, setPriority] = useState("medium");
   const [source, setSource] = useState("vessel");
-  const [createdByName, setCreatedByName] = useState("");
+  const [createdByName, setCreatedByName] = useState(defaultCreatedByName);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recent, setRecent] = useState<DdVesselJobDto[]>([]);
@@ -58,6 +69,39 @@ export function VesselJobSubmitForm({
     void loadRecent();
   }, [loadRecent]);
 
+  useEffect(() => {
+    setCreatedByName(defaultCreatedByName);
+  }, [defaultCreatedByName]);
+
+  useEffect(() => {
+    if (!categoryItems.some((item) => item.value === category)) {
+      setCategory(defaultCategory);
+    }
+  }, [allowedCategories, category, categoryItems, defaultCategory]);
+
+  useEffect(() => {
+    if (!jobId) return;
+    void fetch(`${jobsApiBase}/${jobId}`)
+      .then((r) => r.json())
+      .then((data: { vesselJob?: DdVesselJobDto }) => {
+        const job = data.vesselJob;
+        if (!job) return;
+        setCategory(job.category);
+        setPriority(job.priority);
+        setSource(job.source);
+        setCreatedByName(job.createdByName ?? defaultCreatedByName);
+        if (formRef.current) {
+          (formRef.current.elements.namedItem("title") as HTMLInputElement).value = job.title;
+          (formRef.current.elements.namedItem("jobCode") as HTMLInputElement).value =
+            job.jobCode ?? "";
+          (formRef.current.elements.namedItem("workshop") as HTMLInputElement).value =
+            job.workshop ?? "";
+          (formRef.current.elements.namedItem("description") as HTMLTextAreaElement).value =
+            job.description ?? "";
+        }
+      });
+  }, [jobId, jobsApiBase, defaultCreatedByName]);
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>, submit: boolean) {
     e.preventDefault();
     if (readOnly || !vesselId) return;
@@ -67,23 +111,25 @@ export function VesselJobSubmitForm({
     const form = new FormData(e.currentTarget);
 
     try {
-      const res = await fetch(jobsApiBase, {
-        method: "POST",
+      const payload = {
+        vesselId,
+        targetDryDockProjectId: dryDockProjectId,
+        title: form.get("title"),
+        category,
+        priority,
+        source,
+        jobCode: (form.get("jobCode") as string) || null,
+        workshop: (form.get("workshop") as string) || null,
+        description: (form.get("description") as string) || null,
+        createdByName: createdByName.trim() || null,
+        createdByRole: "vessel",
+        submit,
+      };
+
+      const res = await fetch(jobId ? `${jobsApiBase}/${jobId}` : jobsApiBase, {
+        method: jobId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          vesselId,
-          targetDryDockProjectId: dryDockProjectId,
-          title: form.get("title"),
-          category,
-          priority,
-          source,
-          jobCode: (form.get("jobCode") as string) || null,
-          workshop: (form.get("workshop") as string) || null,
-          description: (form.get("description") as string) || null,
-          createdByName: createdByName.trim() || null,
-          createdByRole: "vessel",
-          submit,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) {
@@ -143,9 +189,9 @@ export function VesselJobSubmitForm({
               <div className="space-y-2">
                 <Label>Category *</Label>
                 <LabeledSelect
-                  items={JOB_CATEGORY_ITEMS}
+                  items={categoryItems}
                   value={category}
-                  onValueChange={(v) => setCategory(v || "miscellaneous")}
+                  onValueChange={(v) => setCategory(v || defaultCategory)}
                   className="w-full"
                 />
               </div>

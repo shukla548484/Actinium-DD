@@ -6,6 +6,7 @@ import {
   upsertQuoteMeta,
 } from "@/lib/db/index";
 import { resolveSpecDescription } from "@/lib/i18n/scope";
+import { requireQuoteTokenScope } from "@/lib/quote/tokenScope";
 import {
   recalculateInviteLines,
   recalculateQuoteMetaTotals,
@@ -20,6 +21,9 @@ export async function GET(
   context: { params: Promise<{ token: string }> },
 ) {
   const { token } = await context.params;
+  const scopeDenied = await requireQuoteTokenScope(token);
+  if (scopeDenied) return scopeDenied;
+
   const detail = await getYardQuoteByToken(token);
   if (!detail) {
     return NextResponse.json({ error: "Invalid or expired quote link." }, { status: 404 });
@@ -32,6 +36,9 @@ export async function POST(
   context: { params: Promise<{ token: string }> },
 ) {
   const { token } = await context.params;
+  const scopeDenied = await requireQuoteTokenScope(token);
+  if (scopeDenied) return scopeDenied;
+
   const detail = await getYardQuoteByToken(token);
   if (!detail) {
     return NextResponse.json({ error: "Invalid or expired quote link." }, { status: 404 });

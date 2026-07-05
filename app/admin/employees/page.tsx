@@ -10,7 +10,7 @@ export default function AdminEmployeesPage() {
     <PageShell size="wide">
       <PageHeader
         title="Employee management"
-        description="Register staff, assign vessels, and manage active / waiting / inactive status."
+        description="Register office staff, assign vessels, reset passwords, and manage active / waiting / inactive status."
         actions={
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" render={<Link href="/admin/employees/import" />} nativeButton={false}>

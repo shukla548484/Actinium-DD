@@ -32,6 +32,8 @@ type AssignData = {
     firstName: string;
     lastName: string;
     employeeCode: string;
+    loginId?: string;
+    vesselLoginId?: string | null;
     status: string;
     companyName?: string;
   };
@@ -132,8 +134,16 @@ export function AssignVesselsPanel({ employeeId }: { employeeId: string }) {
             assignments sets the employee to Active.
           </p>
           <p className="text-sm">
-            Login ID: <strong className="font-mono">{employee.employeeCode}</strong> · Default
-            password: <strong>{DEFAULT_EMPLOYEE_PASSWORD}</strong>
+            Login ID:{" "}
+            <strong className="font-mono">{employee.loginId ?? employee.employeeCode}</strong>
+            {employee.vesselLoginId ? (
+              <>
+                {" "}
+                · Vessel login ID:{" "}
+                <strong className="font-mono">{employee.vesselLoginId}</strong>
+              </>
+            ) : null}{" "}
+            · Default password: <strong>{DEFAULT_EMPLOYEE_PASSWORD}</strong>
           </p>
         </CardContent>
       </Card>

@@ -1,0 +1,109 @@
+/** MTIL v0.2 commercial ID standards — Excel / PostgreSQL import ready. */
+
+export const MTIL_ENGINE_VERSION = "0.2.0";
+
+export type MtilDeptCode = "ENG" | "AUX" | "PVP" | "DKC" | "HUL" | "ELC" | "SAF";
+
+export type MtilSystemCode =
+  | "ME"
+  | "AE"
+  | "BLR"
+  | "PMP"
+  | "DKM"
+  | "HUL"
+  | "ELC"
+  | "SAF";
+
+export const MTIL_VESSEL_TYPES = [
+  "Bulk Carrier",
+  "Tanker",
+  "Oil Tanker",
+  "Product Tanker",
+  "Chemical Tanker",
+  "Container",
+  "Container Ship",
+  "General Cargo",
+  "MPP",
+  "Ro-Ro",
+  "LNG Carrier",
+  "LPG Carrier",
+  "Offshore Support",
+  "Passenger",
+  "All Types",
+] as const;
+
+export type MtilVesselType = (typeof MTIL_VESSEL_TYPES)[number];
+
+export const MTIL_PROJECT_TYPES = [
+  "Special Survey",
+  "Intermediate Survey",
+  "Damage Repair",
+  "Occasional Repair",
+  "Underwater Survey",
+  "New Installation",
+  "Emergency Docking",
+  "Lay-up / Reactivation",
+  "Conversion / Modification",
+  "Warranty Repair",
+] as const;
+
+export type MtilProjectType = (typeof MTIL_PROJECT_TYPES)[number];
+
+export const MTIL_APPROVAL_WORKFLOWS = [
+  "crew_submit",
+  "ce_review",
+  "master_review",
+  "superintendent_approve",
+  "class_witness",
+] as const;
+
+export type MtilApprovalWorkflow = (typeof MTIL_APPROVAL_WORKFLOWS)[number];
+
+function padSeq(seq: number, width = 4): string {
+  return String(seq).padStart(width, "0");
+}
+
+export function buildJobId(dept: MtilDeptCode, system: MtilSystemCode, seq: number): string {
+  return `JOB-${dept}-${system}-${padSeq(seq)}`;
+}
+
+export function buildTemplateId(dept: MtilDeptCode, system: MtilSystemCode, seq: number): string {
+  return `TMP-${dept}-${system}-${padSeq(seq)}`;
+}
+
+export function buildInspectionId(dept: MtilDeptCode, system: MtilSystemCode, seq: number): string {
+  return `INS-${dept}-${system}-${padSeq(seq)}`;
+}
+
+export function buildMeasurementId(dept: MtilDeptCode, system: MtilSystemCode, seq: number): string {
+  return `MEA-${dept}-${system}-${padSeq(seq)}`;
+}
+
+export function buildRfqId(dept: MtilDeptCode, system: MtilSystemCode, seq: number): string {
+  return `RFQ-${dept}-${system}-${padSeq(seq)}`;
+}
+
+export function buildBudgetCode(dept: MtilDeptCode, seq: number): string {
+  return `BUD-DD-${dept}-${padSeq(seq)}`;
+}
+
+/** Legacy internal code — retained for stable DB keys and generator sequencing. */
+export function buildMtilJobCode(input: {
+  phase: number;
+  systemCode: string;
+  componentCode: string;
+  action: string;
+  sequence: number;
+}): string {
+  const seq = String(input.sequence).padStart(3, "0");
+  return `MTIL-P${input.phase}-${input.systemCode}-${input.componentCode}-${input.action}-${seq}`.toUpperCase();
+}
+
+export function buildCostCode(input: {
+  phase: number;
+  workshop: string;
+  systemCode: string;
+}): string {
+  const ws = input.workshop.slice(0, 3).toUpperCase();
+  return `DD-P${input.phase}-${ws}-${input.systemCode}`.toUpperCase();
+}

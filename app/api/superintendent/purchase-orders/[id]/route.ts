@@ -3,6 +3,8 @@ import { requireSuperintendentApiAccess } from "@/lib/auth/superintendentAccess"
 import { notDeleted } from "@/lib/superintendent/helpers";
 import { assertChildDryDockProjectInScope } from "@/lib/superintendent/childRouteScope";
 import { ddPurchaseOrderUpdateSchema, parseBody } from "@/lib/superintendent/validation";
+import { syncPurchaseOrderApproval } from "@/lib/superintendent/purchaseOrderApproval";
+import { writeAuditLog } from "@/lib/db/audit";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +26,18 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
   if (!access.ok) return access.response;
 
   const purchaseOrder = await prisma.ddPurchaseOrder.update({ where: { id }, data: parsed.data });
+  if (parsed.data.status === "issued" || purchaseOrder.status === "issued") {
+    await syncPurchaseOrderApproval(purchaseOrder);
+  }
+  if (parsed.data.status) {
+    await writeAuditLog({
+      action: "update",
+      entityType: "dd_purchase_order",
+      entityId: purchaseOrder.id,
+      summary: `PO ${purchaseOrder.poNumber ?? purchaseOrder.id.slice(0, 8)} → ${purchaseOrder.status}`,
+      metadata: { amount: purchaseOrder.amount },
+    });
+  }
   return NextResponse.json({ purchaseOrder });
 }
 

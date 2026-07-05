@@ -2,53 +2,56 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
 import { PageHeader, PageShell } from "@/components/layout/PageShell";
-import { ProjectInputsPanel } from "@/components/superintendent/ProjectInputsPanel";
-import { VesselJobSubmitForm } from "@/components/superintendent/VesselJobSubmitForm";
+import { VesselWorkspaceHub } from "@/components/superintendent/VesselWorkspaceHub";
+import { useProjectVessel } from "@/components/superintendent/useProjectVessel";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
-export default function VesselInputPortalPage() {
+export default function VesselPortalPage() {
   const { id } = useParams<{ id: string }>();
-  const [vesselId, setVesselId] = useState<string | null>(null);
-
-  useEffect(() => {
-    void fetch(`/api/superintendent/projects/${id}`)
-      .then((r) => r.json())
-      .then((d) => {
-        const p = d.project as { vesselId?: string } | undefined;
-        if (p?.vesselId) setVesselId(p.vesselId);
-      });
-  }, [id]);
+  const { vessel, loading } = useProjectVessel(id);
 
   return (
     <PageShell size="wide">
       <PageHeader
-        title="Vessel pre-docking inputs"
-        description="Ship staff entry — complete condition reports and submit for superintendent review."
+        title="Vessel portal"
+        description={
+          vessel
+            ? `${vessel.name} (${vessel.code}) — ship staff entry for dry dock preparation.`
+            : "Complete onboard inputs and propose scope jobs for superintendent review."
+        }
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            render={<Link href={`/superintendent/projects/${id}/inputs/review`} />}
+            nativeButton={false}
+          >
+            Review queue
+          </Button>
+        }
       />
+
       <Card className="mb-4 border-primary/20 bg-primary/5">
         <CardContent className="py-3 text-sm">
-          Complete each section and use <strong>Submit for review</strong> when ready. The
-          superintendent will approve items in the{" "}
-          <Link href={`/superintendent/projects/${id}/inputs/review`} className="underline">
-            review queue
-          </Link>
-          .           Proposed scope jobs go to{" "}
-          <Link href="/ship-access/jobs/new" className="underline">
+          Use the sections below or open{" "}
+          <Link href="/ship-access" className="font-medium underline">
             Ship Access
           </Link>{" "}
-          or the{" "}
-          <Link href="/superintendent/vessel-jobs" className="underline">
-            vessel job bank
+          for day-to-day onboard tasks. Proposed jobs integrate into the{" "}
+          <Link href={`/superintendent/projects/${id}/scope`} className="font-medium underline">
+            project scope
           </Link>{" "}
-          for superintendent curation.
+          after superintendent approval.
         </CardContent>
       </Card>
-      <div className="mb-8">
-        <VesselJobSubmitForm dryDockProjectId={id} vesselId={vesselId} />
-      </div>
-      <ProjectInputsPanel dryDockProjectId={id} pageKey="vessel" enteredByRole="vessel" />
+
+      {loading ? (
+        <p className="text-sm text-muted-foreground">Loading vessel context…</p>
+      ) : (
+        <VesselWorkspaceHub dryDockProjectId={id} portal />
+      )}
     </PageShell>
   );
 }

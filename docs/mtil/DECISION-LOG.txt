@@ -1,0 +1,27 @@
+Actinium-SM MTIL Decision Log
+Version: 0.2
+Last updated: 2026-07-05
+
+Decision 1: Use Project-First Architecture.
+Reason: Every dry dock activity must belong to a project workspace.
+
+Decision 2: Use Project Template Engine.
+Reason: Different project types require different default jobs, budgets, checklists and milestones.
+
+Decision 3: Use Dynamic Template Engine.
+Reason: Avoid creating thousands of static forms. Reusable templates reduce duplication.
+
+Decision 4: Use Excel as Authoring Format.
+Reason: Easy to review, edit, validate and import into PostgreSQL.
+
+Decision 5: Use TXT progress logs after each phase.
+Reason: Keep full documentation trail independent of chat history.
+
+Decision 6: Separate Job Library, Template Library, Measurement Library and RFQ Mapping.
+Reason: Keeps the system maintainable and scalable.
+
+Decision 7: Use v0.2 commercial IDs (JOB/TMP/INS/MEA/RFQ/BUD) alongside legacy MTIL-P codes.
+Reason: Aligns with commercial workbook standards while preserving stable internal keys.
+
+Decision 8: Generate jobs from component x action matrix, not hand-authored forms.
+Reason: 600 Phase 1 jobs from 25 templates + taxonomy — scalable to 5,000+.

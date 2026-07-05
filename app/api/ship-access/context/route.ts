@@ -4,8 +4,8 @@ import { getShipAccessContext } from "@/lib/shipAccess/context";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const denied = await requireShipAccessApiAccess();
+export async function GET(request: Request) {
+  const denied = await requireShipAccessApiAccess(request);
   if (denied) return denied;
 
   const context = await getShipAccessContext();

@@ -4,12 +4,17 @@ import {
 } from "@/components/superintendent/SuperintendentSidebar";
 import { SuperintendentScopeBar } from "@/components/superintendent/SuperintendentScopeBar";
 import { ModuleScrollArea } from "@/components/layout/ModuleScrollArea";
+import { enforceOfficePageAccess } from "@/lib/auth/officePageAccess";
+import { headers } from "next/headers";
 
-export default function SuperintendentLayout({
+export default async function SuperintendentLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = (await headers()).get("x-pathname") ?? "/superintendent";
+  await enforceOfficePageAccess(pathname);
+
   return (
     <div className="dd-module-layout">
       <div className="shrink-0">

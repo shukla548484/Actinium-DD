@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { PageHeader, PageShell } from "@/components/layout/PageShell";
 import { VesselJobBankPanel } from "@/components/superintendent/VesselJobBankPanel";
+import { VesselScopeIntegrationBanner } from "@/components/superintendent/VesselScopeIntegrationBanner";
 import { fmtMoney, fmtPct } from "@/lib/superintendent/formatters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -80,6 +81,7 @@ export default function ProjectScopePage() {
           </>
         }
       />
+      <VesselScopeIntegrationBanner dryDockProjectId={id} />
       <div className="mb-4">
         <VesselJobBankPanel dryDockProjectId={id} onIntegrated={loadJobs} />
       </div>
