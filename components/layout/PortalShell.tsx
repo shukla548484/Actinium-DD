@@ -105,6 +105,9 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
   }, [isYardPortal, isLogin, isPortalHub, pathname, userType]);
 
   if (isYardPortal || isLogin || isPortalHub) {
+    if (isLogin) {
+      return <>{children}</>;
+    }
     return (
       <div className="dd-portal-root">
         <SimpleScrollPage compactFooter={isLogin}>{children}</SimpleScrollPage>
@@ -144,7 +147,6 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
         activeNav={
           isCrew ? resolveCrewActiveNavId(pathname) : resolveActiveNavIdForUserType(pathname, userType)
         }
-        showChangePassword={Boolean(sessionUser?.loginId && !sessionUser.officeBootstrap)}
         navItems={portalNavItems}
         homeHref={homeHref}
         showTasksPending={showOfficeChrome}

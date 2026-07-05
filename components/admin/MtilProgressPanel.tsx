@@ -36,6 +36,8 @@ type ProgressReport = {
     phase6JobsGenerated: number;
     phase7JobsGenerated: number;
     phase8JobsGenerated: number;
+    phase10JobsGenerated: number;
+    phase10FrameworkAreas?: number;
     totalJobsGenerated: number;
     phase1Measurements: number;
     phase2Measurements: number;
@@ -57,8 +59,51 @@ type ProgressReport = {
     phase6InitializedOnly?: boolean;
     phase7InitializedOnly?: boolean;
     phase8InitializedOnly?: boolean;
+    phase10FrameworkOnly?: boolean;
+    phase10InitializedOnly?: boolean;
+    masterRepoRelease?: string;
+    masterRepoVersion?: string;
+  };
+  v2?: {
+    engineVersion: string;
+    libraryVersion: string;
+    r0FrameworkComplete: boolean;
+    databaseTargets: {
+      jobs: { min: number; max: number };
+      dynamicTemplates: { min: number; max: number };
+      inspectionPoints: { min: number; max: number };
+      measurementParameters: { min: number; max: number };
+      spareMaterialMappings: { min: number; max: number };
+      rfqBudgetMappings: { min: number; max: number };
+    };
+    deliverables: string[];
+    domains: {
+      release: string;
+      name: string;
+      status: string;
+      targetJobCount: { min: number; max: number };
+      actualJobCount: number;
+      r0BaselineJobCount: number;
+      percentJobsComplete: number;
+      coverageAreas: string[];
+    }[];
+    totals: {
+      targetJobsMin: number;
+      targetJobsMax: number;
+      actualJobs: number;
+      percentJobsToTargetMin: number;
+    };
   };
 };
+
+const MASTER_REPO_SHEETS = [
+  { sheet: "dashboard", label: "Dashboard" },
+  { sheet: "repository", label: "Repository" },
+  { sheet: "projectTemplates", label: "Projects" },
+  { sheet: "engineeringDomains", label: "Domains" },
+  { sheet: "masterLibraries", label: "Libraries" },
+  { sheet: "technicalData", label: "Technical" },
+] as const;
 
 const WORKBOOK_SHEETS = [
   { sheet: "jobs", label: "Jobs" },
@@ -259,6 +304,34 @@ export function MtilProgressPanel() {
     );
   }
 
+  async function seedMasterRepository() {
+    setBusy(true);
+    setMsg(null);
+    const res = await fetch("/api/admin/mtil/master-repository", { method: "POST" });
+    const body = (await res.json()) as {
+      masterRepoV12?: {
+        inserted?: boolean;
+        jobCount?: number;
+        frameworkAreas?: number;
+        libraryVersion?: string;
+        release?: string;
+        frameworkOnly?: boolean;
+      };
+      error?: string;
+    };
+    setBusy(false);
+    if (!res.ok) {
+      setMsg(body.error ?? "Seed failed");
+      return;
+    }
+    const m = body.masterRepoV12;
+    setMsg(
+      m?.frameworkOnly
+        ? `Master repository registered — ${m.release ?? "R0.9"} ${m.libraryVersion ?? "MTIL-v1.2"} framework (${m.frameworkAreas ?? 0} areas, 0 jobs until populated).`
+        : `Master repository seeded — ${m?.jobCount ?? 0} jobs (${m?.libraryVersion ?? "MTIL-v1.2"}).`,
+    );
+  }
+
   if (!data) return <p className="text-sm text-muted-foreground">Loading MTIL progress…</p>;
 
   return (
@@ -274,7 +347,9 @@ export function MtilProgressPanel() {
           <div>
             <CardTitle className="text-base">MTIL Template Engine v{data.engineVersion}</CardTitle>
             <CardDescription>
-              {data.totals.totalJobsGenerated} jobs · {data.totals.catalogTemplates} catalog templates ·{" "}
+              R0.x baseline · {data.totals.totalJobsGenerated} jobs seeded · V2.0 target{" "}
+              {data.v2?.totals.targetJobsMin.toLocaleString() ?? "4,000"}–
+              {data.v2?.totals.targetJobsMax.toLocaleString() ?? "5,000"} ·{" "}
               {data.totals.phase1Measurements +
                 data.totals.phase2Measurements +
                 data.totals.phase3Measurements +
@@ -297,6 +372,7 @@ export function MtilProgressPanel() {
               {data.totals.phase6InitializedOnly ? " · P6 initialized" : ""}
               {data.totals.phase7InitializedOnly ? " · P7 initialized" : ""}
               {data.totals.phase8InitializedOnly ? " · P8 initialized" : ""}
+              {data.totals.phase10FrameworkOnly ? ` · Master ${data.totals.masterRepoRelease ?? "R0.9"} framework (${data.totals.phase10FrameworkAreas ?? 0} areas)` : ""}
             </CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -324,6 +400,9 @@ export function MtilProgressPanel() {
             <Button variant="outline" size="sm" disabled={busy} onClick={() => void seedPhase8()}>
               {busy ? "Seeding…" : "Seed Phase 8 to DB"}
             </Button>
+            <Button variant="outline" size="sm" disabled={busy} onClick={() => void seedMasterRepository()}>
+              {busy ? "Seeding…" : "Seed Master Repo to DB"}
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -341,6 +420,7 @@ export function MtilProgressPanel() {
                     phase6V09?: { jobCount?: number; initializedOnly?: boolean };
                     phase7V10?: { jobCount?: number; initializedOnly?: boolean };
                     phase8V11?: { jobCount?: number; initializedOnly?: boolean };
+                    masterRepoV12?: { jobCount?: number; frameworkAreas?: number; frameworkOnly?: boolean };
                   };
                   error?: string;
                 };
@@ -348,7 +428,7 @@ export function MtilProgressPanel() {
                 const wb = body.workbooks;
                 setMsg(
                   res.ok
-                    ? `Job catalog synced: P4 ${wb?.phase4V07?.jobCount ?? 0} jobs, P5 ${wb?.phase5V08?.initializedOnly ? "initialized" : `${wb?.phase5V08?.jobCount ?? 0} jobs`}, P6 ${wb?.phase6V09?.initializedOnly ? "initialized" : `${wb?.phase6V09?.jobCount ?? 0} jobs`}, P7 ${wb?.phase7V10?.initializedOnly ? "initialized" : `${wb?.phase7V10?.jobCount ?? 0} jobs`}, P8 ${wb?.phase8V11?.initializedOnly ? "initialized" : `${wb?.phase8V11?.jobCount ?? 0} jobs`}.`
+                    ? `Job catalog synced: P4 ${wb?.phase4V07?.jobCount ?? 0} jobs, P5 ${wb?.phase5V08?.initializedOnly ? "initialized" : `${wb?.phase5V08?.jobCount ?? 0} jobs`}, P6 ${wb?.phase6V09?.initializedOnly ? "initialized" : `${wb?.phase6V09?.jobCount ?? 0} jobs`}, P7 ${wb?.phase7V10?.initializedOnly ? "initialized" : `${wb?.phase7V10?.jobCount ?? 0} jobs`}, P8 ${wb?.phase8V11?.initializedOnly ? "initialized" : `${wb?.phase8V11?.jobCount ?? 0} jobs`}, Master ${wb?.masterRepoV12?.frameworkOnly ? `framework (${wb?.masterRepoV12?.frameworkAreas ?? 0} areas)` : `${wb?.masterRepoV12?.jobCount ?? 0} jobs`}.`
                     : body.error ?? "Job catalog sync failed",
                 );
               }}
@@ -514,13 +594,29 @@ export function MtilProgressPanel() {
                   </Button>
                 ))
               : null}
+            {MASTER_REPO_SHEETS.map(({ sheet, label }) => (
+              <Button
+                key={`master-v12-${sheet}`}
+                variant="outline"
+                size="sm"
+                render={
+                  <a href={`/api/admin/mtil/master-repository?format=csv&sheet=${sheet}`} download />
+                }
+                nativeButton={false}
+              >
+                Master {label}
+              </Button>
+            ))}
           </div>
         </CardHeader>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Phase delivery plan</CardTitle>
+          <CardTitle className="text-base">R0.x phase delivery (framework complete)</CardTitle>
+          <CardDescription>
+            Repository structure frozen — V2.0 upgrades each domain to production-grade libraries.
+          </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
@@ -549,6 +645,59 @@ export function MtilProgressPanel() {
           </Table>
         </CardContent>
       </Card>
+
+      {data.v2 ? (
+        <Card className="border-primary/30">
+          <CardHeader>
+            <CardTitle className="text-base">
+              MTIL v{data.v2.engineVersion} — Production Engineering Database
+            </CardTitle>
+            <CardDescription>
+              {data.v2.libraryVersion} · {data.v2.totals.actualJobs.toLocaleString()} /{" "}
+              {data.v2.totals.targetJobsMin.toLocaleString()}–{data.v2.totals.targetJobsMax.toLocaleString()} jobs (
+              {data.v2.totals.percentJobsToTargetMin}% of minimum target) · Target:{" "}
+              {data.v2.databaseTargets.inspectionPoints.min.toLocaleString()}+ inspection points ·{" "}
+              {data.v2.databaseTargets.measurementParameters.min.toLocaleString()}+ measurements ·{" "}
+              {data.v2.databaseTargets.spareMaterialMappings.min.toLocaleString()}+ spare mappings
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 p-0 pb-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Release</TableHead>
+                  <TableHead>Domain</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>R0 baseline</TableHead>
+                  <TableHead>V2 target</TableHead>
+                  <TableHead>Progress</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.v2.domains.map((d) => (
+                  <TableRow key={d.release}>
+                    <TableCell className="font-mono text-xs">{d.release}</TableCell>
+                    <TableCell>{d.name}</TableCell>
+                    <TableCell className="capitalize">{d.status.replace(/_/g, " ")}</TableCell>
+                    <TableCell className="tabular-nums">{d.r0BaselineJobCount}</TableCell>
+                    <TableCell className="tabular-nums">
+                      {d.targetJobCount.min.toLocaleString()}
+                      {d.targetJobCount.max !== d.targetJobCount.min
+                        ? `–${d.targetJobCount.max.toLocaleString()}`
+                        : ""}
+                    </TableCell>
+                    <TableCell className="tabular-nums">{d.percentJobsComplete}%</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <div className="px-6 text-xs text-muted-foreground">
+              <p className="font-medium text-foreground">Per-release deliverables</p>
+              <p>{data.v2.deliverables.join(" · ")}</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

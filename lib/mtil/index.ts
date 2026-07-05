@@ -7,6 +7,7 @@ export * from "./measurementLibrary";
 export * from "./checklistLibrary";
 export * from "./mappings";
 export * from "./progress";
+export * from "./v2";
 export { generatePhase1JobDefinitions, generatePhase1JobLibraryTree, getPhase1Stats } from "./phases/phase1/generate";
 export { PHASE1_MAIN_PROPULSION_SYSTEMS } from "./phases/phase1/mainPropulsionSystems";
 export { getPhase1TemplateCatalog, getAllPhase1Templates } from "./phases/phase1/templateCatalog";

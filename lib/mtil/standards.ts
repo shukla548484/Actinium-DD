@@ -2,6 +2,9 @@
 
 export const MTIL_ENGINE_VERSION = "0.2.0";
 
+/** Active production track — normalized engineering database (replaces R0.x phase expansion). */
+export { MTIL_V2_ENGINE_VERSION, MTIL_V2_LIBRARY_VERSION, MTIL_V2_DATABASE_TARGETS } from "./v2/standards";
+
 export type MtilDeptCode = "ENG" | "AUX" | "PVP" | "DKC" | "HUL" | "ELC" | "SAF";
 
 export type MtilSystemCode =

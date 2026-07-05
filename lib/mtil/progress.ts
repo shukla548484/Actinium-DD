@@ -10,6 +10,7 @@ import { getPhase5WorkbookV08Stats } from "./phases/phase5/workbookJobLibraryTre
 import { getPhase6WorkbookV09Stats } from "./phases/phase6/workbookJobLibraryTree";
 import { getPhase7WorkbookV10Stats } from "./phases/phase7/workbookJobLibraryTree";
 import { getPhase8WorkbookV11Stats } from "./phases/phase8/workbookJobLibraryTree";
+import { getMasterRepositoryV12Stats } from "./master/repositoryJobLibraryTree";
 import {
   getPhase1ChecklistItemCount,
   getPhase2ChecklistItemCount,
@@ -27,6 +28,7 @@ import {
   listPhase2CatalogTemplateKeys,
   listPhase3CatalogTemplateKeys,
 } from "./dynamicTemplateEngine";
+import { getMtilV2ProgressReport } from "./v2/progress";
 
 export const MTIL_PHASE_REGISTRY: MtilPhaseMeta[] = [
   {
@@ -62,12 +64,12 @@ export const MTIL_PHASE_REGISTRY: MtilPhaseMeta[] = [
     description: "Generated matrix (532) + Engineering Repository v0.6 workbook (215 jobs, TMP-PVP).",
   },
   { id: 4, slug: "deck-cargo", name: "Deck Machinery & Cargo Systems", status: "completed", targetJobCount: { min: 300, max: 500 }, description: "Engineering Repository v0.7 workbook (151 jobs, TMP-DECK)." },
-  { id: 5, slug: "hull-steel", name: "Hull, Steel & Coatings", status: "in_progress", targetJobCount: { min: 400, max: 600 }, description: "Engineering Repository v0.8 initialized (MTIL-v0.8) — schema ready, jobs pending." },
-  { id: 6, slug: "electrical", name: "Electrical, Automation & Navigation", status: "in_progress", targetJobCount: { min: 400, max: 600 }, description: "Engineering Repository v0.9 initialized (MTIL-v0.9) — schema ready, jobs pending." },
-  { id: 7, slug: "cargo-tank-systems", name: "Cargo & Tank Systems", status: "in_progress", targetJobCount: { min: 300, max: 500 }, description: "Engineering Repository v1.0 initialized (MTIL-v1.0) — schema ready, jobs pending." },
-  { id: 8, slug: "safety-lsa-ffa", name: "Safety, LSA, FFA & Accommodation", status: "in_progress", targetJobCount: { min: 300, max: 500 }, description: "Engineering Repository v1.1 initialized (MTIL-v1.1) — schema ready, jobs pending." },
-  { id: 9, slug: "rfq-cost", name: "RFQ, Cost Codes & Quote Mapping", status: "pending", targetJobCount: { min: 0, max: 0 }, description: "Dynamic template engine live; RFQ mapping pending." },
-  { id: 10, slug: "ai-knowledge", name: "AI Knowledge Base & Final Database", status: "pending", targetJobCount: { min: 5000, max: 5000 }, description: "" },
+  { id: 5, slug: "hull-steel", name: "Hull, Steel & Coatings", status: "completed", targetJobCount: { min: 400, max: 600 }, description: "R0.x framework complete (MTIL-v0.8) — V2.0.5 production upgrade pending." },
+  { id: 6, slug: "electrical", name: "Electrical, Automation & Navigation", status: "completed", targetJobCount: { min: 400, max: 600 }, description: "R0.x framework complete (MTIL-v0.9) — V2.0.6 production upgrade pending." },
+  { id: 7, slug: "cargo-tank-systems", name: "Cargo & Tank Systems", status: "completed", targetJobCount: { min: 300, max: 500 }, description: "R0.x framework complete (MTIL-v1.0) — V2.0.7 production upgrade pending." },
+  { id: 8, slug: "safety-lsa-ffa", name: "Safety, LSA, FFA & Accommodation", status: "completed", targetJobCount: { min: 300, max: 500 }, description: "R0.x framework complete (MTIL-v1.1) — V2.0.8 production upgrade pending." },
+  { id: 9, slug: "rfq-cost", name: "RFQ, Cost Codes & Quote Mapping", status: "pending", targetJobCount: { min: 0, max: 0 }, description: "Cross-cutting — populated with V2.0 domain releases (10,000+ mappings target)." },
+  { id: 10, slug: "master-repository", name: "Master Engineering Repository", status: "completed", targetJobCount: { min: 4000, max: 5000 }, description: "R0.9 framework complete (MTIL-v1.2) — V2.0 consolidated database target." },
 ];
 
 function enrichPhase(p: MtilPhaseMeta) {
@@ -198,6 +200,26 @@ function enrichPhase(p: MtilPhaseMeta) {
       initializedOnly: v11.initializedOnly,
     };
   }
+  if (p.id === 10) {
+    const master = getMasterRepositoryV12Stats();
+    return {
+      ...p,
+      actualJobCount: master.jobCount,
+      catalogTemplateCount: master.catalogTemplateCount,
+      dynamicTemplateCount: master.dynamicTemplateCount,
+      systemCount: master.systemCount,
+      componentCount: master.componentCount,
+      measurementCount: master.measurementCount,
+      checklistItemCount: master.checklistItemCount,
+      masterRepoV12JobCount: master.jobCount,
+      masterRepoV12Version: master.libraryVersion,
+      masterRepoRelease: master.release,
+      frameworkAreaCount: master.frameworkAreaCount,
+      engineeringDomainCount: master.engineeringDomainCount,
+      frameworkOnly: master.frameworkOnly,
+      initializedOnly: master.initializedOnly,
+    };
+  }
   return p;
 }
 
@@ -213,6 +235,7 @@ export function getMtilProgressReport() {
   const phase6V09 = getPhase6WorkbookV09Stats();
   const phase7V10 = getPhase7WorkbookV10Stats();
   const phase8V11 = getPhase8WorkbookV11Stats();
+  const masterRepoV12 = getMasterRepositoryV12Stats();
   const workbookTemplateCount =
     phase1V04.catalogTemplateCount +
     phase2V05.catalogTemplateCount +
@@ -226,6 +249,7 @@ export function getMtilProgressReport() {
   return {
     engineVersion: MTIL_ENGINE_VERSION,
     phases: MTIL_PHASE_REGISTRY.map(enrichPhase),
+    v2: getMtilV2ProgressReport(),
     totals: {
       catalogTemplates:
         listPhase1CatalogTemplateKeys().length +
@@ -256,6 +280,14 @@ export function getMtilProgressReport() {
       phase8JobsGenerated: phase8V11.jobCount,
       phase8WorkbookV11Jobs: phase8V11.jobCount,
       phase8InitializedOnly: phase8V11.initializedOnly,
+      phase10JobsGenerated: masterRepoV12.jobCount,
+      phase10MasterRepoJobs: masterRepoV12.jobCount,
+      phase10FrameworkAreas: masterRepoV12.frameworkAreaCount,
+      phase10EngineeringDomains: masterRepoV12.engineeringDomainCount,
+      phase10FrameworkOnly: masterRepoV12.frameworkOnly,
+      phase10InitializedOnly: masterRepoV12.initializedOnly,
+      masterRepoRelease: masterRepoV12.release,
+      masterRepoVersion: masterRepoV12.libraryVersion,
       totalJobsGenerated:
         phase1.jobCount +
         phase1V04.jobCount +
@@ -267,7 +299,8 @@ export function getMtilProgressReport() {
         phase5V08.jobCount +
         phase6V09.jobCount +
         phase7V10.jobCount +
-        phase8V11.jobCount,
+        phase8V11.jobCount +
+        masterRepoV12.jobCount,
       phase1Measurements: getPhase1MeasurementCount() + phase1V04.measurementCount,
       phase2Measurements: getPhase2MeasurementCount() + phase2V05.measurementCount,
       phase3Measurements: getPhase3MeasurementCount() + phase3V06.measurementCount,
@@ -284,6 +317,8 @@ export function getMtilProgressReport() {
       phase6ChecklistItems: phase6V09.checklistItemCount,
       phase7ChecklistItems: phase7V10.checklistItemCount,
       phase8ChecklistItems: phase8V11.checklistItemCount,
+      phase10Measurements: masterRepoV12.measurementCount,
+      phase10ChecklistItems: masterRepoV12.checklistItemCount,
     },
   };
 }

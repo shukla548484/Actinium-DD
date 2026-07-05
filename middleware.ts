@@ -3,38 +3,36 @@ import type { NextRequest } from "next/server";
 import { COOKIE_NAME, isAuthEnabled, parseSessionTokenEdge } from "@/lib/auth/edge";
 import {
   isApiAllowedForUserType,
-  isPublicPath,
   redirectPathForBlockedUserType,
   resolveSessionUserType,
 } from "@/lib/auth/portalAccess";
 import type { RbacUserType } from "@prisma/client";
 
-const PROTECTED_PREFIXES = [
-  "/projects",
-  "/shipyard",
-  "/ship-access",
-  "/admin",
-  "/superintendent",
-  "/external",
-  "/account",
-] as const;
+const AUTH_API_PREFIXES = ["/api/auth/login", "/api/auth/logout"] as const;
 
-function isProtectedPath(pathname: string): boolean {
-  return PROTECTED_PREFIXES.some(
+function isStaticAsset(pathname: string): boolean {
+  return (
+    pathname.startsWith("/_next") ||
+    pathname === "/favicon.ico" ||
+    /\.(?:ico|png|jpg|jpeg|gif|webp|svg|css|js|woff2?|ttf|map)$/i.test(pathname)
+  );
+}
+
+function isLoginPath(pathname: string): boolean {
+  return pathname === "/login" || pathname.startsWith("/login/");
+}
+
+function isPublicAuthApi(pathname: string): boolean {
+  return AUTH_API_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
 }
 
-function isProtectedApi(pathname: string): boolean {
-  return (
-    pathname.startsWith("/api/projects") ||
-    pathname.startsWith("/api/shipyard") ||
-    pathname.startsWith("/api/ship-access") ||
-    pathname.startsWith("/api/admin") ||
-    pathname.startsWith("/api/superintendent") ||
-    pathname.startsWith("/api/mtil") ||
-    pathname.startsWith("/api/external")
-  );
+function isPublicRoute(pathname: string): boolean {
+  if (isStaticAsset(pathname)) return true;
+  if (isLoginPath(pathname)) return true;
+  if (isPublicAuthApi(pathname)) return true;
+  return false;
 }
 
 function resolveUserType(session: {
@@ -52,28 +50,35 @@ function resolveUserType(session: {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (pathname === "/" || pathname.startsWith("/login") || pathname.startsWith("/api/auth")) {
+  if (isPublicRoute(pathname)) {
     return NextResponse.next();
   }
 
-  if (isPublicPath(pathname)) {
+  if (!isAuthEnabled()) {
     return NextResponse.next();
   }
-
-  const protectedRoute = isProtectedPath(pathname) || isProtectedApi(pathname);
-  if (!protectedRoute) return NextResponse.next();
-
-  if (!isAuthEnabled()) return NextResponse.next();
 
   const token = request.cookies.get(COOKIE_NAME)?.value;
   const session = await parseSessionTokenEdge(token);
+
   if (!session) {
     if (pathname.startsWith("/api/")) {
-      return NextResponse.json({ error: "Unauthorized. Sign in at /login." }, { status: 401 });
+      return NextResponse.json(
+        { error: "Unauthorized. Sign in at /login.", code: "SESSION_EXPIRED" },
+        { status: 401 },
+      );
     }
     const login = new URL("/login", request.url);
-    login.searchParams.set("next", pathname);
+    if (!isLoginPath(pathname)) {
+      login.searchParams.set("next", pathname);
+    }
+    login.searchParams.set("reason", "auth_required");
     return NextResponse.redirect(login);
+  }
+
+  if (isLoginPath(pathname)) {
+    const home = new URL("/", request.url);
+    return NextResponse.redirect(home);
   }
 
   const userType = resolveUserType(session);
@@ -98,35 +103,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/",
-    "/projects",
-    "/projects/:path*",
-    "/api/projects/:path*",
-    "/shipyard",
-    "/shipyard/:path*",
-    "/api/shipyard/:path*",
-    "/ship-access",
-    "/ship-access/:path*",
-    "/api/ship-access/:path*",
-    "/admin",
-    "/admin/:path*",
-    "/api/admin/:path*",
-    "/superintendent",
-    "/superintendent/:path*",
-    "/api/superintendent/:path*",
-    "/api/mtil/:path*",
-    "/external",
-    "/external/:path*",
-    "/api/external/:path*",
-    "/platform",
-    "/platform/:path*",
-    "/office",
-    "/office/:path*",
-    "/account",
-    "/account/:path*",
-    "/login",
-    "/login/:path*",
-    "/quote/:path*",
-  ],
+  matcher: ["/((?!_next/static|_next/image).*)"],
 };

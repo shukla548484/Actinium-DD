@@ -4,13 +4,14 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Bell, ClipboardList, Menu, Search } from "lucide-react";
+import { Bell, ClipboardList, KeyRound, LogOut, Menu, Search, User } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -45,7 +46,6 @@ export interface TopNavBarProps {
   mode?: "portal" | "desktop";
   activeNav?: TopNavId;
   onNavigate?: (id: TopNavId) => void;
-  showChangePassword?: boolean;
   navItems?: TopNavItem[];
   homeHref?: string;
   showTasksPending?: boolean;
@@ -221,7 +221,6 @@ export function TopNavBar({
   mode = "portal",
   activeNav: _activeNav,
   onNavigate,
-  showChangePassword = false,
   navItems = priorityNavItems,
   homeHref = "/projects",
   showTasksPending = true,
@@ -448,19 +447,26 @@ export function TopNavBar({
               </Avatar>
               <span className="hidden truncate text-xs font-medium sm:inline">{userName}</span>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-44">
+            <DropdownMenuContent align="end" className="min-w-48">
               <div className="px-2 py-1.5">
                 <p className="text-sm font-medium">{userName}</p>
                 <p className="text-xs text-muted-foreground">{userRole}</p>
               </div>
               {mode === "portal" ? (
                 <>
-                  {showChangePassword ? (
-                    <DropdownMenuItem render={<Link href="/account/password" />}>
-                      Change password
-                    </DropdownMenuItem>
-                  ) : null}
-                  <DropdownMenuItem onClick={() => void signOut()}>Sign out</DropdownMenuItem>
+                  <DropdownMenuItem render={<Link href="/account" />}>
+                    <User className="size-4" />
+                    Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem render={<Link href="/account/password" />}>
+                    <KeyRound className="size-4" />
+                    Change password
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => void signOut()}>
+                    <LogOut className="size-4" />
+                    Logout
+                  </DropdownMenuItem>
                 </>
               ) : (
                 <DropdownMenuItem disabled>Local fleet user</DropdownMenuItem>

@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { seedJobCatalogLists } from "../lib/db/jobCatalog";
 import { seedRbacCatalog } from "../lib/db/rbac";
 import { ensureMasterCatalogSeeded } from "../lib/db/masterCatalog";
+import { ensureSeedAdminUser } from "../lib/db/seedAdminUser";
 
 const prisma = new PrismaClient();
 
@@ -10,6 +11,10 @@ async function main() {
   const result = await seedRbacCatalog();
   console.log(`  ✓ ${result.roles} system roles`);
   console.log(`  ✓ ${result.permissions} permissions`);
+
+  console.log("Seeding system administrator (Role ID 1001)…");
+  const admin = await ensureSeedAdminUser();
+  console.log(`  ✓ ${admin.loginId} (${admin.roleCode}, role ${admin.roleNo})${admin.created ? " — created" : " — updated"}`);
 
   console.log("Seeding master spec catalog…");
   const count = await ensureMasterCatalogSeeded();

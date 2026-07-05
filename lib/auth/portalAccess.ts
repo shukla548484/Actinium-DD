@@ -41,7 +41,7 @@ export const PORTAL_API_PREFIXES: Record<RbacUserType, readonly string[]> = {
   external: ["/api/external"],
 };
 
-const PUBLIC_PATH_PREFIXES = ["/login", "/api/auth", "/quote"] as const;
+const PUBLIC_PATH_PREFIXES = ["/login", "/api/auth/login", "/api/auth/logout"] as const;
 
 export function resolveSessionUserType(payload: {
   rbacUserType?: RbacUserType;

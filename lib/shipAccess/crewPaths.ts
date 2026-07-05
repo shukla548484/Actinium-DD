@@ -1,7 +1,7 @@
 /** Paths crew users may access (office modules are blocked). Edge-safe — no Node/server imports. */
 export const CREW_ALLOWED_PATH_PREFIXES = [
   "/ship-access",
-  "/account/password",
+  "/account",
   "/login",
 ] as const;
 

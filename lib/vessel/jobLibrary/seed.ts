@@ -404,3 +404,43 @@ export async function ensureMtilPhase8WorkbookV11Seeded(): Promise<{
     initializedOnly: stats.initializedOnly,
   };
 }
+
+/** Upsert R0.9 Master Engineering Repository v1.2 framework tree. */
+export async function ensureMtilMasterRepositoryV12Seeded(): Promise<{
+  inserted: boolean;
+  jobCount: number;
+  templates: number;
+  frameworkAreas: number;
+  libraryVersion: string;
+  release: string;
+  frameworkOnly?: boolean;
+}> {
+  const { getMasterRepositoryV12Stats } = await import("@/lib/mtil/master/repositoryJobLibraryTree");
+  const { seedMasterRepositoryV12, isMasterRepositoryV12Seeded } = await import(
+    "@/lib/mtil/db/seedMasterRepositoryV12"
+  );
+  const stats = getMasterRepositoryV12Stats();
+
+  if (await isMasterRepositoryV12Seeded()) {
+    return {
+      inserted: false,
+      jobCount: stats.jobCount,
+      templates: stats.catalogTemplateCount,
+      frameworkAreas: stats.frameworkAreaCount,
+      libraryVersion: stats.libraryVersion,
+      release: stats.release,
+      frameworkOnly: stats.frameworkOnly,
+    };
+  }
+
+  const result = await seedMasterRepositoryV12();
+  return {
+    inserted: true,
+    jobCount: result.jobCount,
+    templates: result.templates,
+    frameworkAreas: result.frameworkAreas,
+    libraryVersion: result.libraryVersion,
+    release: result.release,
+    frameworkOnly: stats.frameworkOnly,
+  };
+}
