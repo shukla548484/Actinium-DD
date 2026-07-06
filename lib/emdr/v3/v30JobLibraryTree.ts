@@ -51,6 +51,8 @@ const EMPTY_STATS = {
   cargoPumpingSystemCount: 0,
   steeringGearSystemCount: 0,
   deckMachineryWinchSystemCount: 0,
+  lsaDavitsSystemCount: 0,
+  fireFightingSystemCount: 0,
   fwgSystemCount: 0,
   airConditioningSystemCount: 0,
   refrigerationSystemCount: 0,
@@ -69,6 +71,8 @@ const EMPTY_STATS = {
   cargoPumpingJobCount: 0,
   steeringGearJobCount: 0,
   deckMachineryWinchJobCount: 0,
+  lsaDavitsJobCount: 0,
+  fireFightingJobCount: 0,
   fwgJobCount: 0,
   airConditioningJobCount: 0,
   refrigerationJobCount: 0,
@@ -83,7 +87,7 @@ export function getEmdrMasterRepositoryWorkbookStats() {
   const config = releaseConfig();
   if (!config || !isEmdrMasterRepositoryPresent()) {
     return {
-      kind: null as "v39" | "v38" | "v37" | "v36" | "v34" | "v33" | "v32" | "v31" | "v30" | null,
+      kind: null as "v311" | "v310" | "v39" | "v38" | "v37" | "v36" | "v34" | "v33" | "v32" | "v31" | "v30" | null,
       release: null as string | null,
       ...EMPTY_STATS,
     };
@@ -116,6 +120,8 @@ export function getEmdrMasterRepositoryWorkbookStats() {
   const cgpJobs = countDeckFamilyJobs(jobs, /cargo pumping system/i);
   const stgJobs = countDeckFamilyJobs(jobs, /steering gear/i);
   const dmwWinchJobs = countDeckFamilyJobs(jobs, /windlass|winch|capstan|deck machinery/i);
+  const lsaDavitsJobs = countDeckFamilyJobs(jobs, /life saving|davit|rescue boat/i);
+  const fireFightingJobs = countDeckFamilyJobs(jobs, /fire fighting/i);
   const fwgJobs = countDeckFamilyJobs(jobs, /fresh water generator|\bfwg\b/i);
   const acJobs = countDeckFamilyJobs(jobs, /air conditioning|\bhvac\b/i);
   const refJobs = countDeckFamilyJobs(jobs, /refrigeration/i);
@@ -148,6 +154,10 @@ export function getEmdrMasterRepositoryWorkbookStats() {
     deckMachineryWinchSystemCount: idx.filter(
       (s) => s.machineryFamily === "Deck Machinery – Windlass / Winches / Capstans",
     ).length,
+    lsaDavitsSystemCount: idx.filter(
+      (s) => s.machineryFamily === "Life Saving Appliances / Davits / Rescue Boat Davit",
+    ).length,
+    fireFightingSystemCount: idx.filter((s) => s.machineryFamily === "Fire Fighting Systems").length,
     fwgSystemCount: idx.filter((s) => s.machineryFamily === "Fresh Water Generator").length,
     airConditioningSystemCount: idx.filter(
       (s) => s.machineryFamily === "Air Conditioning & Ventilation",
@@ -168,6 +178,8 @@ export function getEmdrMasterRepositoryWorkbookStats() {
     cargoPumpingJobCount: cgpJobs,
     steeringGearJobCount: stgJobs,
     deckMachineryWinchJobCount: dmwWinchJobs,
+    lsaDavitsJobCount: lsaDavitsJobs,
+    fireFightingJobCount: fireFightingJobs,
     fwgJobCount: fwgJobs,
     airConditioningJobCount: acJobs,
     refrigerationJobCount: refJobs,
@@ -176,6 +188,8 @@ export function getEmdrMasterRepositoryWorkbookStats() {
     checklistItemCount: parsed.checklistItems.length,
     workbookPresent: true,
     mergedBundle:
+      config.kind !== "v311" &&
+      config.kind !== "v310" &&
       config.kind !== "v39" &&
       config.kind !== "v38" &&
       config.kind !== "v37" &&

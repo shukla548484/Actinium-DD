@@ -96,6 +96,22 @@ export const EMDR_V37_MASTER_REPOSITORY_PATH = path.join(
   EMDR_V37_MASTER_REPOSITORY_FILENAME,
 );
 
+export const EMDR_V310_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_10_LSA_Davits_Rescue_Boat.xlsx";
+
+export const EMDR_V310_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V310_MASTER_REPOSITORY_FILENAME,
+);
+
+export const EMDR_V311_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_11_Fire_Fighting_Systems.xlsx";
+
+export const EMDR_V311_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V311_MASTER_REPOSITORY_FILENAME,
+);
+
 export const EMDR_V39_MASTER_REPOSITORY_FILENAME =
   "Actinium_SM_EMDR_Master_Repository_V3_9_Deck_Machinery_Windlass_Winches_Capstans.xlsx";
 
@@ -141,6 +157,14 @@ export function isEmdrV37MasterRepositoryPresent(): boolean {
   return fs.existsSync(EMDR_V37_MASTER_REPOSITORY_PATH);
 }
 
+export function isEmdrV311MasterRepositoryPresent(): boolean {
+  return fs.existsSync(EMDR_V311_MASTER_REPOSITORY_PATH);
+}
+
+export function isEmdrV310MasterRepositoryPresent(): boolean {
+  return fs.existsSync(EMDR_V310_MASTER_REPOSITORY_PATH);
+}
+
 export function isEmdrV39MasterRepositoryPresent(): boolean {
   return fs.existsSync(EMDR_V39_MASTER_REPOSITORY_PATH);
 }
@@ -151,6 +175,8 @@ export function isEmdrV38MasterRepositoryPresent(): boolean {
 
 export function isEmdrMasterRepositoryPresent(): boolean {
   return (
+    isEmdrV311MasterRepositoryPresent() ||
+    isEmdrV310MasterRepositoryPresent() ||
     isEmdrV39MasterRepositoryPresent() ||
     isEmdrV38MasterRepositoryPresent() ||
     isEmdrV37MasterRepositoryPresent() ||
@@ -163,10 +189,23 @@ export function isEmdrMasterRepositoryPresent(): boolean {
   );
 }
 
-export type EmdrMasterRepositoryKind = "v39" | "v38" | "v37" | "v36" | "v34" | "v33" | "v32" | "v31" | "v30";
+export type EmdrMasterRepositoryKind =
+  | "v311"
+  | "v310"
+  | "v39"
+  | "v38"
+  | "v37"
+  | "v36"
+  | "v34"
+  | "v33"
+  | "v32"
+  | "v31"
+  | "v30";
 
 /** Highest installed V3.x master repository file on disk (may still fail parse if corrupt). */
 export function resolveEmdrMasterRepositoryKind(): EmdrMasterRepositoryKind | null {
+  if (isEmdrV311MasterRepositoryPresent()) return "v311";
+  if (isEmdrV310MasterRepositoryPresent()) return "v310";
   if (isEmdrV39MasterRepositoryPresent()) return "v39";
   if (isEmdrV38MasterRepositoryPresent()) return "v38";
   if (isEmdrV37MasterRepositoryPresent()) return "v37";
@@ -181,6 +220,8 @@ export function resolveEmdrMasterRepositoryKind(): EmdrMasterRepositoryKind | nu
 
 /** Primary workbook path for display — prefer highest version present. */
 export function resolveEmdrMasterRepositoryPath(): string | null {
+  if (isEmdrV311MasterRepositoryPresent()) return EMDR_V311_MASTER_REPOSITORY_PATH;
+  if (isEmdrV310MasterRepositoryPresent()) return EMDR_V310_MASTER_REPOSITORY_PATH;
   if (isEmdrV39MasterRepositoryPresent()) return EMDR_V39_MASTER_REPOSITORY_PATH;
   if (isEmdrV38MasterRepositoryPresent()) return EMDR_V38_MASTER_REPOSITORY_PATH;
   if (isEmdrV37MasterRepositoryPresent()) return EMDR_V37_MASTER_REPOSITORY_PATH;

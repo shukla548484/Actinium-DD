@@ -136,7 +136,7 @@ const WORKBOOK_SHEETS = [
   { sheet: "spares", label: "Spares" },
 ] as const;
 
-type V3MasterKind = "v39" | "v38" | "v37" | "v36" | "v34" | "v33" | "v32" | "v31" | "v30";
+type V3MasterKind = "v311" | "v310" | "v39" | "v38" | "v37" | "v36" | "v34" | "v33" | "v32" | "v31" | "v30";
 
 type V3Report = {
   kind: V3MasterKind | null;
@@ -158,6 +158,9 @@ type V3Report = {
     liftingApplianceJobCount?: number;
     cargoPumpingJobCount?: number;
     steeringGearJobCount?: number;
+    deckMachineryWinchJobCount?: number;
+    lsaDavitsJobCount?: number;
+    fireFightingJobCount?: number;
     fwgJobCount?: number;
     airConditioningJobCount?: number;
     refrigerationJobCount?: number;
@@ -175,6 +178,9 @@ type V3Report = {
     liftingApplianceSystemCount?: number;
     cargoPumpingSystemCount?: number;
     steeringGearSystemCount?: number;
+    deckMachineryWinchSystemCount?: number;
+    lsaDavitsSystemCount?: number;
+    fireFightingSystemCount?: number;
     fwgSystemCount?: number;
     airConditioningSystemCount?: number;
     refrigerationSystemCount?: number;
@@ -207,6 +213,9 @@ function formatV3JobCounts(stats: V3Report["stats"]): string[] {
     (stats.liftingApplianceJobCount ?? 0) > 0 ? `${stats.liftingApplianceJobCount!.toLocaleString()} DLA` : null,
     (stats.cargoPumpingJobCount ?? 0) > 0 ? `${stats.cargoPumpingJobCount!.toLocaleString()} CGP` : null,
     (stats.steeringGearJobCount ?? 0) > 0 ? `${stats.steeringGearJobCount!.toLocaleString()} STG` : null,
+    (stats.deckMachineryWinchJobCount ?? 0) > 0 ? `${stats.deckMachineryWinchJobCount!.toLocaleString()} DMW-W` : null,
+    (stats.lsaDavitsJobCount ?? 0) > 0 ? `${stats.lsaDavitsJobCount!.toLocaleString()} LSA` : null,
+    (stats.fireFightingJobCount ?? 0) > 0 ? `${stats.fireFightingJobCount!.toLocaleString()} FFS` : null,
     (stats.fwgJobCount ?? 0) > 0 ? `${stats.fwgJobCount!.toLocaleString()} FWG` : null,
     (stats.airConditioningJobCount ?? 0) > 0 ? `${stats.airConditioningJobCount!.toLocaleString()} AC` : null,
     (stats.refrigerationJobCount ?? 0) > 0 ? `${stats.refrigerationJobCount!.toLocaleString()} REF` : null,
@@ -228,6 +237,9 @@ function formatV3SystemCounts(stats: V3Report["stats"]): string[] {
     (stats.liftingApplianceSystemCount ?? 0) > 0 ? `${stats.liftingApplianceSystemCount} DLA` : null,
     (stats.cargoPumpingSystemCount ?? 0) > 0 ? `${stats.cargoPumpingSystemCount} CGP` : null,
     (stats.steeringGearSystemCount ?? 0) > 0 ? `${stats.steeringGearSystemCount} STG` : null,
+    (stats.deckMachineryWinchSystemCount ?? 0) > 0 ? `${stats.deckMachineryWinchSystemCount} DMW-W` : null,
+    (stats.lsaDavitsSystemCount ?? 0) > 0 ? `${stats.lsaDavitsSystemCount} LSA` : null,
+    (stats.fireFightingSystemCount ?? 0) > 0 ? `${stats.fireFightingSystemCount} FFS` : null,
     (stats.fwgSystemCount ?? 0) > 0 ? `${stats.fwgSystemCount} FWG` : null,
     (stats.airConditioningSystemCount ?? 0) > 0 ? `${stats.airConditioningSystemCount} AC` : null,
     (stats.refrigerationSystemCount ?? 0) > 0 ? `${stats.refrigerationSystemCount} REF` : null,
@@ -235,6 +247,8 @@ function formatV3SystemCounts(stats: V3Report["stats"]): string[] {
 }
 
 function v3SeedButtonLabel(kind: V3MasterKind | null | undefined): string {
+  if (kind === "v311") return "Seed V3.11 Full Master Repository (Fire Fighting Systems)";
+  if (kind === "v310") return "Seed V3.10 Full Master Repository (LSA Davits & Rescue Boat)";
   if (kind === "v39") return "Seed V3.9 Full Master Repository (Deck Machinery — Windlass, Winches & Capstans)";
   if (kind === "v38") return "Seed V3.8 Full Master Repository (FWG, AC & Refrigeration)";
   if (kind === "v37") return "Seed V3.7 Full Master Repository (Deck, Cranes, Cargo Pumps & Steering)";
@@ -247,6 +261,12 @@ function v3SeedButtonLabel(kind: V3MasterKind | null | undefined): string {
 }
 
 function v3RepositoryTitle(kind: V3MasterKind | null | undefined): string {
+  if (kind === "v311") {
+    return "V3.11 — Full machinery repo incl. Fire Fighting Systems";
+  }
+  if (kind === "v310") {
+    return "V3.10 — Full machinery repo incl. LSA Davits & Rescue Boat";
+  }
   if (kind === "v39") {
     return "V3.9 — Full machinery repo incl. Deck Machinery (Windlass, Winches & Capstans)";
   }
@@ -267,6 +287,8 @@ function v3RepositoryTitle(kind: V3MasterKind | null | undefined): string {
 }
 
 function v3VersionLabel(kind: V3MasterKind | undefined): string {
+  if (kind === "v311") return "V3.11";
+  if (kind === "v310") return "V3.10";
   if (kind === "v39") return "V3.9";
   if (kind === "v38") return "V3.8";
   if (kind === "v37") return "V3.7";
@@ -279,6 +301,12 @@ function v3VersionLabel(kind: V3MasterKind | undefined): string {
 }
 
 function v3RepositoryFootnote(kind: V3MasterKind | null | undefined): string {
+  if (kind === "v311") {
+    return "V3.11 merges the cumulative V3.7–V3.10 base with fire fighting systems jobs — seeding retires older trees and deactivates legacy sprint job IDs.";
+  }
+  if (kind === "v310") {
+    return "V3.10 merges the cumulative V3.7–V3.9 base with life saving appliances, davits and rescue boat jobs — seeding retires older trees and deactivates legacy sprint job IDs.";
+  }
   if (kind === "v39") {
     return "V3.9 merges the cumulative V3.7/V3.8 base with deck machinery (windlass, mooring winches & capstans) — seeding retires older trees and deactivates legacy sprint job IDs.";
   }
@@ -953,6 +981,10 @@ export function MtilProgressPanel() {
                 ? v3.kind === "v33"
                   ? " · merged V3.1 + V3.3 bundle"
                   : " · merged V3.1 + V3.2 bundle"
+                : v3.kind === "v311"
+                  ? " · cumulative V3.11 repository"
+                : v3.kind === "v310"
+                  ? " · cumulative V3.10 repository"
                 : v3.kind === "v39"
                   ? " · cumulative V3.9 repository"
                 : v3.kind === "v38"

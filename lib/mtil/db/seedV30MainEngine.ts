@@ -19,6 +19,8 @@ import {
   MTIL_V37_TREE_CODE,
   MTIL_V38_TREE_CODE,
   MTIL_V39_TREE_CODE,
+  MTIL_V310_TREE_CODE,
+  MTIL_V311_TREE_CODE,
   type EmdrMasterRepositoryReleaseConfig,
 } from "@/lib/emdr/v3/sheets";
 import {
@@ -56,6 +58,8 @@ const SUPERSEDED_EMDR_TREE_CODES = [
   MTIL_V37_TREE_CODE,
   MTIL_V38_TREE_CODE,
   MTIL_V39_TREE_CODE,
+  MTIL_V310_TREE_CODE,
+  MTIL_V311_TREE_CODE,
 ];
 
 async function insertNode(
@@ -149,7 +153,7 @@ async function softDeleteSubtree(rootId: string) {
 
   await prisma.jobLibraryNode.updateMany({
     where: { id: { in: toDelete } },
-    data: { deletedAt: new Date(), isActive: false },
+    data: { deletedAt: new Date(), isActive: false, mtilJobCode: null },
   });
   return toDelete.length;
 }
@@ -237,8 +241,9 @@ async function linkMasterJobsToNodes(mtilPhase: number) {
         { referenceCode: { startsWith: "JOBS-V36-" } },
         { referenceCode: { startsWith: "JOBS-V37-" } },
         { referenceCode: { startsWith: "JOBS-V38-" } },
-        { referenceCode: { startsWith: "JOBS-V38-" } },
         { referenceCode: { startsWith: "JOBS-DMW-" } },
+        { referenceCode: { startsWith: "JOBS-LSA-" } },
+        { referenceCode: { startsWith: "JOBS-FFS-" } },
       ],
       deletedAt: null,
     },
@@ -289,13 +294,16 @@ export async function isEmdrMasterRepositorySeeded(): Promise<boolean> {
         { jobId: { startsWith: "JOBS-V36-" } },
         { jobId: { startsWith: "JOBS-V37-" } },
         { jobId: { startsWith: "JOBS-V38-" } },
-        { jobId: { startsWith: "JOBS-V38-" } },
         { jobId: { startsWith: "JOBS-DMW-" } },
+        { jobId: { startsWith: "JOBS-LSA-" } },
+        { jobId: { startsWith: "JOBS-FFS-" } },
       ],
       activeFlag: true,
     },
   });
 
+  if (kind === "v311") return activeJobs >= 13000;
+  if (kind === "v310") return activeJobs >= 12000;
   if (kind === "v39") return activeJobs >= 11000;
   if (kind === "v38") return activeJobs >= 9500;
   if (kind === "v37") return activeJobs >= 8200;
@@ -317,6 +325,12 @@ export async function seedEmdrMasterRepository() {
   if (!kind || !isEmdrMasterRepositoryPresent()) {
     throw new Error("EMDR master repository workbook not found in data/emdr/v2/");
   }
+
+  // Retired trees keep rows for audit; release unique mtil_job_code slots for re-seed.
+  await prisma.jobLibraryNode.updateMany({
+    where: { deletedAt: { not: null }, mtilJobCode: { not: null } },
+    data: { mtilJobCode: null },
+  });
 
   const config = getEmdrMasterRepositoryReleaseConfig(kind);
   const parsed = loadEmdrMasterRepositoryParsed();
@@ -371,6 +385,10 @@ export async function seedEmdrMasterRepository() {
   const dmwWinchJobs = parsed.masterJobs.filter((j) =>
     /windlass|winch|capstan|deck machinery/i.test(j.machinery),
   ).length;
+  const lsaDavitsJobs = parsed.masterJobs.filter((j) =>
+    /life saving|davit|rescue boat/i.test(j.machinery),
+  ).length;
+  const fireFightingJobs = parsed.masterJobs.filter((j) => /fire fighting/i.test(j.machinery)).length;
   const fwgJobs = parsed.masterJobs.filter((j) => /fresh water generator|\bfwg\b/i.test(j.machinery)).length;
   const acJobs = parsed.masterJobs.filter((j) => /air conditioning|\bhvac\b/i.test(j.machinery)).length;
   const refJobs = parsed.masterJobs.filter((j) => /refrigeration/i.test(j.machinery)).length;
@@ -393,6 +411,8 @@ export async function seedEmdrMasterRepository() {
     cargoPumpingJobCount: cgpJobs,
     steeringGearJobCount: stgJobs,
     deckMachineryWinchJobCount: dmwWinchJobs,
+    lsaDavitsJobCount: lsaDavitsJobs,
+    fireFightingJobCount: fireFightingJobs,
     fwgJobCount: fwgJobs,
     airConditioningJobCount: acJobs,
     refrigerationJobCount: refJobs,

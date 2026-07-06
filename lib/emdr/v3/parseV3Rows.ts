@@ -560,7 +560,9 @@ export type V3RepositoryIndexRow = {
     | "Fresh Water Generator"
     | "Air Conditioning & Ventilation"
     | "Refrigeration Plant"
-    | "Deck Machinery – Windlass / Winches / Capstans";
+    | "Deck Machinery – Windlass / Winches / Capstans"
+    | "Life Saving Appliances / Davits / Rescue Boat Davit"
+    | "Fire Fighting Systems";
 };
 
 export function parseV3UnifiedRepositoryIndex(rows: Array<Record<string, unknown>>): V3RepositoryIndexRow[] {

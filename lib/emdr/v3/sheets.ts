@@ -25,6 +25,10 @@ export const EMDR_V37_RELEASE = "V3.7-ME-AE-BLR-PMP-CMP-PUR-HEX-COPT-DECK";
 export const EMDR_V38_RELEASE = "V3.8-ME-AE-BLR-PMP-CMP-PUR-HEX-COPT-DECK-FWG-AC-REF";
 export const EMDR_V39_RELEASE =
   "V3.9-ME-AE-BLR-PMP-CMP-PUR-HEX-COPT-DECK-FWG-AC-REF-DMW";
+export const EMDR_V310_RELEASE =
+  "V3.10-ME-AE-BLR-PMP-CMP-PUR-HEX-COPT-DECK-FWG-AC-REF-DMW-LSA";
+export const EMDR_V311_RELEASE =
+  "V3.11-ME-AE-BLR-PMP-CMP-PUR-HEX-COPT-DECK-FWG-AC-REF-DMW-LSA-FFS";
 
 export const MTIL_V30_TREE_CODE = "mtil_v30_main_engine";
 export const MTIL_V30_MTIL_PHASE = 300;
@@ -53,7 +57,15 @@ export const MTIL_V38_MTIL_PHASE = 308;
 export const MTIL_V39_TREE_CODE = "mtil_v39_main_propulsion";
 export const MTIL_V39_MTIL_PHASE = 309;
 
+export const MTIL_V310_TREE_CODE = "mtil_v310_main_propulsion";
+export const MTIL_V310_MTIL_PHASE = 310;
+
+export const MTIL_V311_TREE_CODE = "mtil_v311_main_propulsion";
+export const MTIL_V311_MTIL_PHASE = 311;
+
 export type EmdrMasterRepositoryKind =
+  | "v311"
+  | "v310"
   | "v39"
   | "v38"
   | "v37"
@@ -82,11 +94,61 @@ export type EmdrMasterRepositoryReleaseConfig = {
   includesAirConditioning: boolean;
   includesRefrigeration: boolean;
   includesDeckMachineryWinch: boolean;
+  includesLsaDavits: boolean;
+  includesFireFighting: boolean;
 };
 
 export function getEmdrMasterRepositoryReleaseConfig(
   kind: EmdrMasterRepositoryKind,
 ): EmdrMasterRepositoryReleaseConfig {
+  if (kind === "v311") {
+    return {
+      kind: "v311",
+      release: EMDR_V311_RELEASE,
+      treeCode: MTIL_V311_TREE_CODE,
+      treeName:
+        "Main Propulsion, Auxiliary, Boilers, Pumps, Compressors, Purifiers, Heat Exchangers, COPT, Deck, FWG, AC, Refrigeration, Deck Machinery, LSA & Fire Fighting (V3.11)",
+      mtilPhase: MTIL_V311_MTIL_PHASE,
+      includesAuxiliaryEngine: true,
+      includesBoilers: true,
+      includesPumps: true,
+      includesCompressors: true,
+      includesPurifiers: true,
+      includesHeatExchangers: true,
+      includesCopt: true,
+      includesDeckMachinery: true,
+      includesFwg: true,
+      includesAirConditioning: true,
+      includesRefrigeration: true,
+      includesDeckMachineryWinch: true,
+      includesLsaDavits: true,
+      includesFireFighting: true,
+    };
+  }
+  if (kind === "v310") {
+    return {
+      kind: "v310",
+      release: EMDR_V310_RELEASE,
+      treeCode: MTIL_V310_TREE_CODE,
+      treeName:
+        "Main Propulsion, Auxiliary, Boilers, Pumps, Compressors, Purifiers, Heat Exchangers, COPT, Deck, FWG, AC, Refrigeration, Deck Machinery & LSA Davits (V3.10)",
+      mtilPhase: MTIL_V310_MTIL_PHASE,
+      includesAuxiliaryEngine: true,
+      includesBoilers: true,
+      includesPumps: true,
+      includesCompressors: true,
+      includesPurifiers: true,
+      includesHeatExchangers: true,
+      includesCopt: true,
+      includesDeckMachinery: true,
+      includesFwg: true,
+      includesAirConditioning: true,
+      includesRefrigeration: true,
+      includesDeckMachineryWinch: true,
+      includesLsaDavits: true,
+      includesFireFighting: false,
+    };
+  }
   if (kind === "v39") {
     return {
       kind: "v39",
@@ -107,6 +169,8 @@ export function getEmdrMasterRepositoryReleaseConfig(
       includesAirConditioning: true,
       includesRefrigeration: true,
       includesDeckMachineryWinch: true,
+      includesLsaDavits: false,
+      includesFireFighting: false,
     };
   }
   if (kind === "v38") {
@@ -129,6 +193,8 @@ export function getEmdrMasterRepositoryReleaseConfig(
       includesAirConditioning: true,
       includesRefrigeration: true,
       includesDeckMachineryWinch: false,
+      includesLsaDavits: false,
+      includesFireFighting: false,
     };
   }
   if (kind === "v37") {
@@ -151,6 +217,8 @@ export function getEmdrMasterRepositoryReleaseConfig(
       includesAirConditioning: false,
       includesRefrigeration: false,
       includesDeckMachineryWinch: false,
+      includesLsaDavits: false,
+      includesFireFighting: false,
     };
   }
   if (kind === "v36") {
@@ -173,6 +241,8 @@ export function getEmdrMasterRepositoryReleaseConfig(
       includesAirConditioning: false,
       includesRefrigeration: false,
       includesDeckMachineryWinch: false,
+      includesLsaDavits: false,
+      includesFireFighting: false,
     };
   }
   if (kind === "v34") {
@@ -194,6 +264,8 @@ export function getEmdrMasterRepositoryReleaseConfig(
       includesAirConditioning: false,
       includesRefrigeration: false,
       includesDeckMachineryWinch: false,
+      includesLsaDavits: false,
+      includesFireFighting: false,
     };
   }
   if (kind === "v33") {
@@ -215,6 +287,8 @@ export function getEmdrMasterRepositoryReleaseConfig(
       includesAirConditioning: false,
       includesRefrigeration: false,
       includesDeckMachineryWinch: false,
+      includesLsaDavits: false,
+      includesFireFighting: false,
     };
   }
   if (kind === "v32") {
@@ -236,6 +310,8 @@ export function getEmdrMasterRepositoryReleaseConfig(
       includesAirConditioning: false,
       includesRefrigeration: false,
       includesDeckMachineryWinch: false,
+      includesLsaDavits: false,
+      includesFireFighting: false,
     };
   }
   if (kind === "v31") {
@@ -256,6 +332,9 @@ export function getEmdrMasterRepositoryReleaseConfig(
       includesFwg: false,
       includesAirConditioning: false,
       includesRefrigeration: false,
+      includesDeckMachineryWinch: false,
+      includesLsaDavits: false,
+      includesFireFighting: false,
     };
   }
   return {
@@ -276,5 +355,7 @@ export function getEmdrMasterRepositoryReleaseConfig(
     includesAirConditioning: false,
     includesRefrigeration: false,
     includesDeckMachineryWinch: false,
+    includesLsaDavits: false,
+    includesFireFighting: false,
   };
 }

@@ -9,7 +9,7 @@ import {
   synthesizeV3Workflows,
   type V3RepositoryIndexRow,
 } from "@/lib/emdr/v3/parseV3Rows";
-import { EMDR_V39_RELEASE } from "@/lib/emdr/v3/sheets";
+import { EMDR_V310_RELEASE } from "@/lib/emdr/v3/sheets";
 import { normalizeWorkbookMasterIds } from "@/lib/mtil/import/normalizeWorkbookMasterIds";
 import type {
   ParsedChecklistRow,
@@ -24,12 +24,11 @@ import {
   mapInputType,
   mapPricingBasis,
   mapResponseType,
-  ynBool,
 } from "@/lib/mtil/import/excelValues";
 import { MASTER_ENTITY_CODES, normalizeMasterId } from "@/lib/mtil/masterCodeStandard";
 import { parseMasterJobs } from "@/lib/mtil/v2/import/parseSprintRows";
 
-export const V39_INCREMENTAL_SHEETS = {
+const INCREMENTAL_SHEETS = {
   jobs: "Repository_Jobs",
   measurements: "Measurements",
   inspections: "Inspection_Checklist",
@@ -38,15 +37,7 @@ export const V39_INCREMENTAL_SHEETS = {
   rfq: "RFQ_Budget_Mapping",
 } as const;
 
-const V39_MACHINERY_FAMILY = "Deck Machinery – Windlass / Winches / Capstans";
-
-export function isV39IncrementalWorkbook(workbook: XLSX.WorkBook): boolean {
-  const sheet = workbook.Sheets[V39_INCREMENTAL_SHEETS.jobs];
-  if (!sheet) return false;
-  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
-  const code = cellStr(rows[0]?.["Job Code"]);
-  return code.startsWith("V3.9-");
-}
+export const V310_MACHINERY_FAMILY = "Life Saving Appliances / Davits / Rescue Boat Davit";
 
 function sheetRows(workbook: XLSX.WorkBook, name: string): Array<Record<string, unknown>> {
   const sheet = workbook.Sheets[name];
@@ -54,9 +45,15 @@ function sheetRows(workbook: XLSX.WorkBook, name: string): Array<Record<string, 
   return XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
 }
 
-export function normalizeV39JobCode(raw: string): string {
+export function isV310IncrementalWorkbook(workbook: XLSX.WorkBook): boolean {
+  const rows = sheetRows(workbook, INCREMENTAL_SHEETS.jobs);
+  const code = cellStr(rows[0]?.["Job Code"]);
+  return code.startsWith("V3.10-");
+}
+
+export function normalizeV310JobCode(raw: string): string {
   const code = cellStr(raw);
-  if (code.startsWith("V3.9-")) return `JOBS-${code.slice(5)}`;
+  if (code.startsWith("V3.10-")) return `JOBS-${code.slice(6)}`;
   if (code.startsWith("JOBS-")) return code;
   return `JOBS-${code}`;
 }
@@ -71,10 +68,10 @@ function idsFromJobId(jobId: string) {
   };
 }
 
-function normalizeV39EntityId(id: string, entity: keyof typeof MASTER_ENTITY_CODES): string {
+function normalizeV310EntityId(id: string, entity: keyof typeof MASTER_ENTITY_CODES): string {
   const trimmed = cellStr(id);
-  if (trimmed.startsWith("V3.9-")) {
-    return `${MASTER_ENTITY_CODES[entity]}-${trimmed.slice(5)}`;
+  if (trimmed.startsWith("V3.10-")) {
+    return `${MASTER_ENTITY_CODES[entity]}-${trimmed.slice(6)}`;
   }
   return normalizeMasterId(trimmed, MASTER_ENTITY_CODES[entity]);
 }
@@ -90,17 +87,17 @@ function ynBoolLoose(value: unknown): boolean {
   return raw === "y" || raw === "yes" || raw === "true" || raw === "1";
 }
 
-function normalizeV39JobRows(rows: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+function normalizeV310JobRows(rows: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
   return rows.map((row) => {
-    const jobId = normalizeV39JobCode(cellStr(row["Job Code"]));
+    const jobId = normalizeV310JobCode(cellStr(row["Job Code"]));
     const systemCode = cellStr(row["System Code"]);
     const ids = idsFromJobId(jobId);
-    const machinery = cellStr(row["Machinery Family"]) || V39_MACHINERY_FAMILY;
+    const machinery = cellStr(row["Machinery Family"]) || V310_MACHINERY_FAMILY;
     const dryDock = cellStr(row["Dry Dock Job"]).toLowerCase();
     return {
       "Job ID": jobId,
-      Release: EMDR_V39_RELEASE,
-      Department: "Deck",
+      Release: EMDR_V310_RELEASE,
+      Department: "Safety",
       Machinery: machinery,
       System: cellStr(row["System Name"]),
       Component: cellStr(row["Component Name"]),
@@ -111,14 +108,14 @@ function normalizeV39JobRows(rows: Array<Record<string, unknown>>): Array<Record
       "Project Types": dryDock === "yes" ? "Special Survey" : "Occasional Repair",
       Workshop: "fore/aft deck / mast",
       "Responsible Vessel Role": cellStr(row["PIC"]) || "Chief Officer",
-      "Review Role": cellStr(row["Verifying Authority"]) || "Chief Engineer",
+      "Review Role": cellStr(row["Verifying Authority"]) || "Chief Officer",
       "Approval Role": "Technical Superintendent",
       "Template ID": ids.templateId,
       "Measurement Set ID": ids.measurementSetId,
       "Inspection Set ID": ids.inspectionChecklistId,
       "Scope of Work ID": ids.scopeOfWorkId,
       "RFQ Category": machinery,
-      "Budget Category": cellStr(row["Section"]) || "Deck Machinery",
+      "Budget Category": cellStr(row["Section"]) || "Life Saving Appliances",
       "Cost Code": `DD-${systemCode}`,
       "Class Hold Point": dryDock === "yes" ? "Y" : "N",
       "Maker Attendance": "N",
@@ -128,14 +125,14 @@ function normalizeV39JobRows(rows: Array<Record<string, unknown>>): Array<Record
   });
 }
 
-function parseV39Measurements(
+function parseV310Measurements(
   rows: Array<Record<string, unknown>>,
   templateIdByJobId: Map<string, string>,
 ): ParsedMeasurementRow[] {
   const parsed: ParsedMeasurementRow[] = [];
   for (const [index, row] of rows.entries()) {
-    const measurementId = normalizeV39EntityId(cellStr(row["Measurement ID"]), "MEAS");
-    const jobId = normalizeV39JobCode(cellStr(row["Linked Job Code"]));
+    const measurementId = normalizeV310EntityId(cellStr(row["Measurement ID"]), "MEAS");
+    const jobId = normalizeV310JobCode(cellStr(row["Linked Job Code"]));
     if (!measurementId || !jobId) continue;
     const templateId = templateIdByJobId.get(jobId);
     if (!templateId) continue;
@@ -157,15 +154,15 @@ function parseV39Measurements(
   return parsed;
 }
 
-function parseV39Checklist(
+function parseV310Checklist(
   rows: Array<Record<string, unknown>>,
   templateIdByJobId: Map<string, string>,
 ): ParsedChecklistRow[] {
   const seqByChecklist = new Map<string, number>();
   const parsed: ParsedChecklistRow[] = [];
   for (const [index, row] of rows.entries()) {
-    const checklistItemId = normalizeV39EntityId(cellStr(row["Checklist ID"]), "INSP");
-    const jobId = normalizeV39JobCode(cellStr(row["Linked Job Code"]));
+    const checklistItemId = normalizeV310EntityId(cellStr(row["Checklist ID"]), "INSP");
+    const jobId = normalizeV310JobCode(cellStr(row["Linked Job Code"]));
     if (!checklistItemId || !jobId) continue;
     const templateId = templateIdByJobId.get(jobId);
     if (!templateId) continue;
@@ -189,13 +186,13 @@ function parseV39Checklist(
   return parsed;
 }
 
-function parseV39Tools(
+function parseV310Tools(
   rows: Array<Record<string, unknown>>,
   templateIdByJobId: Map<string, string>,
 ): ParsedToolMasterRow[] {
   return rows
     .map((row, index) => {
-      const jobId = normalizeV39JobCode(cellStr(row["Linked Job Code"]));
+      const jobId = normalizeV310JobCode(cellStr(row["Linked Job Code"]));
       if (!jobId) return null;
       const templateId = templateIdByJobId.get(jobId);
       if (!templateId) return null;
@@ -213,13 +210,13 @@ function parseV39Tools(
     .filter((row): row is ParsedToolMasterRow => row !== null);
 }
 
-function parseV39Spares(
+function parseV310Spares(
   rows: Array<Record<string, unknown>>,
   templateIdByJobId: Map<string, string>,
 ): ParsedSpareRow[] {
   const parsed: ParsedSpareRow[] = [];
   for (const [index, row] of rows.entries()) {
-    const jobId = normalizeV39JobCode(cellStr(row["Linked Job Code"]));
+    const jobId = normalizeV310JobCode(cellStr(row["Linked Job Code"]));
     if (!jobId) continue;
     const templateId = templateIdByJobId.get(jobId);
     if (!templateId) continue;
@@ -243,13 +240,13 @@ function parseV39Spares(
   return parsed;
 }
 
-function parseV39Rfq(rows: Array<Record<string, unknown>>): ParsedRfqRow[] {
+function parseV310Rfq(rows: Array<Record<string, unknown>>): ParsedRfqRow[] {
   return rows
     .map((row, index) => {
-      const jobId = normalizeV39JobCode(cellStr(row["Linked Job Code"]));
+      const jobId = normalizeV310JobCode(cellStr(row["Linked Job Code"]));
       if (!jobId) return null;
       const mappingId = `RFQM-${jobId.replace(/^JOBS-/, "")}`;
-      const budgetCategory = cellStr(row["Budget Category"]) || "Deck Machinery Jobs Cost";
+      const budgetCategory = cellStr(row["Budget Category"]) || "Life Saving Appliances Jobs Cost";
       return {
         rowNumber: index + 2,
         mappingId,
@@ -267,7 +264,7 @@ function parseV39Rfq(rows: Array<Record<string, unknown>>): ParsedRfqRow[] {
     .filter((row): row is ParsedRfqRow => row !== null);
 }
 
-function synthesizeV39EquipmentMaster(jobs: ParsedMasterJobRow[]): ParsedEquipmentMasterRow[] {
+function synthesizeV310EquipmentMaster(jobs: ParsedMasterJobRow[]): ParsedEquipmentMasterRow[] {
   const seen = new Set<string>();
   const rows: ParsedEquipmentMasterRow[] = [];
   for (const [index, job] of jobs.entries()) {
@@ -280,7 +277,7 @@ function synthesizeV39EquipmentMaster(jobs: ParsedMasterJobRow[]): ParsedEquipme
       machinery: job.machinery,
       system: job.systemGroup,
       equipmentComponent: job.systemGroup,
-      department: "Deck",
+      department: "Safety",
       vesselType: "All Types",
       remarks: null,
     });
@@ -288,7 +285,7 @@ function synthesizeV39EquipmentMaster(jobs: ParsedMasterJobRow[]): ParsedEquipme
   return rows;
 }
 
-function synthesizeV39ComponentMaster(jobs: ParsedMasterJobRow[]): ParsedComponentMasterRow[] {
+function synthesizeV310ComponentMaster(jobs: ParsedMasterJobRow[]): ParsedComponentMasterRow[] {
   const seen = new Set<string>();
   const rows: ParsedComponentMasterRow[] = [];
   for (const [index, job] of jobs.entries()) {
@@ -304,7 +301,7 @@ function synthesizeV39ComponentMaster(jobs: ParsedMasterJobRow[]): ParsedCompone
       componentCode,
       equipmentCode,
       componentName: job.component,
-      componentType: "Deck Machinery",
+      componentType: "Life Saving Appliance",
       activeFlag: true,
       system: job.systemGroup,
       owner: null,
@@ -313,7 +310,7 @@ function synthesizeV39ComponentMaster(jobs: ParsedMasterJobRow[]): ParsedCompone
   return rows;
 }
 
-function buildV39RepositoryIndex(jobs: ParsedMasterJobRow[]): V3RepositoryIndexRow[] {
+function buildV310RepositoryIndex(jobs: ParsedMasterJobRow[]): V3RepositoryIndexRow[] {
   const bySystem = new Map<string, { systemName: string; count: number }>();
   for (const job of jobs) {
     const systemCode = systemCodeFromJobId(job.jobId);
@@ -327,20 +324,20 @@ function buildV39RepositoryIndex(jobs: ParsedMasterJobRow[]): V3RepositoryIndexR
     systemName: entry.systemName,
     jobCount: entry.count,
     status: "Completed",
-    machineryFamily: V39_MACHINERY_FAMILY as V3RepositoryIndexRow["machineryFamily"],
+    machineryFamily: V310_MACHINERY_FAMILY as V3RepositoryIndexRow["machineryFamily"],
   }));
 }
 
-export function parseV39IncrementalRepositoryBuffer(buffer: ArrayBuffer | Uint8Array): ParsedV3MasterRepository {
+export function parseV310IncrementalRepositoryBuffer(buffer: ArrayBuffer | Uint8Array): ParsedV3MasterRepository {
   const workbook = XLSX.read(buffer, { type: "array" });
-  if (!isV39IncrementalWorkbook(workbook)) {
-    throw new Error("Not a V3.9 incremental EMDR repository workbook");
+  if (!isV310IncrementalWorkbook(workbook)) {
+    throw new Error("Not a V3.10 incremental EMDR repository workbook");
   }
 
-  const jobRows = normalizeV39JobRows(sheetRows(workbook, V39_INCREMENTAL_SHEETS.jobs));
+  const jobRows = normalizeV310JobRows(sheetRows(workbook, INCREMENTAL_SHEETS.jobs));
   const masterJobs = parseMasterJobs(jobRows).map((job) => ({
     ...job,
-    libraryVersion: EMDR_V39_RELEASE,
+    libraryVersion: EMDR_V310_RELEASE,
   }));
 
   const templates = synthesizeV3Templates(masterJobs);
@@ -349,21 +346,21 @@ export function parseV39IncrementalRepositoryBuffer(buffer: ArrayBuffer | Uint8A
   const templateIdByJobId = buildTemplateIdByJobId(masterJobs);
 
   const parsed: ParsedMtilWorkbook = {
-    libraryVersion: EMDR_V39_RELEASE,
+    libraryVersion: EMDR_V310_RELEASE,
     masterJobs,
     templates,
-    measurements: parseV39Measurements(
-      sheetRows(workbook, V39_INCREMENTAL_SHEETS.measurements),
+    measurements: parseV310Measurements(
+      sheetRows(workbook, INCREMENTAL_SHEETS.measurements),
       templateIdByJobId,
     ),
-    checklistItems: parseV39Checklist(
-      sheetRows(workbook, V39_INCREMENTAL_SHEETS.inspections),
+    checklistItems: parseV310Checklist(
+      sheetRows(workbook, INCREMENTAL_SHEETS.inspections),
       templateIdByJobId,
     ),
     scopeSteps,
     attachments: [],
-    spares: parseV39Spares(sheetRows(workbook, V39_INCREMENTAL_SHEETS.spares), templateIdByJobId),
-    rfqMappings: parseV39Rfq(sheetRows(workbook, V39_INCREMENTAL_SHEETS.rfq)),
+    spares: parseV310Spares(sheetRows(workbook, INCREMENTAL_SHEETS.spares), templateIdByJobId),
+    rfqMappings: parseV310Rfq(sheetRows(workbook, INCREMENTAL_SHEETS.rfq)),
     workflows,
   };
 
@@ -372,24 +369,24 @@ export function parseV39IncrementalRepositoryBuffer(buffer: ArrayBuffer | Uint8A
   return {
     ...normalized,
     emdrMasterData: {
-      equipmentMaster: synthesizeV39EquipmentMaster(normalized.masterJobs),
-      componentMaster: synthesizeV39ComponentMaster(normalized.masterJobs),
-      tools: parseV39Tools(sheetRows(workbook, V39_INCREMENTAL_SHEETS.tools), templateIdByJobId),
+      equipmentMaster: synthesizeV310EquipmentMaster(normalized.masterJobs),
+      componentMaster: synthesizeV310ComponentMaster(normalized.masterJobs),
+      tools: parseV310Tools(sheetRows(workbook, INCREMENTAL_SHEETS.tools), templateIdByJobId),
     },
-    repositoryIndex: buildV39RepositoryIndex(normalized.masterJobs),
-    release: EMDR_V39_RELEASE,
+    repositoryIndex: buildV310RepositoryIndex(normalized.masterJobs),
+    release: EMDR_V310_RELEASE,
   };
 }
 
-export function parseV39IncrementalRepositoryFile(path: string): ParsedV3MasterRepository {
+export function parseV310IncrementalRepositoryFile(path: string): ParsedV3MasterRepository {
   const bytes = fs.readFileSync(path);
-  return parseV39IncrementalRepositoryBuffer(bytes);
+  return parseV310IncrementalRepositoryBuffer(bytes);
 }
 
-export function parseV39IncrementalRepositoryIfExists(path: string): ParsedV3MasterRepository | null {
+export function parseV310IncrementalRepositoryIfExists(path: string): ParsedV3MasterRepository | null {
   if (!fs.existsSync(path)) return null;
   try {
-    return parseV39IncrementalRepositoryFile(path);
+    return parseV310IncrementalRepositoryFile(path);
   } catch {
     return null;
   }
