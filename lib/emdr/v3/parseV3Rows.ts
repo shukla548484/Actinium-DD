@@ -563,7 +563,8 @@ export type V3RepositoryIndexRow = {
     | "Deck Machinery – Windlass / Winches / Capstans"
     | "Life Saving Appliances / Davits / Rescue Boat Davit"
     | "Fire Fighting Systems"
-    | "Inert Gas / IGG / Scrubber System";
+    | "Inert Gas / IGG / Scrubber System"
+    | "Compressed Air & Starting Air System";
 };
 
 export function parseV3UnifiedRepositoryIndex(rows: Array<Record<string, unknown>>): V3RepositoryIndexRow[] {

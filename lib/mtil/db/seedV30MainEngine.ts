@@ -247,6 +247,7 @@ async function linkMasterJobsToNodes(mtilPhase: number) {
         { referenceCode: { startsWith: "JOBS-LSA-" } },
         { referenceCode: { startsWith: "JOBS-FFS-" } },
         { referenceCode: { startsWith: "JOBS-IGG-" } },
+        { referenceCode: { startsWith: "JOBS-ACSA-" } },
       ],
       deletedAt: null,
     },
@@ -301,12 +302,13 @@ export async function isEmdrMasterRepositorySeeded(): Promise<boolean> {
         { jobId: { startsWith: "JOBS-LSA-" } },
         { jobId: { startsWith: "JOBS-FFS-" } },
         { jobId: { startsWith: "JOBS-IGG-" } },
+        { jobId: { startsWith: "JOBS-ACSA-" } },
       ],
       activeFlag: true,
     },
   });
 
-  if (kind === "v312") return activeJobs >= 14000;
+  if (kind === "v312") return activeJobs >= 14400;
   if (kind === "v311") return activeJobs >= 13000;
   if (kind === "v310") return activeJobs >= 12000;
   if (kind === "v39") return activeJobs >= 11000;
@@ -395,6 +397,7 @@ export async function seedEmdrMasterRepository() {
   ).length;
   const fireFightingJobs = parsed.masterJobs.filter((j) => /fire fighting/i.test(j.machinery)).length;
   const inertGasJobs = parsed.masterJobs.filter((j) => /inert gas|\bigg\b|scrubber/i.test(j.machinery)).length;
+  const compressedAirJobs = parsed.masterJobs.filter((j) => /compressed air|starting air/i.test(j.machinery)).length;
   const fwgJobs = parsed.masterJobs.filter((j) => /fresh water generator|\bfwg\b/i.test(j.machinery)).length;
   const acJobs = parsed.masterJobs.filter((j) => /air conditioning|\bhvac\b/i.test(j.machinery)).length;
   const refJobs = parsed.masterJobs.filter((j) => /refrigeration/i.test(j.machinery)).length;
@@ -420,6 +423,7 @@ export async function seedEmdrMasterRepository() {
     lsaDavitsJobCount: lsaDavitsJobs,
     fireFightingJobCount: fireFightingJobs,
     inertGasJobCount: inertGasJobs,
+    compressedAirJobCount: compressedAirJobs,
     fwgJobCount: fwgJobs,
     airConditioningJobCount: acJobs,
     refrigerationJobCount: refJobs,

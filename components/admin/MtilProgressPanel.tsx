@@ -162,6 +162,7 @@ type V3Report = {
     lsaDavitsJobCount?: number;
     fireFightingJobCount?: number;
     inertGasJobCount?: number;
+    compressedAirJobCount?: number;
     fwgJobCount?: number;
     airConditioningJobCount?: number;
     refrigerationJobCount?: number;
@@ -183,6 +184,7 @@ type V3Report = {
     lsaDavitsSystemCount?: number;
     fireFightingSystemCount?: number;
     inertGasSystemCount?: number;
+    compressedAirSystemCount?: number;
     fwgSystemCount?: number;
     airConditioningSystemCount?: number;
     refrigerationSystemCount?: number;
@@ -219,6 +221,7 @@ function formatV3JobCounts(stats: V3Report["stats"]): string[] {
     (stats.lsaDavitsJobCount ?? 0) > 0 ? `${stats.lsaDavitsJobCount!.toLocaleString()} LSA` : null,
     (stats.fireFightingJobCount ?? 0) > 0 ? `${stats.fireFightingJobCount!.toLocaleString()} FFS` : null,
     (stats.inertGasJobCount ?? 0) > 0 ? `${stats.inertGasJobCount!.toLocaleString()} IGG` : null,
+    (stats.compressedAirJobCount ?? 0) > 0 ? `${stats.compressedAirJobCount!.toLocaleString()} CAS` : null,
     (stats.fwgJobCount ?? 0) > 0 ? `${stats.fwgJobCount!.toLocaleString()} FWG` : null,
     (stats.airConditioningJobCount ?? 0) > 0 ? `${stats.airConditioningJobCount!.toLocaleString()} AC` : null,
     (stats.refrigerationJobCount ?? 0) > 0 ? `${stats.refrigerationJobCount!.toLocaleString()} REF` : null,
@@ -244,6 +247,7 @@ function formatV3SystemCounts(stats: V3Report["stats"]): string[] {
     (stats.lsaDavitsSystemCount ?? 0) > 0 ? `${stats.lsaDavitsSystemCount} LSA` : null,
     (stats.fireFightingSystemCount ?? 0) > 0 ? `${stats.fireFightingSystemCount} FFS` : null,
     (stats.inertGasSystemCount ?? 0) > 0 ? `${stats.inertGasSystemCount} IGG` : null,
+    (stats.compressedAirSystemCount ?? 0) > 0 ? `${stats.compressedAirSystemCount} CAS` : null,
     (stats.fwgSystemCount ?? 0) > 0 ? `${stats.fwgSystemCount} FWG` : null,
     (stats.airConditioningSystemCount ?? 0) > 0 ? `${stats.airConditioningSystemCount} AC` : null,
     (stats.refrigerationSystemCount ?? 0) > 0 ? `${stats.refrigerationSystemCount} REF` : null,
@@ -267,7 +271,7 @@ function v3SeedButtonLabel(kind: V3MasterKind | null | undefined): string {
 
 function v3RepositoryTitle(kind: V3MasterKind | null | undefined): string {
   if (kind === "v312") {
-    return "V3.12 — Full machinery repo incl. Inert Gas / IGG / Scrubber";
+    return "V3.12 — Full machinery repo incl. Inert Gas, Scrubber & Compressed Air";
   }
   if (kind === "v311") {
     return "V3.11 — Full machinery repo incl. Fire Fighting Systems";
@@ -311,7 +315,7 @@ function v3VersionLabel(kind: V3MasterKind | undefined): string {
 
 function v3RepositoryFootnote(kind: V3MasterKind | null | undefined): string {
   if (kind === "v312") {
-    return "V3.12 merges the cumulative V3.7–V3.11 base with inert gas generator and scrubber system jobs — seeding retires older trees and deactivates legacy sprint job IDs.";
+    return "V3.12 merges the cumulative V3.7–V3.11 base with inert gas, scrubber and compressed/starting air system jobs — seeding retires older trees and deactivates legacy sprint job IDs.";
   }
   if (kind === "v311") {
     return "V3.11 merges the cumulative V3.7–V3.10 base with fire fighting systems jobs — seeding retires older trees and deactivates legacy sprint job IDs.";

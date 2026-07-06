@@ -54,6 +54,7 @@ const EMPTY_STATS = {
   lsaDavitsSystemCount: 0,
   fireFightingSystemCount: 0,
   inertGasSystemCount: 0,
+  compressedAirSystemCount: 0,
   fwgSystemCount: 0,
   airConditioningSystemCount: 0,
   refrigerationSystemCount: 0,
@@ -75,6 +76,7 @@ const EMPTY_STATS = {
   lsaDavitsJobCount: 0,
   fireFightingJobCount: 0,
   inertGasJobCount: 0,
+  compressedAirJobCount: 0,
   fwgJobCount: 0,
   airConditioningJobCount: 0,
   refrigerationJobCount: 0,
@@ -125,6 +127,7 @@ export function getEmdrMasterRepositoryWorkbookStats() {
   const lsaDavitsJobs = countDeckFamilyJobs(jobs, /life saving|davit|rescue boat/i);
   const fireFightingJobs = countDeckFamilyJobs(jobs, /fire fighting/i);
   const inertGasJobs = countDeckFamilyJobs(jobs, /inert gas|\bigg\b|scrubber/i);
+  const compressedAirJobs = countDeckFamilyJobs(jobs, /compressed air|starting air/i);
   const fwgJobs = countDeckFamilyJobs(jobs, /fresh water generator|\bfwg\b/i);
   const acJobs = countDeckFamilyJobs(jobs, /air conditioning|\bhvac\b/i);
   const refJobs = countDeckFamilyJobs(jobs, /refrigeration/i);
@@ -164,6 +167,9 @@ export function getEmdrMasterRepositoryWorkbookStats() {
     inertGasSystemCount: idx.filter(
       (s) => s.machineryFamily === "Inert Gas / IGG / Scrubber System",
     ).length,
+    compressedAirSystemCount: idx.filter(
+      (s) => s.machineryFamily === "Compressed Air & Starting Air System",
+    ).length,
     fwgSystemCount: idx.filter((s) => s.machineryFamily === "Fresh Water Generator").length,
     airConditioningSystemCount: idx.filter(
       (s) => s.machineryFamily === "Air Conditioning & Ventilation",
@@ -187,6 +193,7 @@ export function getEmdrMasterRepositoryWorkbookStats() {
     lsaDavitsJobCount: lsaDavitsJobs,
     fireFightingJobCount: fireFightingJobs,
     inertGasJobCount: inertGasJobs,
+    compressedAirJobCount: compressedAirJobs,
     fwgJobCount: fwgJobs,
     airConditioningJobCount: acJobs,
     refrigerationJobCount: refJobs,

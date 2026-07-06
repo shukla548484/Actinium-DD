@@ -9,6 +9,7 @@ import {
   EMDR_V37_MASTER_REPOSITORY_PATH,
   EMDR_V38_MASTER_REPOSITORY_PATH,
   EMDR_V39_MASTER_REPOSITORY_PATH,
+  EMDR_V39_CAS_MASTER_REPOSITORY_PATH,
   EMDR_V310_MASTER_REPOSITORY_PATH,
   EMDR_V311_MASTER_REPOSITORY_PATH,
   EMDR_V312_MASTER_REPOSITORY_PATH,
@@ -24,6 +25,7 @@ import {
   parseV3MasterRepositoryFileIfExists,
   type ParsedV3MasterRepository,
 } from "@/lib/emdr/v3/parseMasterRepository";
+import { parseV39CompressedAirRepositoryIfExists } from "@/lib/emdr/v3/parseV39CompressedAirRepository";
 import { parseV39IncrementalRepositoryIfExists } from "@/lib/emdr/v3/parseV39IncrementalRepository";
 import { EMDR_V312_RELEASE, EMDR_V311_RELEASE, EMDR_V310_RELEASE, EMDR_V38_RELEASE, EMDR_V39_RELEASE } from "@/lib/emdr/v3/sheets";
 
@@ -38,6 +40,10 @@ let cachedLoadedKind: EmdrMasterRepositoryKind | null | undefined;
 
 function loadV38SupplementParsed(): ParsedV3MasterRepository | null {
   return parseV38IncrementalRepositoryIfExists(EMDR_V38_MASTER_REPOSITORY_PATH);
+}
+
+function loadV39CasSupplementParsed(): ParsedV3MasterRepository | null {
+  return parseV39CompressedAirRepositoryIfExists(EMDR_V39_CAS_MASTER_REPOSITORY_PATH);
 }
 
 function loadV39SupplementParsed(): ParsedV3MasterRepository | null {
@@ -91,6 +97,13 @@ function isV39Job(job: ParsedV3MasterRepository["masterJobs"][number]): boolean 
   return job.jobId.startsWith("JOBS-DMW-") || /windlass|winch|capstan|deck machinery/i.test(job.machinery);
 }
 
+function isCompressedAirJob(job: ParsedV3MasterRepository["masterJobs"][number]): boolean {
+  return (
+    job.jobId.startsWith("JOBS-ACSA-") ||
+    /compressed air|starting air/i.test(job.machinery)
+  );
+}
+
 function isV312Job(job: ParsedV3MasterRepository["masterJobs"][number]): boolean {
   return (
     job.jobId.startsWith("JOBS-IGG-") ||
@@ -142,8 +155,9 @@ function loadMergedMasterRepository(): ParsedV3MasterRepository | null {
   const v38 = loadV38SupplementParsed();
   const v39 = loadV39SupplementParsed();
   const v310 = loadV310SupplementParsed();
-  const v312 = loadV312SupplementParsed();
   const v311 = loadV311SupplementParsed();
+  const v312 = loadV312SupplementParsed();
+  const v39Cas = loadV39CasSupplementParsed();
 
   if (v38 && merged) merged = mergeParsedEmdrRepositories(merged, v38);
   else if (v38) merged = v38;
@@ -160,9 +174,12 @@ function loadMergedMasterRepository(): ParsedV3MasterRepository | null {
   if (v312 && merged) merged = mergeParsedEmdrRepositories(merged, v312);
   else if (v312) merged = v312;
 
+  if (v39Cas && merged) merged = mergeParsedEmdrRepositories(merged, v39Cas);
+  else if (v39Cas) merged = v39Cas;
+
   if (!merged) return null;
 
-  if (v312) return finalizeMergedRepository(merged, EMDR_V312_RELEASE);
+  if (v312 || v39Cas) return finalizeMergedRepository(merged, EMDR_V312_RELEASE);
   if (v311) return finalizeMergedRepository(merged, EMDR_V311_RELEASE);
   if (v310) return finalizeMergedRepository(merged, EMDR_V310_RELEASE);
   if (v39) return finalizeMergedRepository(merged, EMDR_V39_RELEASE);
@@ -174,7 +191,7 @@ function loadMergedMasterRepository(): ParsedV3MasterRepository | null {
 export function resolveLoadedEmdrMasterRepositoryKind(): EmdrMasterRepositoryKind | null {
   if (cachedLoadedKind !== undefined) return cachedLoadedKind;
 
-  if (loadV312SupplementParsed()) {
+  if (loadV312SupplementParsed() || loadV39CasSupplementParsed()) {
     cachedLoadedKind = "v312";
     return cachedLoadedKind;
   }
@@ -246,6 +263,8 @@ export function loadEmdrMasterRepositoryParsed(): ParsedV3MasterRepository | nul
 }
 
 export function loadEmdrMasterRepositoryParsedFromPath(path: string): ParsedV3MasterRepository {
+  const v39Cas = parseV39CompressedAirRepositoryIfExists(path);
+  if (v39Cas) return v39Cas;
   const v312 = parseV312IncrementalRepositoryIfExists(path);
   if (v312) return v312;
   const v311 = parseV311IncrementalRepositoryIfExists(path);

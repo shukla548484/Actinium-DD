@@ -120,6 +120,14 @@ export const EMDR_V312_MASTER_REPOSITORY_PATH = path.join(
   EMDR_V312_MASTER_REPOSITORY_FILENAME,
 );
 
+export const EMDR_V39_CAS_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_9_Compressed_Air_Starting_Air_System.xlsx";
+
+export const EMDR_V39_CAS_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V39_CAS_MASTER_REPOSITORY_FILENAME,
+);
+
 export const EMDR_V39_MASTER_REPOSITORY_FILENAME =
   "Actinium_SM_EMDR_Master_Repository_V3_9_Deck_Machinery_Windlass_Winches_Capstans.xlsx";
 
@@ -175,6 +183,10 @@ export function isEmdrV311MasterRepositoryPresent(): boolean {
 
 export function isEmdrV310MasterRepositoryPresent(): boolean {
   return fs.existsSync(EMDR_V310_MASTER_REPOSITORY_PATH);
+}
+
+export function isEmdrV39CasMasterRepositoryPresent(): boolean {
+  return fs.existsSync(EMDR_V39_CAS_MASTER_REPOSITORY_PATH);
 }
 
 export function isEmdrV39MasterRepositoryPresent(): boolean {

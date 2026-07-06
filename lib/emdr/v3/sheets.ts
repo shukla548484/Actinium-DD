@@ -30,7 +30,7 @@ export const EMDR_V310_RELEASE =
 export const EMDR_V311_RELEASE =
   "V3.11-ME-AE-BLR-PMP-CMP-PUR-HEX-COPT-DECK-FWG-AC-REF-DMW-LSA-FFS";
 export const EMDR_V312_RELEASE =
-  "V3.12-ME-AE-BLR-PMP-CMP-PUR-HEX-COPT-DECK-FWG-AC-REF-DMW-LSA-FFS-IGG";
+  "V3.12-ME-AE-BLR-PMP-CMP-PUR-HEX-COPT-DECK-FWG-AC-REF-DMW-LSA-FFS-IGG-CAS";
 
 export const MTIL_V30_TREE_CODE = "mtil_v30_main_engine";
 export const MTIL_V30_MTIL_PHASE = 300;
@@ -103,6 +103,7 @@ export type EmdrMasterRepositoryReleaseConfig = {
   includesLsaDavits: boolean;
   includesFireFighting: boolean;
   includesInertGas: boolean;
+  includesCompressedAir: boolean;
 };
 
 export function getEmdrMasterRepositoryReleaseConfig(
@@ -114,7 +115,7 @@ export function getEmdrMasterRepositoryReleaseConfig(
       release: EMDR_V312_RELEASE,
       treeCode: MTIL_V312_TREE_CODE,
       treeName:
-        "Main Propulsion, Auxiliary, Boilers, Pumps, Compressors, Purifiers, Heat Exchangers, COPT, Deck, FWG, AC, Refrigeration, Deck Machinery, LSA, Fire Fighting & Inert Gas (V3.12)",
+        "Main Propulsion, Auxiliary, Boilers, Pumps, Compressors, Purifiers, Heat Exchangers, COPT, Deck, FWG, AC, Refrigeration, Deck Machinery, LSA, Fire Fighting, Inert Gas & Compressed Air (V3.12)",
       mtilPhase: MTIL_V312_MTIL_PHASE,
       includesAuxiliaryEngine: true,
       includesBoilers: true,
@@ -131,6 +132,7 @@ export function getEmdrMasterRepositoryReleaseConfig(
       includesLsaDavits: true,
       includesFireFighting: true,
       includesInertGas: true,
+      includesCompressedAir: true,
     };
   }
   if (kind === "v311") {
@@ -156,6 +158,7 @@ export function getEmdrMasterRepositoryReleaseConfig(
       includesLsaDavits: true,
       includesFireFighting: true,
       includesInertGas: false,
+      includesCompressedAir: false,
     };
   }
   if (kind === "v310") {
@@ -181,6 +184,7 @@ export function getEmdrMasterRepositoryReleaseConfig(
       includesLsaDavits: true,
       includesFireFighting: false,
       includesInertGas: false,
+      includesCompressedAir: false,
     };
   }
   if (kind === "v39") {
@@ -206,6 +210,7 @@ export function getEmdrMasterRepositoryReleaseConfig(
       includesLsaDavits: false,
       includesFireFighting: false,
       includesInertGas: false,
+      includesCompressedAir: false,
     };
   }
   if (kind === "v38") {
@@ -231,6 +236,7 @@ export function getEmdrMasterRepositoryReleaseConfig(
       includesLsaDavits: false,
       includesFireFighting: false,
       includesInertGas: false,
+      includesCompressedAir: false,
     };
   }
   if (kind === "v37") {
@@ -256,6 +262,7 @@ export function getEmdrMasterRepositoryReleaseConfig(
       includesLsaDavits: false,
       includesFireFighting: false,
       includesInertGas: false,
+      includesCompressedAir: false,
     };
   }
   if (kind === "v36") {
@@ -281,6 +288,7 @@ export function getEmdrMasterRepositoryReleaseConfig(
       includesLsaDavits: false,
       includesFireFighting: false,
       includesInertGas: false,
+      includesCompressedAir: false,
     };
   }
   if (kind === "v34") {
@@ -305,6 +313,7 @@ export function getEmdrMasterRepositoryReleaseConfig(
       includesLsaDavits: false,
       includesFireFighting: false,
       includesInertGas: false,
+      includesCompressedAir: false,
     };
   }
   if (kind === "v33") {
@@ -329,6 +338,7 @@ export function getEmdrMasterRepositoryReleaseConfig(
       includesLsaDavits: false,
       includesFireFighting: false,
       includesInertGas: false,
+      includesCompressedAir: false,
     };
   }
   if (kind === "v32") {
@@ -353,6 +363,7 @@ export function getEmdrMasterRepositoryReleaseConfig(
       includesLsaDavits: false,
       includesFireFighting: false,
       includesInertGas: false,
+      includesCompressedAir: false,
     };
   }
   if (kind === "v31") {
@@ -377,6 +388,7 @@ export function getEmdrMasterRepositoryReleaseConfig(
       includesLsaDavits: false,
       includesFireFighting: false,
       includesInertGas: false,
+      includesCompressedAir: false,
     };
   }
   return {
@@ -400,5 +412,6 @@ export function getEmdrMasterRepositoryReleaseConfig(
     includesLsaDavits: false,
     includesFireFighting: false,
     includesInertGas: false,
+    includesCompressedAir: false,
   };
 }
