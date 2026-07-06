@@ -11,6 +11,7 @@ import type {
 import {
   cellStr,
   mapItemType,
+  mapInputType,
   mapPricingBasis,
   mapResponsibleParty,
   mapResponseType,
@@ -28,8 +29,18 @@ import type { ParsedComponentMasterRow, ParsedEquipmentMasterRow, ParsedToolMast
 function mandatoryFlagFromCell(value: unknown): boolean {
   const raw = cellStr(value).toLowerCase();
   if (!raw) return false;
-  if (raw === "mandatory" || raw === "y" || raw === "yes" || raw === "true" || raw === "1") return true;
-  if (raw === "n" || raw === "no" || raw === "false" || raw === "0" || raw === "optional") return false;
+  if (
+    raw === "mandatory" ||
+    raw.startsWith("y") ||
+    raw.startsWith("yes") ||
+    raw === "true" ||
+    raw === "1"
+  ) {
+    return true;
+  }
+  if (raw.startsWith("n") || raw.startsWith("no") || raw === "false" || raw === "0" || raw === "optional") {
+    return false;
+  }
   return ynBool(value, "Mandatory");
 }
 
@@ -138,20 +149,42 @@ function parseV34DurationHours(value: unknown): number | null {
   return (parts[0]! + parts[parts.length - 1]!) / 2;
 }
 
+function normalizeV34YnField(value: unknown, defaultValue = "N"): string {
+  const raw = cellStr(value);
+  if (!raw) return defaultValue;
+  const upper = raw.toUpperCase();
+  if (upper === "Y" || upper === "N" || upper === "YES" || upper === "NO" || upper === "TRUE" || upper === "FALSE") {
+    return upper.startsWith("Y") || upper === "TRUE" ? "Y" : "N";
+  }
+  const lower = raw.toLowerCase();
+  if (/class|owner witness|dry dock item|statutory|maker attendance|recommended|critical|five-yearly/.test(lower)) {
+    return "Y";
+  }
+  return defaultValue;
+}
+
 function normalizeV34JobSource(value: unknown): string {
   const raw = cellStr(value);
   if (!raw) return "Special Survey";
-  return raw
-    .split(";")
-    .map((part) => {
-      const key = part.trim().toLowerCase();
-      if (key === "dry dock") return "Special Survey";
-      if (key === "pms") return "Occasional Repair";
-      if (key === "repair") return "Occasional Repair";
-      if (key === "class survey") return "Special Survey";
-      return part.trim();
-    })
-    .join("; ");
+  if (raw.includes(";")) {
+    return raw
+      .split(";")
+      .map((part) => {
+        const key = part.trim().toLowerCase();
+        if (key === "dry dock") return "Special Survey";
+        if (key === "pms") return "Occasional Repair";
+        if (key === "repair") return "Occasional Repair";
+        if (key === "class survey") return "Special Survey";
+        return part.trim();
+      })
+      .join("; ");
+  }
+
+  const lower = raw.toLowerCase();
+  const types: string[] = [];
+  if (/pms|maker manual|running maintenance|repair/.test(lower)) types.push("Occasional Repair");
+  if (/dry dock|class survey|class dry dock|ocimf|survey/.test(lower)) types.push("Special Survey");
+  return types.length > 0 ? [...new Set(types)].join("; ") : "Special Survey";
 }
 
 function normalizeV34JobRow(row: Record<string, unknown>): Record<string, unknown> {
@@ -175,6 +208,8 @@ function normalizeV34JobRow(row: Record<string, unknown>): Record<string, unknow
     "Required Photos": cellStr(row["Photo Stage"]),
     "Required Attachments": cellStr(row["Attachment Requirements"]),
     "Estimated Manhours": parseV34DurationHours(row["Expected Duration Hours"]),
+    "Class Hold Point": normalizeV34YnField(row["Class Hold Point"]),
+    "Maker Attendance": normalizeV34YnField(row["Maker Attendance"]),
     Department: cellStr(row["Department"]) || "Engine",
     "Risk Level": cellStr(row["Risk Level"]) || "Medium",
     "Active Flag": row["Active"] ?? "Y",
@@ -199,10 +234,39 @@ export function normalizeV3JobRows(rows: Array<Record<string, unknown>>): Array<
   });
 }
 
+function mapSlashSeparatedVesselTypes(raw: string): string {
+  const lower = raw.toLowerCase();
+  if (/tanker|chemical|product|oil|copt/.test(lower) && !/bulk|container|general|multipurpose|ro-ro|offshore support/.test(lower)) {
+    if (/oil tanker|product tanker|chemical tanker/.test(lower)) return "Oil Tanker; Product Tanker; Chemical Tanker";
+    return "Tanker";
+  }
+
+  const parts = raw.split("/").map((part) => part.trim()).filter(Boolean);
+  const names = parts.flatMap((part) => {
+    const key = part.toLowerCase();
+    if (key.includes("bulk")) return ["Bulk Carrier"];
+    if (key.includes("general cargo")) return ["General Cargo"];
+    if (key.includes("container")) return ["Container Ship"];
+    if (key.includes("multipurpose") || key === "mpp") return ["MPP"];
+    if (key.includes("ro-ro") || key.includes("roro")) return ["Ro-Ro"];
+    if (key.includes("offshore")) return ["Offshore Support"];
+    if (key.includes("oil tanker")) return ["Oil Tanker"];
+    if (key.includes("product tanker")) return ["Product Tanker"];
+    if (key.includes("chemical tanker")) return ["Chemical Tanker"];
+    if (key.includes("special vessel")) return ["All Types"];
+    return [part];
+  });
+
+  return names.length > 0 ? [...new Set(names)].join("; ") : "All Types";
+}
+
 function normalizeV3VesselTypes(value: unknown): string {
   const raw = cellStr(value);
   if (!raw || raw.toLowerCase() === "all" || raw.toLowerCase() === "all vessel types") {
     return "All Types";
+  }
+  if (raw.includes("/")) {
+    return mapSlashSeparatedVesselTypes(raw);
   }
   return raw;
 }
@@ -270,7 +334,7 @@ export function parseV3Measurements(
         minLimit: null,
         maxLimit: null,
         targetValue: cellStr(row["Recording Method"]) || null,
-        inputType: "text" as const,
+        inputType: mapInputType(row["Recording Method"] ?? row["Input Type"]),
         mandatoryFlag: true,
         remarks: null,
       },
@@ -296,7 +360,7 @@ export function parseV3ToolMaster(
         templateId: normalizeMasterId(templateId, MASTER_ENTITY_CODES.TMPL),
         toolName: cellStr(row["Tools / Instruments"] ?? row["Tool / Instrument"] ?? row["Tools Required"]),
         toolType: ppe ? "Tools & PPE" : "Tool",
-        mandatory: ynBool(row["Mandatory"] ?? row["Calibration Required"] ?? "Y", "Mandatory"),
+        mandatory: mandatoryFlagFromCell(row["Mandatory"] ?? row["Calibration Required"] ?? "Y"),
         remarks: cellStr(row["Calibration / Remarks"] ?? row["Remarks"]) || null,
       };
     })
@@ -359,14 +423,20 @@ export function parseV3Rfq(rows: Array<Record<string, unknown>>): ParsedRfqRow[]
       const mappingId = cellStr(row["RFQ Mapping ID"] ?? row["Mapping ID"] ?? row["RFQ Map ID"]);
       const jobId = cellStr(row["Job ID"]);
       if (!mappingId || !jobId) return null;
+      const rfqSection = cellStr(row["RFQ Category"] ?? row["RFQ Section"]);
+      const budgetCategory = cellStr(row["Budget Category"]);
       return {
         rowNumber: index + 2,
         mappingId,
         jobId,
-        rfqSection: cellStr(row["RFQ Category"] ?? row["RFQ Section"]),
-        quoteComparisonSection: cellStr(row["Job Heading"]) || null,
-        budgetCategory: cellStr(row["Budget Category"]),
-        costCode: cellStr(row["Cost Code"] ?? row["Dry Dock Cost Code"]) || null,
+        rfqSection,
+        quoteComparisonSection:
+          cellStr(row["Job Heading"]) ||
+          cellStr(row["Quote Comparison Section"]) ||
+          rfqSection ||
+          budgetCategory,
+        budgetCategory,
+        costCode: cellStr(row["Cost Code"] ?? row["Dry Dock Cost Code"]) || budgetCategory,
         workshop: cellStr(row["Workshop"]) || "Machinery Workshop",
         pricingBasis: mapPricingBasis(row["Pricing Basis"]),
         discountApplicable: false,
@@ -473,7 +543,24 @@ export type V3RepositoryIndexRow = {
   systemName: string;
   jobCount: number;
   status: string;
-  machineryFamily?: "Main Engine" | "Auxiliary Engine" | "Boilers" | "Pumps" | "Compressors";
+  machineryFamily?:
+    | "Main Engine"
+    | "Auxiliary Engine"
+    | "Boilers"
+    | "Pumps"
+    | "Compressors"
+    | "Purifiers"
+    | "Heat Exchangers, Heaters & Condensers"
+    | "Cargo Oil Pump Turbine System"
+    | "Deck Heating, Cargo Tank Heating & Steam Coils"
+    | "Deck Masts, Wires & Standing Rigging"
+    | "Deck & Engine Room Lifting Appliances"
+    | "Cargo Pumping System"
+    | "Steering Gear System"
+    | "Fresh Water Generator"
+    | "Air Conditioning & Ventilation"
+    | "Refrigeration Plant"
+    | "Deck Machinery – Windlass / Winches / Capstans";
 };
 
 export function parseV3UnifiedRepositoryIndex(rows: Array<Record<string, unknown>>): V3RepositoryIndexRow[] {
@@ -490,6 +577,19 @@ export function parseV3UnifiedRepositoryIndex(rows: Array<Record<string, unknown
       Boilers: "Boilers",
       Pumps: "Pumps",
       Compressors: "Compressors",
+      Purifiers: "Purifiers",
+      "Heat Exchangers, Heaters & Condensers": "Heat Exchangers, Heaters & Condensers",
+      "Cargo Oil Pump Turbine System": "Cargo Oil Pump Turbine System",
+      "Deck Heating, Cargo Tank Heating & Steam Coils": "Deck Heating, Cargo Tank Heating & Steam Coils",
+      "Deck Masts, Wires & Standing Rigging": "Deck Masts, Wires & Standing Rigging",
+      "Deck & Engine Room Lifting Appliances": "Deck & Engine Room Lifting Appliances",
+      "Cargo Pumping System": "Cargo Pumping System",
+      "Steering Gear System": "Steering Gear System",
+      "Fresh Water Generator": "Fresh Water Generator",
+      "Air Conditioning & Ventilation": "Air Conditioning & Ventilation",
+      "Air Conditioning System": "Air Conditioning & Ventilation",
+      "Refrigeration Plant": "Refrigeration Plant",
+      "Refrigeration System": "Refrigeration Plant",
     };
     const mapped = familyMap[machineryFamily];
     if (!mapped) return [];

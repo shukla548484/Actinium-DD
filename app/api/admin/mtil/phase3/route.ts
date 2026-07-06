@@ -135,19 +135,34 @@ export async function POST(request: Request) {
   const source = searchParams.get("source");
 
   if (source === "v06") {
-    const result = await ensureMtilPhase3WorkbookV06Seeded();
-    return NextResponse.json(result, { status: result.inserted ? 201 : 200 });
+    try {
+      const result = await ensureMtilPhase3WorkbookV06Seeded();
+      return NextResponse.json(result, { status: result.inserted ? 201 : 200 });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Phase 3 v0.6 seed failed";
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
   }
 
   if (source === "all") {
-    const [matrix, workbookV06] = await Promise.all([
-      ensureMtilPhase3Seeded(),
-      ensureMtilPhase3WorkbookV06Seeded(),
-    ]);
-    return NextResponse.json({ matrix, workbookV06 }, { status: 201 });
+    try {
+      const [matrix, workbookV06] = await Promise.all([
+        ensureMtilPhase3Seeded(),
+        ensureMtilPhase3WorkbookV06Seeded(),
+      ]);
+      return NextResponse.json({ matrix, workbookV06 }, { status: 201 });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Phase 3 seed failed";
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
   }
 
-  const matrix = await ensureMtilPhase3Seeded();
-  const workbookV06 = await ensureMtilPhase3WorkbookV06Seeded();
-  return NextResponse.json({ matrix, workbookV06 }, { status: matrix.inserted ? 201 : 200 });
+  try {
+    const matrix = await ensureMtilPhase3Seeded();
+    const workbookV06 = await ensureMtilPhase3WorkbookV06Seeded();
+    return NextResponse.json({ matrix, workbookV06 }, { status: matrix.inserted ? 201 : 200 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Phase 3 seed failed";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

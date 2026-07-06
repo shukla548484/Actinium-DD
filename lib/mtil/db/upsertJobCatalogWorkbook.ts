@@ -112,10 +112,14 @@ export async function upsertJobCatalogFromParsed(data: ParsedMtilWorkbook) {
 
   for (const rfq of data.rfqMappings) {
     const { rowNumber: _row, ...row } = rfq;
+    const payload = {
+      ...row,
+      quoteComparisonSection: row.quoteComparisonSection || row.rfqSection,
+    };
     await prisma.jobRfqBudgetMapping.upsert({
       where: { mappingId: rfq.mappingId },
-      create: row,
-      update: row,
+      create: payload,
+      update: payload,
     });
   }
 

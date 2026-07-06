@@ -136,8 +136,10 @@ const WORKBOOK_SHEETS = [
   { sheet: "spares", label: "Spares" },
 ] as const;
 
+type V3MasterKind = "v39" | "v38" | "v37" | "v36" | "v34" | "v33" | "v32" | "v31" | "v30";
+
 type V3Report = {
-  kind: "v33" | "v32" | "v31" | "v30" | null;
+  kind: V3MasterKind | null;
   release: string | null;
   workbookPresent: boolean;
   seeded: boolean;
@@ -147,11 +149,35 @@ type V3Report = {
     auxiliaryEngineJobCount: number;
     boilerJobCount?: number;
     pumpJobCount?: number;
+    compressorJobCount?: number;
+    purifierJobCount?: number;
+    heatExchangerJobCount?: number;
+    coptJobCount?: number;
+    deckHeatingJobCount?: number;
+    deckMastJobCount?: number;
+    liftingApplianceJobCount?: number;
+    cargoPumpingJobCount?: number;
+    steeringGearJobCount?: number;
+    fwgJobCount?: number;
+    airConditioningJobCount?: number;
+    refrigerationJobCount?: number;
     systemCount: number;
     mainEngineSystemCount: number;
     auxiliaryEngineSystemCount: number;
     boilerSystemCount?: number;
     pumpSystemCount?: number;
+    compressorSystemCount?: number;
+    purifierSystemCount?: number;
+    heatExchangerSystemCount?: number;
+    coptSystemCount?: number;
+    deckHeatingSystemCount?: number;
+    deckMastSystemCount?: number;
+    liftingApplianceSystemCount?: number;
+    cargoPumpingSystemCount?: number;
+    steeringGearSystemCount?: number;
+    fwgSystemCount?: number;
+    airConditioningSystemCount?: number;
+    refrigerationSystemCount?: number;
     catalogTemplateCount: number;
     measurementCount: number;
     checklistItemCount: number;
@@ -165,6 +191,120 @@ type V3Report = {
     machineryFamily?: string;
   }[];
 };
+
+function formatV3JobCounts(stats: V3Report["stats"]): string[] {
+  return [
+    stats.mainEngineJobCount > 0 ? `${stats.mainEngineJobCount.toLocaleString()} ME` : null,
+    stats.auxiliaryEngineJobCount > 0 ? `${stats.auxiliaryEngineJobCount.toLocaleString()} AE` : null,
+    (stats.boilerJobCount ?? 0) > 0 ? `${stats.boilerJobCount!.toLocaleString()} BLR` : null,
+    (stats.pumpJobCount ?? 0) > 0 ? `${stats.pumpJobCount!.toLocaleString()} PMP` : null,
+    (stats.compressorJobCount ?? 0) > 0 ? `${stats.compressorJobCount!.toLocaleString()} CMP` : null,
+    (stats.purifierJobCount ?? 0) > 0 ? `${stats.purifierJobCount!.toLocaleString()} PUR` : null,
+    (stats.heatExchangerJobCount ?? 0) > 0 ? `${stats.heatExchangerJobCount!.toLocaleString()} HEX` : null,
+    (stats.coptJobCount ?? 0) > 0 ? `${stats.coptJobCount!.toLocaleString()} COPT` : null,
+    (stats.deckHeatingJobCount ?? 0) > 0 ? `${stats.deckHeatingJobCount!.toLocaleString()} DHK` : null,
+    (stats.deckMastJobCount ?? 0) > 0 ? `${stats.deckMastJobCount!.toLocaleString()} DMW` : null,
+    (stats.liftingApplianceJobCount ?? 0) > 0 ? `${stats.liftingApplianceJobCount!.toLocaleString()} DLA` : null,
+    (stats.cargoPumpingJobCount ?? 0) > 0 ? `${stats.cargoPumpingJobCount!.toLocaleString()} CGP` : null,
+    (stats.steeringGearJobCount ?? 0) > 0 ? `${stats.steeringGearJobCount!.toLocaleString()} STG` : null,
+    (stats.fwgJobCount ?? 0) > 0 ? `${stats.fwgJobCount!.toLocaleString()} FWG` : null,
+    (stats.airConditioningJobCount ?? 0) > 0 ? `${stats.airConditioningJobCount!.toLocaleString()} AC` : null,
+    (stats.refrigerationJobCount ?? 0) > 0 ? `${stats.refrigerationJobCount!.toLocaleString()} REF` : null,
+  ].filter((part): part is string => Boolean(part));
+}
+
+function formatV3SystemCounts(stats: V3Report["stats"]): string[] {
+  return [
+    stats.mainEngineSystemCount > 0 ? `${stats.mainEngineSystemCount} ME` : null,
+    stats.auxiliaryEngineSystemCount > 0 ? `${stats.auxiliaryEngineSystemCount} AE` : null,
+    (stats.boilerSystemCount ?? 0) > 0 ? `${stats.boilerSystemCount} BLR` : null,
+    (stats.pumpSystemCount ?? 0) > 0 ? `${stats.pumpSystemCount} PMP` : null,
+    (stats.compressorSystemCount ?? 0) > 0 ? `${stats.compressorSystemCount} CMP` : null,
+    (stats.purifierSystemCount ?? 0) > 0 ? `${stats.purifierSystemCount} PUR` : null,
+    (stats.heatExchangerSystemCount ?? 0) > 0 ? `${stats.heatExchangerSystemCount} HEX` : null,
+    (stats.coptSystemCount ?? 0) > 0 ? `${stats.coptSystemCount} COPT` : null,
+    (stats.deckHeatingSystemCount ?? 0) > 0 ? `${stats.deckHeatingSystemCount} DHK` : null,
+    (stats.deckMastSystemCount ?? 0) > 0 ? `${stats.deckMastSystemCount} DMW` : null,
+    (stats.liftingApplianceSystemCount ?? 0) > 0 ? `${stats.liftingApplianceSystemCount} DLA` : null,
+    (stats.cargoPumpingSystemCount ?? 0) > 0 ? `${stats.cargoPumpingSystemCount} CGP` : null,
+    (stats.steeringGearSystemCount ?? 0) > 0 ? `${stats.steeringGearSystemCount} STG` : null,
+    (stats.fwgSystemCount ?? 0) > 0 ? `${stats.fwgSystemCount} FWG` : null,
+    (stats.airConditioningSystemCount ?? 0) > 0 ? `${stats.airConditioningSystemCount} AC` : null,
+    (stats.refrigerationSystemCount ?? 0) > 0 ? `${stats.refrigerationSystemCount} REF` : null,
+  ].filter((part): part is string => Boolean(part));
+}
+
+function v3SeedButtonLabel(kind: V3MasterKind | null | undefined): string {
+  if (kind === "v39") return "Seed V3.9 Full Master Repository (Deck Machinery — Windlass, Winches & Capstans)";
+  if (kind === "v38") return "Seed V3.8 Full Master Repository (FWG, AC & Refrigeration)";
+  if (kind === "v37") return "Seed V3.7 Full Master Repository (Deck, Cranes, Cargo Pumps & Steering)";
+  if (kind === "v36") return "Seed V3.6 ME+AE+BLR+PMP+CMP+PUR+HEX+COPT Master Repository";
+  if (kind === "v34") return "Seed V3.4 ME+AE+BLR+PMP+CMP Master Repository";
+  if (kind === "v33") return "Seed V3.3 ME+AE+Boilers+Pumps Master Repository";
+  if (kind === "v32") return "Seed V3.2 ME+AE+Boilers Master Repository";
+  if (kind === "v31") return "Seed V3.1 ME+AE Master Repository";
+  return "Seed V3.0 ME 100% Master Repository";
+}
+
+function v3RepositoryTitle(kind: V3MasterKind | null | undefined): string {
+  if (kind === "v39") {
+    return "V3.9 — Full machinery repo incl. Deck Machinery (Windlass, Winches & Capstans)";
+  }
+  if (kind === "v38") {
+    return "V3.8 — Full machinery repo incl. Fresh Water Generator, AC & Refrigeration";
+  }
+  if (kind === "v37") {
+    return "V3.7 — Full machinery repo incl. Deck Heating, Masts, Cranes, Cargo Pumps & Steering Gear";
+  }
+  if (kind === "v36") {
+    return "V3.6 — Main Engine + Auxiliary Engine + Boilers + Pumps + Compressors + Purifiers + Heat Exchangers + COPT";
+  }
+  if (kind === "v34") return "V3.4 — Main Engine + Auxiliary Engine + Boilers + Pumps + Compressors";
+  if (kind === "v33") return "V3.3 — Main Engine + Auxiliary Engine + Boilers + Pumps";
+  if (kind === "v32") return "V3.2 — Main Engine + Auxiliary Engine + Boilers";
+  if (kind === "v31") return "V3.1 — Main Engine + Auxiliary Engine";
+  return "V3.0 — Main Engine 100%";
+}
+
+function v3VersionLabel(kind: V3MasterKind | undefined): string {
+  if (kind === "v39") return "V3.9";
+  if (kind === "v38") return "V3.8";
+  if (kind === "v37") return "V3.7";
+  if (kind === "v36") return "V3.6";
+  if (kind === "v34") return "V3.4";
+  if (kind === "v33") return "V3.3";
+  if (kind === "v32") return "V3.2";
+  if (kind === "v31") return "V3.1";
+  return "V3.0";
+}
+
+function v3RepositoryFootnote(kind: V3MasterKind | null | undefined): string {
+  if (kind === "v39") {
+    return "V3.9 merges the cumulative V3.7/V3.8 base with deck machinery (windlass, mooring winches & capstans) — seeding retires older trees and deactivates legacy sprint job IDs.";
+  }
+  if (kind === "v38") {
+    return "V3.8 is the cumulative master repository including fresh water generator, air conditioning and refrigeration plant jobs — seeding retires older trees and deactivates legacy sprint job IDs.";
+  }
+  if (kind === "v37") {
+    return "V3.7 is the cumulative master repository including deck heating, masts/rigging, lifting appliances, cargo pumps and steering gear — seeding retires older trees and deactivates legacy sprint job IDs.";
+  }
+  if (kind === "v36") {
+    return "V3.6 is the cumulative master repository including Purifiers, Heat Exchangers and Cargo Oil Pump Turbines — seeding retires older Main Engine trees and deactivates legacy sprint job IDs.";
+  }
+  if (kind === "v34") {
+    return "V3.4 is the cumulative ME+AE+BLR+PMP+CMP master repository — seeding retires older Main Engine trees and deactivates legacy sprint job IDs.";
+  }
+  if (kind === "v33") {
+    return "V3.3 merges V3.1 (ME+AE) with the V3.3 boilers + pumps supplement — seeding retires older Main Engine trees and deactivates legacy sprint job IDs.";
+  }
+  if (kind === "v32") {
+    return "V3.2 merges V3.1 (ME+AE) with the V3.2 boilers supplement — seeding retires older Main Engine trees and deactivates legacy sprint job IDs.";
+  }
+  if (kind === "v31") {
+    return "V3.1 supersedes V3.0 and V2.0.1 sprint workbooks — seeding retires older Main Engine trees and deactivates legacy sprint job IDs.";
+  }
+  return "Supersedes V2.0.1 sprint workbooks (S1–S5) for Main Engine — seeding V3 retires the older library tree and deactivates overlapping sprint job IDs.";
+}
 
 export function MtilProgressPanel() {
   const [data, setData] = useState<ProgressReport | null>(null);
@@ -230,11 +370,16 @@ export function MtilProgressPanel() {
     setBusy(true);
     setMsg(null);
     const res = await fetch("/api/admin/mtil/phase3?source=all", { method: "POST" });
-    const body = (await res.json()) as {
+    let body: {
       matrix?: { inserted?: boolean; jobCount?: number };
       workbookV06?: { inserted?: boolean; jobCount?: number; libraryVersion?: string };
       error?: string;
-    };
+    } = {};
+    try {
+      body = (await res.json()) as typeof body;
+    } catch {
+      body = { error: `Seed failed (${res.status})` };
+    }
     setBusy(false);
     if (!res.ok) {
       setMsg(body.error ?? "Seed failed");
@@ -401,12 +546,24 @@ export function MtilProgressPanel() {
     const res = await fetch("/api/admin/mtil/v3/master-repository", { method: "POST" });
     const body = (await res.json()) as {
       ok?: boolean;
-      kind?: "v33" | "v32" | "v31" | "v30";
+      kind?: V3MasterKind;
       jobCount?: number;
       mainEngineJobCount?: number;
       auxiliaryEngineJobCount?: number;
       boilerJobCount?: number;
       pumpJobCount?: number;
+      compressorJobCount?: number;
+      purifierJobCount?: number;
+      heatExchangerJobCount?: number;
+      coptJobCount?: number;
+      deckHeatingJobCount?: number;
+      deckMastJobCount?: number;
+      liftingApplianceJobCount?: number;
+      cargoPumpingJobCount?: number;
+      steeringGearJobCount?: number;
+      fwgJobCount?: number;
+      airConditioningJobCount?: number;
+      refrigerationJobCount?: number;
       systemCount?: number;
       linkedNodes?: number;
       retiredSupersededNodes?: number;
@@ -424,20 +581,25 @@ export function MtilProgressPanel() {
         : null,
       body.boilerJobCount && body.boilerJobCount > 0 ? `${body.boilerJobCount} BLR` : null,
       body.pumpJobCount && body.pumpJobCount > 0 ? `${body.pumpJobCount} PMP` : null,
+      body.compressorJobCount && body.compressorJobCount > 0 ? `${body.compressorJobCount} CMP` : null,
+      body.purifierJobCount && body.purifierJobCount > 0 ? `${body.purifierJobCount} PUR` : null,
+      body.heatExchangerJobCount && body.heatExchangerJobCount > 0 ? `${body.heatExchangerJobCount} HEX` : null,
+      body.coptJobCount && body.coptJobCount > 0 ? `${body.coptJobCount} COPT` : null,
+      body.deckHeatingJobCount && body.deckHeatingJobCount > 0 ? `${body.deckHeatingJobCount} DHK` : null,
+      body.deckMastJobCount && body.deckMastJobCount > 0 ? `${body.deckMastJobCount} DMW` : null,
+      body.liftingApplianceJobCount && body.liftingApplianceJobCount > 0 ? `${body.liftingApplianceJobCount} DLA` : null,
+      body.cargoPumpingJobCount && body.cargoPumpingJobCount > 0 ? `${body.cargoPumpingJobCount} CGP` : null,
+      body.steeringGearJobCount && body.steeringGearJobCount > 0 ? `${body.steeringGearJobCount} STG` : null,
+      body.fwgJobCount && body.fwgJobCount > 0 ? `${body.fwgJobCount} FWG` : null,
+      body.airConditioningJobCount && body.airConditioningJobCount > 0 ? `${body.airConditioningJobCount} AC` : null,
+      body.refrigerationJobCount && body.refrigerationJobCount > 0 ? `${body.refrigerationJobCount} REF` : null,
     ]
       .filter(Boolean)
       .join(" + ");
     const jobPart = supplementPart
       ? ` (${body.mainEngineJobCount ?? 0} ME + ${supplementPart})`
       : "";
-    const versionLabel =
-      body.kind === "v33"
-        ? "V3.3"
-        : body.kind === "v32"
-          ? "V3.2"
-          : body.kind === "v31"
-            ? "V3.1"
-            : "V3.0";
+    const versionLabel = v3VersionLabel(body.kind);
     setMsg(
       `EMDR ${versionLabel} seeded — ${body.jobCount ?? 0} jobs${jobPart} across ${body.systemCount ?? 0} systems, ${body.linkedNodes ?? 0} library nodes linked. Retired ${body.retiredSupersededNodes ?? 0} superseded tree nodes and deactivated ${body.deactivatedV201Jobs ?? 0} legacy sprint jobs.`,
     );
@@ -547,13 +709,7 @@ export function MtilProgressPanel() {
               <Button size="sm" disabled={busy} onClick={() => void seedV30MasterRepository()}>
                 {busy
                   ? "Seeding…"
-                  : v3.kind === "v33"
-                    ? "Seed V3.3 ME+AE+Boilers+Pumps Master Repository"
-                    : v3.kind === "v32"
-                      ? "Seed V3.2 ME+AE+Boilers Master Repository"
-                      : v3.kind === "v31"
-                        ? "Seed V3.1 ME+AE Master Repository"
-                        : "Seed V3.0 ME 100% Master Repository"}
+                  : v3SeedButtonLabel(v3.kind)}
               </Button>
             ) : null}
             <Button
@@ -780,68 +936,15 @@ export function MtilProgressPanel() {
       {v3?.workbookPresent ? (
         <Card className="border-sky-500/30">
           <CardHeader>
-            <CardTitle className="text-base">
-              EMDR{" "}
-              {v3.kind === "v33"
-                ? "V3.3 — Main Engine + Auxiliary Engine + Boilers + Pumps"
-                : v3.kind === "v32"
-                  ? "V3.2 — Main Engine + Auxiliary Engine + Boilers"
-                  : v3.kind === "v31"
-                    ? "V3.1 — Main Engine + Auxiliary Engine"
-                    : "V3.0 — Main Engine 100%"}
-            </CardTitle>
+            <CardTitle className="text-base">EMDR {v3RepositoryTitle(v3.kind)}</CardTitle>
             <CardDescription>
               {v3.stats.jobCount.toLocaleString()} jobs
-              {(v3.stats.auxiliaryEngineJobCount > 0 ||
-                (v3.stats.boilerJobCount ?? 0) > 0 ||
-                (v3.stats.pumpJobCount ?? 0) > 0) && (
-                <>
-                  {" "}
-                  (
-                  {[
-                    v3.stats.mainEngineJobCount > 0
-                      ? `${v3.stats.mainEngineJobCount.toLocaleString()} ME`
-                      : null,
-                    v3.stats.auxiliaryEngineJobCount > 0
-                      ? `${v3.stats.auxiliaryEngineJobCount.toLocaleString()} AE`
-                      : null,
-                    (v3.stats.boilerJobCount ?? 0) > 0
-                      ? `${v3.stats.boilerJobCount!.toLocaleString()} BLR`
-                      : null,
-                    (v3.stats.pumpJobCount ?? 0) > 0
-                      ? `${v3.stats.pumpJobCount!.toLocaleString()} PMP`
-                      : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" + ")}
-                  )
-                </>
+              {formatV3JobCounts(v3.stats).length > 0 && (
+                <> ({formatV3JobCounts(v3.stats).join(" + ")})</>
               )}{" "}
               · {v3.stats.systemCount} systems
-              {(v3.stats.auxiliaryEngineSystemCount > 0 ||
-                (v3.stats.boilerSystemCount ?? 0) > 0 ||
-                (v3.stats.pumpSystemCount ?? 0) > 0) && (
-                <>
-                  {" "}
-                  (
-                  {[
-                    v3.stats.mainEngineSystemCount > 0
-                      ? `${v3.stats.mainEngineSystemCount} ME`
-                      : null,
-                    v3.stats.auxiliaryEngineSystemCount > 0
-                      ? `${v3.stats.auxiliaryEngineSystemCount} AE`
-                      : null,
-                    (v3.stats.boilerSystemCount ?? 0) > 0
-                      ? `${v3.stats.boilerSystemCount} BLR`
-                      : null,
-                    (v3.stats.pumpSystemCount ?? 0) > 0
-                      ? `${v3.stats.pumpSystemCount} PMP`
-                      : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" + ")}
-                  )
-                </>
+              {formatV3SystemCounts(v3.stats).length > 0 && (
+                <> ({formatV3SystemCounts(v3.stats).join(" + ")})</>
               )}{" "}
               · {v3.stats.catalogTemplateCount} templates ·{" "}
               {v3.stats.measurementCount.toLocaleString()} measurements ·{" "}
@@ -850,7 +953,17 @@ export function MtilProgressPanel() {
                 ? v3.kind === "v33"
                   ? " · merged V3.1 + V3.3 bundle"
                   : " · merged V3.1 + V3.2 bundle"
-                : ""}
+                : v3.kind === "v39"
+                  ? " · cumulative V3.9 repository"
+                : v3.kind === "v38"
+                  ? " · cumulative V3.8 repository"
+                  : v3.kind === "v37"
+                    ? " · cumulative V3.7 repository"
+                  : v3.kind === "v36"
+                    ? " · cumulative V3.6 repository"
+                    : v3.kind === "v34"
+                      ? " · cumulative V3.4 repository"
+                      : ""}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 p-0 pb-4">
@@ -876,15 +989,7 @@ export function MtilProgressPanel() {
                 ))}
               </TableBody>
             </Table>
-            <p className="px-4 text-xs text-muted-foreground">
-              {v3.kind === "v33"
-                ? "V3.3 merges V3.1 (ME+AE) with the V3.3 boilers + pumps supplement — seeding retires older Main Engine trees and deactivates legacy sprint job IDs."
-                : v3.kind === "v32"
-                  ? "V3.2 merges V3.1 (ME+AE) with the V3.2 boilers supplement — seeding retires older Main Engine trees and deactivates legacy sprint job IDs."
-                  : v3.kind === "v31"
-                    ? "V3.1 supersedes V3.0 and V2.0.1 sprint workbooks — seeding retires older Main Engine trees and deactivates legacy sprint job IDs."
-                    : "Supersedes V2.0.1 sprint workbooks (S1–S5) for Main Engine — seeding V3 retires the older library tree and deactivates overlapping sprint job IDs."}
-            </p>
+            <p className="px-4 text-xs text-muted-foreground">{v3RepositoryFootnote(v3.kind)}</p>
           </CardContent>
         </Card>
       ) : null}

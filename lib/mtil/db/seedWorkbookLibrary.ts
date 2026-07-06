@@ -86,7 +86,12 @@ export async function seedWorkbookLibrary(cfg: WorkbookSeedConfig): Promise<{
   });
 
   if (!importResult.ok) {
-    throw new Error(importResult.error ?? `${cfg.treeCode} workbook import failed`);
+    const detail = importResult.validation.errors[0]?.message;
+    throw new Error(
+      detail
+        ? `${importResult.error ?? `${cfg.treeCode} workbook import failed`}: ${detail}`
+        : (importResult.error ?? `${cfg.treeCode} workbook import failed`),
+    );
   }
 
   const existing = await prisma.jobLibraryNode.findFirst({

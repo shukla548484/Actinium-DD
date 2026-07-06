@@ -45,13 +45,25 @@ export type EmdrRegistryReport = {
   pendingReleases: { release: string; domain: string }[];
   v30MasterRepository: {
     present: boolean;
-    kind: "v33" | "v32" | "v31" | "v30" | null;
+    kind: "v39" | "v38" | "v37" | "v36" | "v34" | "v33" | "v32" | "v31" | "v30" | null;
     release: string;
     jobCount: number;
     mainEngineJobCount: number;
     auxiliaryEngineJobCount: number;
     boilerJobCount?: number;
     pumpJobCount?: number;
+    compressorJobCount?: number;
+    purifierJobCount?: number;
+    heatExchangerJobCount?: number;
+    coptJobCount?: number;
+    deckHeatingJobCount?: number;
+    deckMastJobCount?: number;
+    liftingApplianceJobCount?: number;
+    cargoPumpingJobCount?: number;
+    steeringGearJobCount?: number;
+    fwgJobCount?: number;
+    airConditioningJobCount?: number;
+    refrigerationJobCount?: number;
     systemCount: number;
     supersedesV201Sprints: boolean;
   } | null;
@@ -172,6 +184,18 @@ export function getEmdrRegistryReport(): EmdrRegistryReport {
           auxiliaryEngineJobCount: emdrStats.auxiliaryEngineJobCount,
           boilerJobCount: emdrStats.boilerJobCount,
           pumpJobCount: emdrStats.pumpJobCount,
+          compressorJobCount: emdrStats.compressorJobCount,
+          purifierJobCount: emdrStats.purifierJobCount,
+          heatExchangerJobCount: emdrStats.heatExchangerJobCount,
+          coptJobCount: emdrStats.coptJobCount,
+          deckHeatingJobCount: emdrStats.deckHeatingJobCount,
+          deckMastJobCount: emdrStats.deckMastJobCount,
+          liftingApplianceJobCount: emdrStats.liftingApplianceJobCount,
+          cargoPumpingJobCount: emdrStats.cargoPumpingJobCount,
+          steeringGearJobCount: emdrStats.steeringGearJobCount,
+          fwgJobCount: emdrStats.fwgJobCount,
+          airConditioningJobCount: emdrStats.airConditioningJobCount,
+          refrigerationJobCount: emdrStats.refrigerationJobCount,
           systemCount: emdrStats.systemCount,
           supersedesV201Sprints: true,
         }

@@ -31,7 +31,17 @@ function workshopLabel(workshop: ParsedMasterJobRow["workshop"]): string {
 }
 
 function departmentForMachinery(machinery: string): string {
-  if (/auxiliary|boiler|pump/i.test(machinery)) return "Machinery";
+  if (/^main engine$/i.test(machinery.trim())) return "Main Propulsion";
+  if (/steering gear/i.test(machinery)) return "Machinery";
+  if (/deck|mast|rigging|lifting|cargo pumping|cargo tank heating|steam coils|windlass|winch|capstan/i.test(machinery)) {
+    return "Deck";
+  }
+  if (/fresh water generator|\bfwg\b|air conditioning|refrigeration|\bhvac\b/i.test(machinery)) {
+    return "Machinery";
+  }
+  if (/auxiliary|boiler|pump|compressor|purifier|heat exchanger|cargo oil pump turbine|copt/i.test(machinery)) {
+    return "Machinery";
+  }
   return "Main Propulsion";
 }
 
@@ -123,23 +133,42 @@ export function buildV30SystemNodes(data: ParsedMtilWorkbook): JobLibrarySeedNod
     includesAuxiliaryEngine: false,
     includesBoilers: false,
     includesPumps: false,
+    includesCompressors: false,
+    includesPurifiers: false,
+    includesHeatExchangers: false,
+    includesCopt: false,
+    includesDeckMachinery: false,
+    includesFwg: false,
+    includesAirConditioning: false,
+    includesRefrigeration: false,
+    includesDeckMachineryWinch: false,
   };
   const meJobs = data.masterJobs.filter((j) => j.jobId.startsWith("JOBS-ME-"));
   return buildMachinerySystemNodes(meJobs.length ? meJobs : data.masterJobs, config);
 }
 
 function categoryCodeForMachinery(machinery: string, kind: EmdrMasterRepositoryReleaseConfig["kind"]): string {
-  if (/pump/i.test(machinery)) return `pumps_${kind}`;
+  if (/windlass|winch|capstan|deck machinery/i.test(machinery)) return `deck_machinery_winch_${kind}`;
+  if (/steering gear/i.test(machinery)) return `steering_gear_${kind}`;
+  if (/fresh water generator|\bfwg\b/i.test(machinery)) return `fwg_${kind}`;
+  if (/air conditioning|\bhvac\b/i.test(machinery)) return `air_conditioning_${kind}`;
+  if (/refrigeration/i.test(machinery)) return `refrigeration_${kind}`;
+  if (/cargo pumping system/i.test(machinery)) return `cargo_pumping_${kind}`;
+  if (/lifting appliances/i.test(machinery)) return `lifting_appliances_${kind}`;
+  if (/deck masts|rigging/i.test(machinery)) return `deck_masts_${kind}`;
+  if (/deck heating|cargo tank heating|steam coils/i.test(machinery)) return `deck_heating_${kind}`;
+  if (/cargo oil pump turbine|copt/i.test(machinery)) return `copt_${kind}`;
+  if (/heat exchangers, heaters & condensers/i.test(machinery)) return `heat_exchangers_${kind}`;
+  if (/purifier/i.test(machinery)) return `purifiers_${kind}`;
+  if (/compressor/i.test(machinery)) return `compressors_${kind}`;
+  if (machinery === "Pumps") return `pumps_${kind}`;
   if (/boiler/i.test(machinery)) return `boilers_${kind}`;
   if (/auxiliary/i.test(machinery)) return `auxiliary_engine_${kind}`;
   return `main_engine_${kind}`;
 }
 
 function categoryNameForMachinery(machinery: string): string {
-  if (/auxiliary/i.test(machinery)) return "Auxiliary Engine";
-  if (/boiler/i.test(machinery)) return "Boilers";
-  if (/pump/i.test(machinery)) return "Pumps";
-  return "Main Engine";
+  return machinery || "Main Engine";
 }
 
 export function buildEmdrMasterRepositoryTree(
@@ -155,7 +184,25 @@ export function buildEmdrMasterRepositoryTree(
   }
 
   const categories: JobLibrarySeedNode[] = [];
-  const machineryOrder = ["Main Engine", "Auxiliary Engine", "Boilers", "Pumps"];
+  const machineryOrder = [
+    "Main Engine",
+    "Auxiliary Engine",
+    "Boilers",
+    "Pumps",
+    "Compressors",
+    "Purifiers",
+    "Heat Exchangers, Heaters & Condensers",
+    "Cargo Oil Pump Turbine System",
+    "Deck Heating, Cargo Tank Heating & Steam Coils",
+    "Deck Masts, Wires & Standing Rigging",
+    "Deck & Engine Room Lifting Appliances",
+    "Cargo Pumping System",
+    "Steering Gear System",
+    "Deck Machinery – Windlass / Winches / Capstans",
+    "Fresh Water Generator",
+    "Air Conditioning & Ventilation",
+    "Refrigeration Plant",
+  ];
   const keys = [
     ...machineryOrder.filter((k) => byMachinery.has(k)),
     ...[...byMachinery.keys()].filter((k) => !machineryOrder.includes(k)),
@@ -182,12 +229,44 @@ export function buildEmdrMasterRepositoryTree(
   const aeJobs = data.masterJobs.filter((j) => j.jobId.startsWith("JOBS-AE-")).length;
   const blrJobs = data.masterJobs.filter((j) => j.jobId.startsWith("JOBS-BLR-")).length;
   const pmpJobs = data.masterJobs.filter((j) => j.jobId.startsWith("JOBS-PMP-")).length;
+  const cmpJobs = data.masterJobs.filter((j) => j.jobId.startsWith("JOBS-CMP-")).length;
+  const purJobs = data.masterJobs.filter(
+    (j) => j.jobId.startsWith("JOBS-PUR-") || /purifier/i.test(j.machinery),
+  ).length;
+  const hexJobs = data.masterJobs.filter((j) =>
+    /heat exchangers, heaters & condensers/i.test(j.machinery),
+  ).length;
+  const coptJobs = data.masterJobs.filter((j) => /cargo oil pump turbine|copt/i.test(j.machinery)).length;
+  const dhkJobs = data.masterJobs.filter((j) => /deck heating|cargo tank heating|steam coils/i.test(j.machinery)).length;
+  const dmwJobs = data.masterJobs.filter((j) => /deck masts|rigging/i.test(j.machinery)).length;
+  const dlaJobs = data.masterJobs.filter((j) => /lifting appliances/i.test(j.machinery)).length;
+  const cgpJobs = data.masterJobs.filter((j) => /cargo pumping system/i.test(j.machinery)).length;
+  const stgJobs = data.masterJobs.filter((j) => /steering gear/i.test(j.machinery)).length;
+  const dmwWinchJobs = data.masterJobs.filter((j) =>
+    /windlass|winch|capstan|deck machinery/i.test(j.machinery),
+  ).length;
+  const fwgJobs = data.masterJobs.filter((j) => /fresh water generator|\bfwg\b/i.test(j.machinery)).length;
+  const acJobs = data.masterJobs.filter((j) => /air conditioning|\bhvac\b/i.test(j.machinery)).length;
+  const refJobs = data.masterJobs.filter((j) => /refrigeration/i.test(j.machinery)).length;
 
   const jobBreakdown = [
     meJobs ? `${meJobs} ME` : null,
     aeJobs ? `${aeJobs} AE` : null,
     blrJobs ? `${blrJobs} BLR` : null,
     pmpJobs ? `${pmpJobs} PMP` : null,
+    cmpJobs ? `${cmpJobs} CMP` : null,
+    purJobs ? `${purJobs} PUR` : null,
+    hexJobs ? `${hexJobs} HEX` : null,
+    coptJobs ? `${coptJobs} COPT` : null,
+    dhkJobs ? `${dhkJobs} DHK` : null,
+    dmwJobs ? `${dmwJobs} DMW` : null,
+    dlaJobs ? `${dlaJobs} DLA` : null,
+    cgpJobs ? `${cgpJobs} CGP` : null,
+    stgJobs ? `${stgJobs} STG` : null,
+    dmwWinchJobs ? `${dmwWinchJobs} DMW` : null,
+    fwgJobs ? `${fwgJobs} FWG` : null,
+    acJobs ? `${acJobs} AC` : null,
+    refJobs ? `${refJobs} REF` : null,
   ]
     .filter(Boolean)
     .join(" + ");
@@ -206,6 +285,18 @@ export function buildEmdrMasterRepositoryTree(
       auxiliaryEngineJobCount: aeJobs,
       boilerJobCount: blrJobs,
       pumpJobCount: pmpJobs,
+      compressorJobCount: cmpJobs,
+      purifierJobCount: purJobs,
+      heatExchangerJobCount: hexJobs,
+      coptJobCount: coptJobs,
+      deckHeatingJobCount: dhkJobs,
+      deckMastJobCount: dmwJobs,
+      liftingApplianceJobCount: dlaJobs,
+      cargoPumpingJobCount: cgpJobs,
+      steeringGearJobCount: stgJobs,
+      fwgJobCount: fwgJobs,
+      airConditioningJobCount: acJobs,
+      refrigerationJobCount: refJobs,
       source: "emdr-master-repository",
       machineryFamilies: keys,
     },
@@ -223,5 +314,12 @@ export function buildV30JobLibraryTree(data: ParsedMtilWorkbook): JobLibrarySeed
     includesAuxiliaryEngine: false,
     includesBoilers: false,
     includesPumps: false,
+    includesCompressors: false,
+    includesPurifiers: false,
+    includesHeatExchangers: false,
+    includesDeckMachinery: false,
+    includesFwg: false,
+    includesAirConditioning: false,
+    includesRefrigeration: false,
   });
 }

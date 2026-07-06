@@ -2,7 +2,7 @@ import * as XLSX from "xlsx";
 import fs from "node:fs";
 import { parseComponentMaster } from "@/lib/emdr/parseSprintMasterSheets";
 import type { ParsedEmdrSprintWorkbook } from "@/lib/emdr/validateSprintWorkbook";
-import { EMDR_V30_RELEASE, EMDR_V34_RELEASE } from "@/lib/emdr/v3/sheets";
+import { EMDR_V30_RELEASE, EMDR_V34_RELEASE, EMDR_V36_RELEASE, EMDR_V37_RELEASE, EMDR_V38_RELEASE } from "@/lib/emdr/v3/sheets";
 import {
   buildTemplateIdByJobId,
   buildV3RepositoryIndex,
@@ -31,17 +31,45 @@ import {
 } from "@/lib/mtil/v2/import/parseSprintRows";
 
 export type ParsedV3MasterRepository = ParsedEmdrSprintWorkbook & {
-  repositoryIndex: ReturnType<typeof parseV3RepositoryIndex>;
+  repositoryIndex: ReturnType<typeof buildV3RepositoryIndex>;
   release: string;
 };
 
+function resolveCumulativeLibraryVersion(
+  jobRows: Array<Record<string, unknown>>,
+  masterJobs: ReturnType<typeof parseMasterJobs>,
+): string {
+  if (!isV34JobSheet(jobRows)) {
+    return masterJobs[0]?.libraryVersion ?? parseV3LibraryVersion(jobRows) ?? EMDR_V30_RELEASE;
+  }
+  const hasV38Families = masterJobs.some((job) =>
+    /fresh water generator|\bfwg\b|air conditioning|refrigeration|\bhvac\b/i.test(job.machinery),
+  );
+  if (hasV38Families) return EMDR_V38_RELEASE;
+
+  const hasV37Families = masterJobs.some((job) =>
+    /steering gear|cargo pumping system|lifting appliances|deck masts|deck heating|cargo tank heating|steam coils|standing rigging/i.test(
+      job.machinery,
+    ),
+  );
+  if (hasV37Families) return EMDR_V37_RELEASE;
+
+  const hasV36Families = masterJobs.some(
+    (job) =>
+      job.jobId.startsWith("JOBS-PUR-") ||
+      job.jobId.startsWith("JOB-V36-") ||
+      job.jobId.startsWith("JOBS-V36-") ||
+      /heat exchanger|purifier|cargo oil pump turbine/i.test(job.machinery),
+  );
+  return hasV36Families ? EMDR_V36_RELEASE : EMDR_V34_RELEASE;
+}
+
 export function parseV3MasterRepositoryBuffer(buffer: ArrayBuffer | Uint8Array): ParsedV3MasterRepository {
   const workbook = XLSX.read(buffer, { type: "array" });
-  const jobRows = normalizeV3JobRows(sheetRowsFromCandidates(workbook, [...V3_SHEET_CANDIDATES.jobs]));
+  const rawJobRows = sheetRowsFromCandidates(workbook, [...V3_SHEET_CANDIDATES.jobs]);
+  const jobRows = normalizeV3JobRows(rawJobRows);
   const masterJobs = parseMasterJobs(jobRows);
-  const libraryVersion = isV34JobSheet(jobRows)
-    ? EMDR_V34_RELEASE
-    : masterJobs[0]?.libraryVersion ?? parseV3LibraryVersion(jobRows) ?? EMDR_V30_RELEASE;
+  const libraryVersion = resolveCumulativeLibraryVersion(rawJobRows, masterJobs);
 
   const normalizedJobs = masterJobs.map((job) => ({
     ...job,

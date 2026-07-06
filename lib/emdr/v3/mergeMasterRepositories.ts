@@ -1,5 +1,5 @@
 import type { ParsedV3MasterRepository } from "@/lib/emdr/v3/parseMasterRepository";
-import { EMDR_V32_RELEASE, EMDR_V33_RELEASE } from "@/lib/emdr/v3/sheets";
+import { EMDR_V32_RELEASE, EMDR_V33_RELEASE, EMDR_V34_RELEASE } from "@/lib/emdr/v3/sheets";
 import type { ParsedMtilWorkbook } from "@/lib/mtil/import/parseWorkbook";
 
 function uniqueBy<T>(rows: T[], keyFn: (row: T) => string): T[] {
@@ -74,6 +74,9 @@ export function mergeParsedEmdrRepositories(
     }
   }
 
+  const hasCmpSupplement = supplements.some((s) =>
+    s.masterJobs.some((j) => j.jobId.startsWith("JOBS-CMP-")),
+  );
   const hasPmpSupplement = supplements.some((s) =>
     s.masterJobs.some((j) => j.jobId.startsWith("JOBS-PMP-")),
   );
@@ -81,13 +84,15 @@ export function mergeParsedEmdrRepositories(
     s.masterJobs.some((j) => j.jobId.startsWith("JOBS-BLR-")),
   );
   const libraryVersion =
-    supplements.length > 0 && hasPmpSupplement
-      ? EMDR_V33_RELEASE
-      : supplements.length > 0 && hasBlrSupplement
-        ? EMDR_V32_RELEASE
-        : supplements.length > 0
-          ? supplements[supplements.length - 1]!.release
-          : primary.release;
+    supplements.length > 0 && hasCmpSupplement
+      ? EMDR_V34_RELEASE
+      : supplements.length > 0 && hasPmpSupplement
+        ? EMDR_V33_RELEASE
+        : supplements.length > 0 && hasBlrSupplement
+          ? EMDR_V32_RELEASE
+          : supplements.length > 0
+            ? supplements[supplements.length - 1]!.release
+            : primary.release;
 
   const merged: ParsedMtilWorkbook = {
     libraryVersion,

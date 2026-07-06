@@ -14,12 +14,18 @@ import {
   MTIL_V31_TREE_CODE,
   MTIL_V32_TREE_CODE,
   MTIL_V33_TREE_CODE,
+  MTIL_V34_TREE_CODE,
+  MTIL_V36_TREE_CODE,
+  MTIL_V37_TREE_CODE,
+  MTIL_V38_TREE_CODE,
+  MTIL_V39_TREE_CODE,
   type EmdrMasterRepositoryReleaseConfig,
 } from "@/lib/emdr/v3/sheets";
 import {
   isEmdrMasterRepositoryPresent,
   resolveEmdrMasterRepositoryKind,
 } from "@/lib/emdr/paths";
+import { resolveLoadedEmdrMasterRepositoryKind } from "@/lib/emdr/v3/loadEmdrMasterRepository";
 import { MTIL_V201_TREE_CODE } from "@/lib/mtil/v2/sprints/registry";
 import type { JobLibrarySeedNode } from "@/lib/vessel/jobLibrary/catalog";
 import { validateEmdrSprintWorkbook } from "@/lib/emdr/validateSprintWorkbook";
@@ -45,6 +51,11 @@ const SUPERSEDED_EMDR_TREE_CODES = [
   MTIL_V31_TREE_CODE,
   MTIL_V32_TREE_CODE,
   MTIL_V33_TREE_CODE,
+  MTIL_V34_TREE_CODE,
+  MTIL_V36_TREE_CODE,
+  MTIL_V37_TREE_CODE,
+  MTIL_V38_TREE_CODE,
+  MTIL_V39_TREE_CODE,
 ];
 
 async function insertNode(
@@ -221,6 +232,13 @@ async function linkMasterJobsToNodes(mtilPhase: number) {
         { referenceCode: { startsWith: "JOBS-AE-" } },
         { referenceCode: { startsWith: "JOBS-BLR-" } },
         { referenceCode: { startsWith: "JOBS-PMP-" } },
+        { referenceCode: { startsWith: "JOBS-CMP-" } },
+        { referenceCode: { startsWith: "JOBS-PUR-" } },
+        { referenceCode: { startsWith: "JOBS-V36-" } },
+        { referenceCode: { startsWith: "JOBS-V37-" } },
+        { referenceCode: { startsWith: "JOBS-V38-" } },
+        { referenceCode: { startsWith: "JOBS-V38-" } },
+        { referenceCode: { startsWith: "JOBS-DMW-" } },
       ],
       deletedAt: null,
     },
@@ -248,7 +266,7 @@ export function getV30MasterRepositoryStats(): ParsedV3MasterRepository | null {
 }
 
 export async function isEmdrMasterRepositorySeeded(): Promise<boolean> {
-  const kind = resolveEmdrMasterRepositoryKind();
+  const kind = resolveLoadedEmdrMasterRepositoryKind() ?? resolveEmdrMasterRepositoryKind();
   if (!kind) return false;
   const config = getEmdrMasterRepositoryReleaseConfig(kind);
   const root = await prisma.jobLibraryNode.findFirst({
@@ -266,11 +284,23 @@ export async function isEmdrMasterRepositorySeeded(): Promise<boolean> {
         { jobId: { startsWith: "JOBS-AE-" } },
         { jobId: { startsWith: "JOBS-BLR-" } },
         { jobId: { startsWith: "JOBS-PMP-" } },
+        { jobId: { startsWith: "JOBS-CMP-" } },
+        { jobId: { startsWith: "JOBS-PUR-" } },
+        { jobId: { startsWith: "JOBS-V36-" } },
+        { jobId: { startsWith: "JOBS-V37-" } },
+        { jobId: { startsWith: "JOBS-V38-" } },
+        { jobId: { startsWith: "JOBS-V38-" } },
+        { jobId: { startsWith: "JOBS-DMW-" } },
       ],
       activeFlag: true,
     },
   });
 
+  if (kind === "v39") return activeJobs >= 11000;
+  if (kind === "v38") return activeJobs >= 9500;
+  if (kind === "v37") return activeJobs >= 8200;
+  if (kind === "v36") return activeJobs >= 6800;
+  if (kind === "v34") return activeJobs >= 4800;
   if (kind === "v33") return activeJobs >= 4500;
   if (kind === "v32") return activeJobs >= 3500;
   if (kind === "v31") return activeJobs >= 2500;
@@ -283,7 +313,7 @@ export async function isV30MasterRepositorySeeded(): Promise<boolean> {
 }
 
 export async function seedEmdrMasterRepository() {
-  const kind = resolveEmdrMasterRepositoryKind();
+  const kind = resolveLoadedEmdrMasterRepositoryKind() ?? resolveEmdrMasterRepositoryKind();
   if (!kind || !isEmdrMasterRepositoryPresent()) {
     throw new Error("EMDR master repository workbook not found in data/emdr/v2/");
   }
@@ -325,6 +355,25 @@ export async function seedEmdrMasterRepository() {
   const aeJobs = parsed.masterJobs.filter((j) => j.jobId.startsWith("JOBS-AE-")).length;
   const blrJobs = parsed.masterJobs.filter((j) => j.jobId.startsWith("JOBS-BLR-")).length;
   const pmpJobs = parsed.masterJobs.filter((j) => j.jobId.startsWith("JOBS-PMP-")).length;
+  const cmpJobs = parsed.masterJobs.filter((j) => j.jobId.startsWith("JOBS-CMP-")).length;
+  const purJobs = parsed.masterJobs.filter(
+    (j) => j.jobId.startsWith("JOBS-PUR-") || /purifier/i.test(j.machinery),
+  ).length;
+  const hexJobs = parsed.masterJobs.filter((j) =>
+    /heat exchangers, heaters & condensers/i.test(j.machinery),
+  ).length;
+  const coptJobs = parsed.masterJobs.filter((j) => /cargo oil pump turbine|copt/i.test(j.machinery)).length;
+  const dhkJobs = parsed.masterJobs.filter((j) => /deck heating|cargo tank heating|steam coils/i.test(j.machinery)).length;
+  const dmwJobs = parsed.masterJobs.filter((j) => /deck masts|rigging/i.test(j.machinery)).length;
+  const dlaJobs = parsed.masterJobs.filter((j) => /lifting appliances/i.test(j.machinery)).length;
+  const cgpJobs = parsed.masterJobs.filter((j) => /cargo pumping system/i.test(j.machinery)).length;
+  const stgJobs = parsed.masterJobs.filter((j) => /steering gear/i.test(j.machinery)).length;
+  const dmwWinchJobs = parsed.masterJobs.filter((j) =>
+    /windlass|winch|capstan|deck machinery/i.test(j.machinery),
+  ).length;
+  const fwgJobs = parsed.masterJobs.filter((j) => /fresh water generator|\bfwg\b/i.test(j.machinery)).length;
+  const acJobs = parsed.masterJobs.filter((j) => /air conditioning|\bhvac\b/i.test(j.machinery)).length;
+  const refJobs = parsed.masterJobs.filter((j) => /refrigeration/i.test(j.machinery)).length;
 
   return {
     kind,
@@ -334,6 +383,19 @@ export async function seedEmdrMasterRepository() {
     auxiliaryEngineJobCount: aeJobs,
     boilerJobCount: blrJobs,
     pumpJobCount: pmpJobs,
+    compressorJobCount: cmpJobs,
+    purifierJobCount: purJobs,
+    heatExchangerJobCount: hexJobs,
+    coptJobCount: coptJobs,
+    deckHeatingJobCount: dhkJobs,
+    deckMastJobCount: dmwJobs,
+    liftingApplianceJobCount: dlaJobs,
+    cargoPumpingJobCount: cgpJobs,
+    steeringGearJobCount: stgJobs,
+    deckMachineryWinchJobCount: dmwWinchJobs,
+    fwgJobCount: fwgJobs,
+    airConditioningJobCount: acJobs,
+    refrigerationJobCount: refJobs,
     systemCount: parsed.repositoryIndex.length,
     templateCount: parsed.templates.length,
     measurementCount: parsed.measurements.length,

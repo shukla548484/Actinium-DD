@@ -46,11 +46,27 @@ export function normalizeWorkbookMasterIds(data: ParsedMtilWorkbook): ParsedMtil
     };
   });
 
+  const workflows = data.workflows.map((row) => {
+    const workflowId = normalizeMasterId(row.workflowId, MASTER_ENTITY_CODES.WORK);
+    const templateId = idRemap.get(row.templateId) ?? normalizeMasterId(row.templateId, MASTER_ENTITY_CODES.TMPL);
+    remember(row.workflowId, workflowId);
+    remember(row.templateId, templateId);
+    return { ...row, workflowId, templateId };
+  });
+
+  const workflowByTemplateId = new Map<string, string>();
+  for (const workflow of workflows) {
+    if (!workflowByTemplateId.has(workflow.templateId)) {
+      workflowByTemplateId.set(workflow.templateId, workflow.workflowId);
+    }
+  }
+
   const templates = data.templates.map((row) => {
     const templateId = normalizeMasterId(row.templateId, MASTER_ENTITY_CODES.TMPL);
     const measurementSetId = remapId(row.measurementSetId, "MEAS");
     const checklistId = remapId(row.checklistId, "INSP");
     const approvalWorkflowId = normalizeMasterId(row.approvalWorkflowId, MASTER_ENTITY_CODES.WORK);
+    const linkedWorkflowId = workflowByTemplateId.get(templateId);
 
     remember(row.templateId, templateId);
     remember(row.measurementSetId, measurementSetId);
@@ -62,7 +78,7 @@ export function normalizeWorkbookMasterIds(data: ParsedMtilWorkbook): ParsedMtil
       templateId,
       measurementSetId,
       checklistId,
-      approvalWorkflowId,
+      approvalWorkflowId: linkedWorkflowId ?? approvalWorkflowId,
     };
   });
 
@@ -117,14 +133,6 @@ export function normalizeWorkbookMasterIds(data: ParsedMtilWorkbook): ParsedMtil
     const jobId = idRemap.get(row.jobId) ?? normalizeMasterId(row.jobId, MASTER_ENTITY_CODES.JOBS);
     remember(row.mappingId, mappingId);
     return { ...row, mappingId, jobId };
-  });
-
-  const workflows = data.workflows.map((row) => {
-    const workflowId = normalizeMasterId(row.workflowId, MASTER_ENTITY_CODES.WORK);
-    const templateId = idRemap.get(row.templateId) ?? normalizeMasterId(row.templateId, MASTER_ENTITY_CODES.TMPL);
-    remember(row.workflowId, workflowId);
-    remember(row.templateId, templateId);
-    return { ...row, workflowId, templateId };
   });
 
   return {
