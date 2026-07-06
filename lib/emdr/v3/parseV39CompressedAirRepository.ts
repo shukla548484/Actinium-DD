@@ -14,10 +14,11 @@ import { normalizeWorkbookMasterIds } from "@/lib/mtil/import/normalizeWorkbookM
 import type {
   ParsedChecklistRow,
   ParsedMasterJobRow,
+  ParsedMeasurementRow,
   ParsedMtilWorkbook,
   ParsedRfqRow,
 } from "@/lib/mtil/import/parseWorkbook";
-import { cellStr, mapPricingBasis } from "@/lib/mtil/import/excelValues";
+import { cellStr, mapInputType, mapPricingBasis } from "@/lib/mtil/import/excelValues";
 import { MASTER_ENTITY_CODES, normalizeMasterId } from "@/lib/mtil/masterCodeStandard";
 import { parseMasterJobs } from "@/lib/mtil/v2/import/parseSprintRows";
 
@@ -118,20 +119,43 @@ function normalizeV39CasJobRows(rows: Array<Record<string, unknown>>): Array<Rec
   });
 }
 
+function synthesizeV39CasMeasurements(masterJobs: ParsedMasterJobRow[]): ParsedMeasurementRow[] {
+  return masterJobs.map((job, index) => {
+    const ids = idsFromJobId(job.jobId);
+    return {
+      rowNumber: index + 2,
+      measurementId: `${ids.measurementSetId}-01`,
+      measurementSetId: ids.measurementSetId,
+      templateId: job.templateId,
+      measurementName: "Job completion record",
+      unit: "—",
+      minLimit: null,
+      maxLimit: null,
+      targetValue: null,
+      inputType: mapInputType("text"),
+      mandatoryFlag: true,
+      remarks: null,
+    };
+  });
+}
+
 function synthesizeV39CasChecklist(masterJobs: ParsedMasterJobRow[]): ParsedChecklistRow[] {
-  return masterJobs.map((job, index) => ({
-    rowNumber: index + 2,
-    checklistItemId: `${job.templateId.replace(/^TMPL-/, "INSP-")}-01`,
-    checklistId: job.templateId.replace(new RegExp(`^${MASTER_ENTITY_CODES.TMPL}-`), `${MASTER_ENTITY_CODES.INSP}-`),
-    templateId: job.templateId,
-    sequenceNo: 1,
-    inspectionItem: job.standardJobName,
-    acceptanceCriteria: job.jobDescription || "Complete per maker manual and PMS",
-    responseType: "pass_fail_na",
-    photoRequiredOnFail: true,
-    mandatoryFlag: true,
-    remarks: null,
-  }));
+  return masterJobs.map((job, index) => {
+    const ids = idsFromJobId(job.jobId);
+    return {
+      rowNumber: index + 2,
+      checklistItemId: `${ids.inspectionChecklistId}-01`,
+      checklistId: ids.inspectionChecklistId,
+      templateId: job.templateId,
+      sequenceNo: 1,
+      inspectionItem: job.standardJobName,
+      acceptanceCriteria: job.jobDescription || "Complete per maker manual and PMS",
+      responseType: "pass_fail_na" as const,
+      photoRequiredOnFail: true,
+      mandatoryFlag: true,
+      remarks: null,
+    };
+  });
 }
 
 function synthesizeV39CasRfq(masterJobs: ParsedMasterJobRow[]): ParsedRfqRow[] {
@@ -238,7 +262,7 @@ export function parseV39CompressedAirRepositoryBuffer(buffer: ArrayBuffer | Uint
     libraryVersion: EMDR_V312_RELEASE,
     masterJobs,
     templates,
-    measurements: [],
+    measurements: synthesizeV39CasMeasurements(masterJobs),
     checklistItems: synthesizeV39CasChecklist(masterJobs),
     scopeSteps,
     attachments: [],
