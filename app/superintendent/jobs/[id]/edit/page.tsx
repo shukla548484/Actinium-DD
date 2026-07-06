@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { LabeledSelect } from "@/components/ui/LabeledSelect";
 import { JOB_CATEGORY_ITEMS, JOB_PRIORITY_ITEMS, JOB_STATUS_ITEMS } from "@/lib/superintendent/constants";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 export const dynamic = "force-dynamic";
 
 type Item = { id: string; title: string; category: string; priority: string; status: string; dryDockProjectId: string; jobCode: string | null; workshop: string | null; description: string | null; };
@@ -49,7 +50,7 @@ export default function EditPage() {
   if (loading) {
     return (
       <PageShell>
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <ActiniumLoadingState size="sm" />
       </PageShell>
     );
   }

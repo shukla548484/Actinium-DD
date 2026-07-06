@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { fmtPct } from "@/lib/superintendent/formatters";
 import type { ProjectWorkspaceSummary } from "@/lib/superintendent/engine/workspaceSummary";
 import { CombinedInputReadinessPanel } from "@/components/superintendent/CombinedInputReadinessPanel";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 type Props = {
   dryDockProjectId: string;
@@ -24,7 +25,7 @@ export function ProjectWorkspaceDashboard({ dryDockProjectId }: Props) {
   }, [dryDockProjectId]);
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading project workspace…</p>;
+    return <ActiniumLoadingState label="Loading project workspace…" size="sm" />;
   }
 
   if (!workspace) return null;

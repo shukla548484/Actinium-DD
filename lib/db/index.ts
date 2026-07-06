@@ -365,6 +365,8 @@ export async function createYardInvite(input: {
       contactEmail: input.contactEmail ?? null,
       token: nanoid(32),
       preferredLocale: toPrismaScopeLocale(input.preferredLocale ?? "en"),
+      workflowStage: "received",
+      priority: "normal",
       originNode: "office",
       officeChangedAt: new Date(),
     },

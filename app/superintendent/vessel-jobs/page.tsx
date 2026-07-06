@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/table";
 import { VESSEL_JOB_STATUS_ITEMS } from "@/lib/superintendent/constants";
 import type { DdVesselJobDto } from "@/lib/superintendent/types";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 export default function VesselJobBankPage() {
   const [vesselId, setVesselId] = useState("");
@@ -96,7 +97,7 @@ export default function VesselJobBankPage() {
       <Card>
         <CardContent className="p-0">
           {loading ? (
-            <p className="p-4 text-sm text-muted-foreground">Loading job bank…</p>
+            <ActiniumLoadingState label="Loading job bank…" size="md" minHeight={100} />
           ) : (
             <Table>
               <TableHeader>

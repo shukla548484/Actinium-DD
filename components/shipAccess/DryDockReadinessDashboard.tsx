@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { fmtMoney, fmtPct } from "@/lib/superintendent/formatters";
 import type { VesselDryDockReadinessDto } from "@/lib/db/vesselReadiness";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 type Props = {
   vesselId: string | null;
@@ -66,7 +67,7 @@ export function DryDockReadinessDashboard({ vesselId, dryDockProjectId }: Props)
   }
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading dry dock readiness…</p>;
+    return <ActiniumLoadingState label="Loading dry dock readiness…" size="sm" />;
   }
 
   if (!data) return null;

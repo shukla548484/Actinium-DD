@@ -14,6 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { PmsItemStatus, PmsScheduleItemDto } from "@/lib/db/vesselPms";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 type PmsResponse = {
   items?: PmsScheduleItemDto[];
@@ -124,7 +125,7 @@ export function PmsSchedulePanel({ apiPath = "/api/ship-access/pms" }: { apiPath
       {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading PMS schedule…</p>
+        <ActiniumLoadingState label="Loading PMS schedule…" size="sm" />
       ) : (
         <div className="overflow-x-auto rounded-lg border">
           <Table>

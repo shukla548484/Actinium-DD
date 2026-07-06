@@ -26,6 +26,7 @@ import {
 import type { EntityStatus } from "@prisma/client";
 import type { CompanyDto } from "@/lib/admin/types";
 import { companyCategoryLabel } from "@/lib/admin/companyCategory";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 type Props = {
   module: OrganizationModule;
@@ -113,7 +114,7 @@ export function OrganizationCompanyListPanel({ module }: Props) {
 
       <TableCard title={`${module.label}${loading ? "" : ` (${companies.length} on page)`}`}>
         {loading ? (
-          <p className="p-4 text-sm text-muted-foreground">Loading…</p>
+          <ActiniumLoadingState size="md" minHeight={100} />
         ) : (
           <Table>
             <TableHeader>

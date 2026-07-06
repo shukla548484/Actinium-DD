@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 import {
   Table,
   TableBody,
@@ -135,19 +136,55 @@ const WORKBOOK_SHEETS = [
   { sheet: "spares", label: "Spares" },
 ] as const;
 
+type V3Report = {
+  kind: "v33" | "v32" | "v31" | "v30" | null;
+  release: string | null;
+  workbookPresent: boolean;
+  seeded: boolean;
+  stats: {
+    jobCount: number;
+    mainEngineJobCount: number;
+    auxiliaryEngineJobCount: number;
+    boilerJobCount?: number;
+    pumpJobCount?: number;
+    systemCount: number;
+    mainEngineSystemCount: number;
+    auxiliaryEngineSystemCount: number;
+    boilerSystemCount?: number;
+    pumpSystemCount?: number;
+    catalogTemplateCount: number;
+    measurementCount: number;
+    checklistItemCount: number;
+    mergedBundle?: boolean;
+  };
+  systems: {
+    systemCode: string;
+    systemName: string;
+    jobCount: number;
+    status: string;
+    machineryFamily?: string;
+  }[];
+};
+
 export function MtilProgressPanel() {
   const [data, setData] = useState<ProgressReport | null>(null);
   const [emdr, setEmdr] = useState<EmdrReport | null>(null);
+  const [v3, setV3] = useState<V3Report | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     void Promise.all([
-      fetch("/api/admin/mtil/progress").then((r) => r.json()),
-      fetch("/api/admin/emdr").then((r) => r.json()),
-    ]).then(([progressBody, emdrBody]) => {
-      setData((progressBody as { progress?: ProgressReport }).progress ?? null);
-      setEmdr(emdrBody as EmdrReport);
+      fetch("/api/admin/mtil/progress").then(async (r) => {
+        if (!r.ok) return null;
+        return (await r.json()) as { progress?: ProgressReport };
+      }),
+      fetch("/api/admin/emdr").then(async (r) => (r.ok ? r.json() : null)),
+      fetch("/api/admin/mtil/v3/master-repository").then(async (r) => (r.ok ? r.json() : null)),
+    ]).then(([progressBody, emdrBody, v3Body]) => {
+      setData(progressBody?.progress ?? null);
+      setEmdr((emdrBody as EmdrReport | null) ?? null);
+      setV3((v3Body as V3Report | null) ?? null);
     });
   }, []);
 
@@ -358,6 +395,57 @@ export function MtilProgressPanel() {
     );
   }
 
+  async function seedV30MasterRepository() {
+    setBusy(true);
+    setMsg(null);
+    const res = await fetch("/api/admin/mtil/v3/master-repository", { method: "POST" });
+    const body = (await res.json()) as {
+      ok?: boolean;
+      kind?: "v33" | "v32" | "v31" | "v30";
+      jobCount?: number;
+      mainEngineJobCount?: number;
+      auxiliaryEngineJobCount?: number;
+      boilerJobCount?: number;
+      pumpJobCount?: number;
+      systemCount?: number;
+      linkedNodes?: number;
+      retiredSupersededNodes?: number;
+      deactivatedV201Jobs?: number;
+      error?: string;
+    };
+    setBusy(false);
+    if (!res.ok) {
+      setMsg(body.error ?? "EMDR master repository seed failed");
+      return;
+    }
+    const supplementPart = [
+      body.auxiliaryEngineJobCount && body.auxiliaryEngineJobCount > 0
+        ? `${body.auxiliaryEngineJobCount} AE`
+        : null,
+      body.boilerJobCount && body.boilerJobCount > 0 ? `${body.boilerJobCount} BLR` : null,
+      body.pumpJobCount && body.pumpJobCount > 0 ? `${body.pumpJobCount} PMP` : null,
+    ]
+      .filter(Boolean)
+      .join(" + ");
+    const jobPart = supplementPart
+      ? ` (${body.mainEngineJobCount ?? 0} ME + ${supplementPart})`
+      : "";
+    const versionLabel =
+      body.kind === "v33"
+        ? "V3.3"
+        : body.kind === "v32"
+          ? "V3.2"
+          : body.kind === "v31"
+            ? "V3.1"
+            : "V3.0";
+    setMsg(
+      `EMDR ${versionLabel} seeded — ${body.jobCount ?? 0} jobs${jobPart} across ${body.systemCount ?? 0} systems, ${body.linkedNodes ?? 0} library nodes linked. Retired ${body.retiredSupersededNodes ?? 0} superseded tree nodes and deactivated ${body.deactivatedV201Jobs ?? 0} legacy sprint jobs.`,
+    );
+    void fetch("/api/admin/mtil/v3/master-repository")
+      .then((r) => r.json())
+      .then((v3Body) => setV3(v3Body as V3Report));
+  }
+
   async function seedV201Sprints() {
     setBusy(true);
     setMsg(null);
@@ -380,11 +468,11 @@ export function MtilProgressPanel() {
     }
     const codes = body.sprints?.map((s) => s.sprintCode ?? s.sprintId).join(", ") ?? "all";
     setMsg(
-      `V2.0.1 sprints seeded — ${body.totalJobs ?? 0} jobs (${codes}), ${body.totalLinked ?? 0} library nodes linked. Includes ME-CYU, ME-FIS, ME-EVS, ME-TCH when workbook present.`,
+      `V2.0.1 sprints seeded — ${body.totalJobs ?? 0} jobs (${codes}), ${body.totalLinked ?? 0} library nodes linked.`,
     );
   }
 
-  if (!data) return <p className="text-sm text-muted-foreground">Loading MTIL progress…</p>;
+  if (!data) return <ActiniumLoadingState label="Loading MTIL progress…" size="sm" />;
 
   return (
     <div className="space-y-4">
@@ -455,8 +543,31 @@ export function MtilProgressPanel() {
             <Button variant="outline" size="sm" disabled={busy} onClick={() => void seedMasterRepository()}>
               {busy ? "Seeding…" : "Seed Master Repo to DB"}
             </Button>
-            <Button variant="outline" size="sm" disabled={busy} onClick={() => void seedV201Sprints()}>
-              {busy ? "Seeding…" : "Seed V2.0.1 Sprints (S1–S4) to DB"}
+            {v3?.workbookPresent ? (
+              <Button size="sm" disabled={busy} onClick={() => void seedV30MasterRepository()}>
+                {busy
+                  ? "Seeding…"
+                  : v3.kind === "v33"
+                    ? "Seed V3.3 ME+AE+Boilers+Pumps Master Repository"
+                    : v3.kind === "v32"
+                      ? "Seed V3.2 ME+AE+Boilers Master Repository"
+                      : v3.kind === "v31"
+                        ? "Seed V3.1 ME+AE Master Repository"
+                        : "Seed V3.0 ME 100% Master Repository"}
+              </Button>
+            ) : null}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy || Boolean(v3?.workbookPresent)}
+              title={
+                v3?.workbookPresent
+                  ? "EMDR V3 master repository replaces V2.0.1 sprint workbooks to avoid duplicate Main Engine jobs"
+                  : undefined
+              }
+              onClick={() => void seedV201Sprints()}
+            >
+              {busy ? "Seeding…" : "Seed V2.0.1 Sprints (S1–S5) to DB"}
             </Button>
             <Button
               variant="outline"
@@ -665,6 +776,118 @@ export function MtilProgressPanel() {
           </div>
         </CardHeader>
       </Card>
+
+      {v3?.workbookPresent ? (
+        <Card className="border-sky-500/30">
+          <CardHeader>
+            <CardTitle className="text-base">
+              EMDR{" "}
+              {v3.kind === "v33"
+                ? "V3.3 — Main Engine + Auxiliary Engine + Boilers + Pumps"
+                : v3.kind === "v32"
+                  ? "V3.2 — Main Engine + Auxiliary Engine + Boilers"
+                  : v3.kind === "v31"
+                    ? "V3.1 — Main Engine + Auxiliary Engine"
+                    : "V3.0 — Main Engine 100%"}
+            </CardTitle>
+            <CardDescription>
+              {v3.stats.jobCount.toLocaleString()} jobs
+              {(v3.stats.auxiliaryEngineJobCount > 0 ||
+                (v3.stats.boilerJobCount ?? 0) > 0 ||
+                (v3.stats.pumpJobCount ?? 0) > 0) && (
+                <>
+                  {" "}
+                  (
+                  {[
+                    v3.stats.mainEngineJobCount > 0
+                      ? `${v3.stats.mainEngineJobCount.toLocaleString()} ME`
+                      : null,
+                    v3.stats.auxiliaryEngineJobCount > 0
+                      ? `${v3.stats.auxiliaryEngineJobCount.toLocaleString()} AE`
+                      : null,
+                    (v3.stats.boilerJobCount ?? 0) > 0
+                      ? `${v3.stats.boilerJobCount!.toLocaleString()} BLR`
+                      : null,
+                    (v3.stats.pumpJobCount ?? 0) > 0
+                      ? `${v3.stats.pumpJobCount!.toLocaleString()} PMP`
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" + ")}
+                  )
+                </>
+              )}{" "}
+              · {v3.stats.systemCount} systems
+              {(v3.stats.auxiliaryEngineSystemCount > 0 ||
+                (v3.stats.boilerSystemCount ?? 0) > 0 ||
+                (v3.stats.pumpSystemCount ?? 0) > 0) && (
+                <>
+                  {" "}
+                  (
+                  {[
+                    v3.stats.mainEngineSystemCount > 0
+                      ? `${v3.stats.mainEngineSystemCount} ME`
+                      : null,
+                    v3.stats.auxiliaryEngineSystemCount > 0
+                      ? `${v3.stats.auxiliaryEngineSystemCount} AE`
+                      : null,
+                    (v3.stats.boilerSystemCount ?? 0) > 0
+                      ? `${v3.stats.boilerSystemCount} BLR`
+                      : null,
+                    (v3.stats.pumpSystemCount ?? 0) > 0
+                      ? `${v3.stats.pumpSystemCount} PMP`
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" + ")}
+                  )
+                </>
+              )}{" "}
+              · {v3.stats.catalogTemplateCount} templates ·{" "}
+              {v3.stats.measurementCount.toLocaleString()} measurements ·{" "}
+              {v3.seeded ? "Seeded to DB" : "Workbook ready — seed to load picker"}
+              {v3.stats.mergedBundle
+                ? v3.kind === "v33"
+                  ? " · merged V3.1 + V3.3 bundle"
+                  : " · merged V3.1 + V3.2 bundle"
+                : ""}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 p-0 pb-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Family</TableHead>
+                  <TableHead>System Code</TableHead>
+                  <TableHead>System</TableHead>
+                  <TableHead>Jobs</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {v3.systems.map((s) => (
+                  <TableRow key={`${s.systemCode}-${s.systemName}`}>
+                    <TableCell>{s.machineryFamily ?? "Main Engine"}</TableCell>
+                    <TableCell>{s.systemCode}</TableCell>
+                    <TableCell>{s.systemName}</TableCell>
+                    <TableCell>{s.jobCount}</TableCell>
+                    <TableCell className="capitalize">{s.status.toLowerCase()}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <p className="px-4 text-xs text-muted-foreground">
+              {v3.kind === "v33"
+                ? "V3.3 merges V3.1 (ME+AE) with the V3.3 boilers + pumps supplement — seeding retires older Main Engine trees and deactivates legacy sprint job IDs."
+                : v3.kind === "v32"
+                  ? "V3.2 merges V3.1 (ME+AE) with the V3.2 boilers supplement — seeding retires older Main Engine trees and deactivates legacy sprint job IDs."
+                  : v3.kind === "v31"
+                    ? "V3.1 supersedes V3.0 and V2.0.1 sprint workbooks — seeding retires older Main Engine trees and deactivates legacy sprint job IDs."
+                    : "Supersedes V2.0.1 sprint workbooks (S1–S5) for Main Engine — seeding V3 retires the older library tree and deactivates overlapping sprint job IDs."}
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {emdr ? (
         <Card className="border-emerald-500/30">

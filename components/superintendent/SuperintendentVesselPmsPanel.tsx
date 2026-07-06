@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { PmsSchedulePanel } from "@/components/shipAccess/PmsSchedulePanel";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 export function SuperintendentVesselPmsPanel({ dryDockProjectId }: { dryDockProjectId: string }) {
   const [vesselId, setVesselId] = useState<string | null>(null);
@@ -27,7 +28,7 @@ export function SuperintendentVesselPmsPanel({ dryDockProjectId }: { dryDockProj
   }
 
   if (!vesselId) {
-    return <p className="text-sm text-muted-foreground">Loading vessel PMS schedule…</p>;
+    return <ActiniumLoadingState label="Loading vessel PMS schedule…" size="sm" />;
   }
 
   return (

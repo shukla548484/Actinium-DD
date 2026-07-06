@@ -20,6 +20,7 @@ import {
 } from "@/lib/superintendent/engine/statusWorkflow";
 import type { DryDockProjectStatus } from "@prisma/client";
 import { useMemo } from "react";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 export const dynamic = "force-dynamic";
 
 type ProjectForm = {
@@ -90,7 +91,7 @@ export default function EditProjectPage() {
   if (loading) {
     return (
       <PageShell>
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <ActiniumLoadingState size="sm" />
       </PageShell>
     );
   }

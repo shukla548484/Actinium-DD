@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/table";
 import { equipmentSystemLabel } from "@/lib/shipAccess/crewDefectSystems";
 import type { VesselRequisitionDto } from "@/lib/shipAccess/requisitionDto";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 import {
   requisitionStatusLabel,
   VESSEL_REQUISITION_STATUS_ITEMS,
@@ -89,7 +90,7 @@ export default function VesselRequisitionBankPage() {
       <Card>
         <CardContent className="p-0">
           {loading ? (
-            <p className="p-4 text-sm text-muted-foreground">Loading requisition bank…</p>
+            <ActiniumLoadingState label="Loading requisition bank…" size="md" minHeight={100} />
           ) : (
             <Table>
               <TableHeader>

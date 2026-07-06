@@ -73,6 +73,17 @@ export const V2_SPRINT_REGISTRY: V2SprintDefinition[] = [
     jobIdPattern: "JOBS-ME-TCH-",
     sampleTemplateId: "TMPL-ME-TCH-0001",
   },
+  {
+    id: "v201-s5",
+    release: "V2.0.1",
+    sprintCode: "ME-CRK",
+    name: "Main Engine Crankshaft & Bearings",
+    systemName: "Crankshaft & Bearings",
+    filename: "Actinium_SM_MTIL_V2_0_1_Sprint5_Main_Engine_Crankshaft_Bearings.xlsx",
+    jobIdPrefix: "ME-CRK",
+    jobIdPattern: "JOBS-ME-CRK-",
+    sampleTemplateId: "TMPL-ME-CRK-0001",
+  },
 ];
 
 export function getV2SprintById(id: string): V2SprintDefinition | undefined {

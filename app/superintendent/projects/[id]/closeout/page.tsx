@@ -9,6 +9,7 @@ import { getStatusLabel } from "@/lib/superintendent/engine/statusWorkflow";
 import type { DryDockProjectStatus } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 export const dynamic = "force-dynamic";
 
@@ -83,7 +84,7 @@ export default function ProjectCloseoutPage() {
       />
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading closeout status…</p>
+        <ActiniumLoadingState label="Loading closeout status…" size="sm" />
       ) : closeout ? (
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

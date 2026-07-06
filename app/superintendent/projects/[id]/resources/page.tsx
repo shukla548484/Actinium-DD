@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 import {
   Table,
   TableBody,
@@ -130,7 +131,7 @@ export default function ProjectResourcesPage() {
           </form>
 
           {loading ? (
-            <p className="text-sm text-muted-foreground">Loading resources…</p>
+            <ActiniumLoadingState label="Loading resources…" size="sm" />
           ) : (
             <Table>
               <TableHeader>

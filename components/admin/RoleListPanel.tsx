@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { TableCard } from "@/components/layout/TableCard";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 import {
   Table,
   TableBody,
@@ -50,7 +51,7 @@ export function RoleListPanel() {
   }, []);
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading roles…</p>;
+    return <ActiniumLoadingState label="Loading roles…" size="sm" />;
   }
 
   return (
@@ -147,7 +148,7 @@ export function AdminOverviewCards() {
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {items.length === 0 ? (
         <Card>
-          <CardContent className="py-6 text-sm text-muted-foreground">Loading…</CardContent>
+          <ActiniumLoadingState size="lg" minHeight={120} />
         </Card>
       ) : (
         items.map((item) => (

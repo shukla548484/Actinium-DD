@@ -53,6 +53,7 @@ const RELEASE_TO_SPRINT_ID: Record<string, string> = {
   "V2.0.1-S2": "v201-s2",
   "V2.0.1-S3": "v201-s3",
   "V2.0.1-S4": "v201-s4",
+  "V2.0.1-S5": "v201-s5",
 };
 
 export function parseEmdrMasterCodebookBuffer(buffer: ArrayBuffer | Uint8Array): ParsedEmdrMasterCodebook {

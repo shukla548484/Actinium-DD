@@ -5,6 +5,7 @@ import { useShipAccessContext } from "@/components/shipAccess/ShipAccessScopeBar
 import { DefectSubmitForm } from "@/components/shipAccess/DefectSubmitForm";
 import { PageHeader, PageShell } from "@/components/layout/PageShell";
 import { useEffect, useState } from "react";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 function useCrewSession() {
   const [defaultReportedByName, setDefaultReportedByName] = useState("");
@@ -42,7 +43,7 @@ function ShipAccessNewDefectContent() {
 
 export default function ShipAccessNewDefectPage() {
   return (
-    <Suspense fallback={<p className="p-6 text-sm text-muted-foreground">Loading…</p>}>
+    <Suspense fallback={<ActiniumLoadingState size="md" minHeight={140} />}>
       <ShipAccessNewDefectContent />
     </Suspense>
   );

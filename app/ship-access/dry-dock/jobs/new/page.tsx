@@ -1,9 +1,10 @@
 import { Suspense } from "react";
 import DryDockNewJobPageClient from "./DryDockNewJobPageClient";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 export default function DryDockNewJobPage() {
   return (
-    <Suspense fallback={<p className="p-6 text-sm text-muted-foreground">Loading…</p>}>
+    <Suspense fallback={<ActiniumLoadingState size="md" minHeight={140} />}>
       <DryDockNewJobPageClient />
     </Suspense>
   );

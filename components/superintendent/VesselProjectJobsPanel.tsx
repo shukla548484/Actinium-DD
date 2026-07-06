@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { VESSEL_JOB_STATUS_ITEMS } from "@/lib/superintendent/constants";
 import type { DdVesselJobDto } from "@/lib/superintendent/types";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 type Props = {
   dryDockProjectId: string;
@@ -111,7 +112,7 @@ export function VesselProjectJobsPanel({ dryDockProjectId, vesselId }: Props) {
       <Card>
         <CardContent className="p-0">
           {loading ? (
-            <p className="p-4 text-sm text-muted-foreground">Loading vessel jobs…</p>
+            <ActiniumLoadingState label="Loading vessel jobs…" size="md" minHeight={100} />
           ) : (
             <Table>
               <TableHeader>

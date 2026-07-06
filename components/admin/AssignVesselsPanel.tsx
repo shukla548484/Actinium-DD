@@ -8,6 +8,7 @@ import { EntityStatusBadge } from "@/components/admin/EntityStatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 import {
   Table,
   TableBody,
@@ -111,7 +112,7 @@ export function AssignVesselsPanel({ employeeId }: { employeeId: string }) {
     router.refresh();
   }
 
-  if (loading) return <p className="text-sm text-muted-foreground">Loading vessels…</p>;
+  if (loading) return <ActiniumLoadingState label="Loading vessels…" size="sm" />;
   if (!data) return <p className="text-sm text-destructive">{error ?? "Employee not found"}</p>;
 
   const { employee, availableVessels } = data;

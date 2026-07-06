@@ -22,6 +22,7 @@ import {
   isValidLocalPhoneNumber,
 } from "@/lib/admin/phone";
 import type { CrewCredentialsContextDto } from "@/lib/db/crewCredentials";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 type CreatedCredential = {
   employeeId: string;
@@ -168,7 +169,7 @@ export function CrewCredentialPanel({ vesselId }: { vesselId: string }) {
   }
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading crew designations…</p>;
+    return <ActiniumLoadingState label="Loading crew designations…" size="sm" />;
   }
 
   if (!context) {

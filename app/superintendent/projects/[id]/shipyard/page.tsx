@@ -9,6 +9,7 @@ import { getStatusLabel } from "@/lib/superintendent/engine/statusWorkflow";
 import type { DryDockProjectStatus } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 export const dynamic = "force-dynamic";
 
@@ -115,7 +116,7 @@ export default function ProjectShipyardPage() {
       />
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading shipyard summary…</p>
+        <ActiniumLoadingState label="Loading shipyard summary…" size="sm" />
       ) : !summary ? (
         <p className="text-sm text-destructive">Shipyard data not available.</p>
       ) : (

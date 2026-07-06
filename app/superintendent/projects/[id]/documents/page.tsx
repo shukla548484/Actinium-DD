@@ -8,6 +8,7 @@ import { PageHeader, PageShell } from "@/components/layout/PageShell";
 import { fmtDate } from "@/lib/superintendent/formatters";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 export const dynamic = "force-dynamic";
 
@@ -85,7 +86,7 @@ export default function ProjectDocumentsPage() {
         description="Required documents with file uploads for this project."
       />
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <ActiniumLoadingState size="sm" />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           <Card>

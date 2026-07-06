@@ -13,6 +13,7 @@ import {
   VESSEL_JOB_SOURCE_ITEMS,
 } from "@/lib/superintendent/constants";
 import type { DdVesselJobDto } from "@/lib/superintendent/types";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 type Props = {
   dryDockProjectId: string;
@@ -148,8 +149,8 @@ export function VesselJobSubmitForm({
   if (!vesselId) {
     return (
       <Card>
-        <CardContent className="py-4 text-sm text-muted-foreground">
-          Loading vessel context…
+        <CardContent className="py-4">
+          <ActiniumLoadingState label="Loading vessel context…" size="sm" />
         </CardContent>
       </Card>
     );
@@ -264,7 +265,7 @@ export function VesselJobSubmitForm({
         </CardHeader>
         <CardContent>
           {loadingRecent ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <ActiniumLoadingState size="sm" />
           ) : recent.length === 0 ? (
             <p className="text-sm text-muted-foreground">No jobs submitted yet.</p>
           ) : (

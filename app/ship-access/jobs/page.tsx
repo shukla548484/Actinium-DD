@@ -18,10 +18,11 @@ import {
 } from "@/components/ui/table";
 import { VESSEL_JOB_STATUS_ITEMS } from "@/lib/superintendent/constants";
 import type { DdVesselJobDto } from "@/lib/superintendent/types";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 export default function ShipAccessJobsPage() {
   return (
-    <Suspense fallback={<p className="p-6 text-sm text-muted-foreground">Loading jobs…</p>}>
+    <Suspense fallback={<ActiniumLoadingState label="Loading jobs…" size="md" minHeight={140} />}>
       <ShipAccessJobsContent />
     </Suspense>
   );
@@ -102,7 +103,7 @@ function ShipAccessJobsContent() {
       <Card>
         <CardContent className="p-0">
           {loading ? (
-            <p className="p-4 text-sm text-muted-foreground">Loading jobs…</p>
+            <ActiniumLoadingState label="Loading jobs…" size="md" minHeight={100} />
           ) : (
             <Table>
               <TableHeader>

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { VesselMachineryHoursDto } from "@/lib/db/vesselMachineryHours";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 type Props = {
   dryDockProjectId: string;
@@ -42,7 +43,7 @@ export function VesselMachineryHoursPanel({ dryDockProjectId }: Props) {
   }, [load]);
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading machinery hours…</p>;
+    return <ActiniumLoadingState label="Loading machinery hours…" size="sm" />;
   }
 
   if (error) {

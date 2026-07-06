@@ -24,7 +24,7 @@ export function ShipyardSidebar() {
     >
       <div className="dd-module-sidebar-scroll flex flex-col gap-4 px-3 py-4">
         <p className="px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Shipyard execution
+          Shipyard workflow
         </p>
 
         {shipyardModuleSections.map((mod) => {

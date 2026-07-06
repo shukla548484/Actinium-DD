@@ -12,6 +12,7 @@ import type { JobInputFieldDef, JobLibraryNodeDto } from "@/lib/vessel/jobLibrar
 import { CONDITION_RATING_ITEMS } from "@/lib/vessel/machinery/parameters";
 import { uploadPendingVesselJobFiles } from "@/components/shipAccess/VesselJobAttachmentsPanel";
 import type { DdVesselJobDto } from "@/lib/superintendent/types";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 export type DefectJobPrefill = {
   id: string;
@@ -286,6 +287,38 @@ export function DynamicScopeJobWizard({
     );
   }
 
+  function emptyPickerMessage(): string {
+    const inMasterRepoFramework = path.some(
+      (n) =>
+        n.code === "mtil_master_repo_v12" ||
+        n.name.includes("Master Engineering Repository") ||
+        n.name === "Engineering Domains",
+    );
+    const atFrameworkLeaf =
+      inMasterRepoFramework && path[path.length - 1]?.nodeType === "system";
+
+    if (atFrameworkLeaf) {
+      return (
+        "This R0.9 framework folder is a placeholder — it does not contain seeded jobs yet. " +
+        "Go back to the top level and choose “Main Propulsion & Auxiliary (V3.1 ME+AE)” instead. " +
+        "If that option is missing, an administrator must seed the EMDR V3.1 master repository from Admin → Job library."
+      );
+    }
+
+    if (path.length > 0) {
+      return (
+        "No jobs are available under this branch. Go back and select “Main Propulsion & Auxiliary (V3.1 ME+AE)”. " +
+        "If it is not listed, ask an administrator to seed the EMDR master repository from Admin → Job library."
+      );
+    }
+
+    return (
+      "No job library departments are available for this vessel and project type. " +
+      "An administrator must seed the EMDR V3.1 (Main Engine + Auxiliary Engine) master repository from Admin → Job library, " +
+      "then reload this page."
+    );
+  }
+
   return (
     <div className="space-y-4">
       {defectPrefill ? (
@@ -316,12 +349,9 @@ export function DynamicScopeJobWizard({
             ) : null}
 
             {loading ? (
-              <p className="text-sm text-muted-foreground">Loading options…</p>
+              <ActiniumLoadingState label="Loading options…" size="sm" />
             ) : options.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No job library departments are available for this vessel and project type. Ask an
-                administrator to seed the MTIL V2.0.1 sprint workbooks from Admin → Job library.
-              </p>
+              <p className="text-sm text-muted-foreground">{emptyPickerMessage()}</p>
             ) : (
               <div className="grid gap-2 sm:grid-cols-2">
                 {options.map((node) => (
@@ -361,7 +391,7 @@ export function DynamicScopeJobWizard({
           </CardHeader>
           <CardContent className="space-y-6">
             {templateLoading ? (
-              <p className="text-sm text-muted-foreground">Loading job form template…</p>
+              <ActiniumLoadingState label="Loading job form template…" size="sm" />
             ) : null}
 
             <div className="grid gap-4 sm:grid-cols-2">

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { LabeledSelect } from "@/components/ui/LabeledSelect";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 import {
   Table,
   TableBody,
@@ -79,7 +80,7 @@ export function AuditLogPanel() {
       <Card>
         <CardContent className="p-0">
           {loading ? (
-            <p className="p-4 text-sm text-muted-foreground">Loading audit log…</p>
+            <ActiniumLoadingState label="Loading audit log…" size="md" minHeight={100} />
           ) : (
             <Table>
               <TableHeader>

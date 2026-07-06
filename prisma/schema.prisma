@@ -136,6 +136,8 @@ model Company {
   vessels   Vessel[]
   employees Employee[]
   projects  Project[]
+  yardProfile YardProfile?
+  yardInvites YardInvite[] @relation("YardInviteCompany")
 
   @@index([parentId])
   @@index([status])
@@ -216,6 +218,7 @@ model Employee {
   user            User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
   vesselAssignments EmployeeVessel[]
   crewPageAccess    EmployeeCrewPageAccess[]
+  assignedYardInvites YardInvite[] @relation("YardInviteEstimator")
 
   @@index([companyId])
   @@index([status])
@@ -481,6 +484,7 @@ model SpecLine {
   project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
   quoteLines QuoteLine[]
   workshopJobs WorkshopJob[]
+  costEstimateLines YardCostEstimateLine[]
 
   @@index([projectId, sortOrder])
   @@index([officeChangedAt])
@@ -843,6 +847,181 @@ model YardJobAttachment {
   @@map("yard_job_attachments")
 }
 
+/// Shipyard portal — yard organization profile (Module 1).
+model YardProfile {
+  id               String   @id @default(cuid())
+  companyId        String   @unique @map("company_id")
+  logoUrl          String?  @map("logo_url")
+  country          String?
+  port             String?
+  address          String?  @db.Text
+  website          String?
+  establishedYear  Int?     @map("established_year")
+  repairBerths     Int?     @map("repair_berths")
+  totalEmployees   Int?     @map("total_employees")
+  /// floating_dock, graving_dock, syncrolift, repair_berth
+  dockTypes        String[] @default([]) @map("dock_types")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  company       Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  docks         YardDock[]
+  facilities    YardFacility[]
+  cranes        YardCrane[]
+  capacitySlots YardCapacitySlot[]
+  generalServices YardGeneralServiceItem[]
+  costTemplates YardCostTemplate[]
+
+  @@map("yard_profiles")
+}
+
+model YardDock {
+  id                String   @id @default(cuid())
+  yardProfileId     String   @map("yard_profile_id")
+  dockNo            String   @map("dock_no")
+  dockType          String   @map("dock_type")
+  maxLoaM           Float?   @map("max_loa_m")
+  maxBeamM          Float?   @map("max_beam_m")
+  maxDraftM         Float?   @map("max_draft_m")
+  liftingCapacityT  Float?   @map("lifting_capacity_t")
+  sortOrder         Int      @default(0) @map("sort_order")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  yardProfile   YardProfile        @relation(fields: [yardProfileId], references: [id], onDelete: Cascade)
+  capacitySlots YardCapacitySlot[]
+
+  @@unique([yardProfileId, dockNo])
+  @@index([yardProfileId])
+  @@map("yard_docks")
+}
+
+model YardFacility {
+  id            String   @id @default(cuid())
+  yardProfileId String   @map("yard_profile_id")
+  facilityType  String   @map("facility_type")
+  name          String
+  capabilities  String?  @db.Text
+  equipmentJson Json?    @map("equipment_json")
+  sortOrder     Int      @default(0) @map("sort_order")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  yardProfile YardProfile @relation(fields: [yardProfileId], references: [id], onDelete: Cascade)
+
+  @@index([yardProfileId])
+  @@map("yard_facilities")
+}
+
+model YardCrane {
+  id                   String    @id @default(cuid())
+  yardProfileId        String    @map("yard_profile_id")
+  name                 String
+  capacityT            Float?    @map("capacity_t")
+  radiusM              Float?    @map("radius_m")
+  location             String?
+  available            Boolean   @default(true)
+  certificationExpiry  DateTime? @map("certification_expiry")
+  sortOrder            Int       @default(0) @map("sort_order")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  yardProfile YardProfile @relation(fields: [yardProfileId], references: [id], onDelete: Cascade)
+
+  @@index([yardProfileId])
+  @@map("yard_cranes")
+}
+
+/// Monthly dock/berth occupancy for capacity calendar (0–100%).
+model YardCapacitySlot {
+  id            String   @id @default(cuid())
+  yardProfileId String   @map("yard_profile_id")
+  dockId        String?  @map("dock_id")
+  slotLabel     String   @map("slot_label")
+  year          Int
+  month         Int
+  occupancyPct  Float    @default(0) @map("occupancy_pct")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  yardProfile YardProfile @relation(fields: [yardProfileId], references: [id], onDelete: Cascade)
+  dock        YardDock?   @relation(fields: [dockId], references: [id], onDelete: SetNull)
+
+  @@unique([yardProfileId, slotLabel, year, month])
+  @@index([yardProfileId, year, month])
+  @@map("yard_capacity_slots")
+}
+
+/// Shipyard general service line catalog — standard items the yard quotes (fire watch, utilities, etc.).
+model YardGeneralServiceItem {
+  id                   String   @id @default(cuid())
+  yardProfileId        String   @map("yard_profile_id")
+  lineCode             String   @map("line_code")
+  description          String
+  unit                 String?
+  defaultQty           Float?   @map("default_qty")
+  defaultLabourHours   Float?   @map("default_labour_hours")
+  defaultLabourRate    Float?   @map("default_labour_rate")
+  defaultMaterialCost  Float?   @map("default_material_cost")
+  defaultEquipmentCost Float?   @map("default_equipment_cost")
+  sortOrder            Int      @default(0) @map("sort_order")
+  active               Boolean  @default(true)
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  yardProfile   YardProfile            @relation(fields: [yardProfileId], references: [id], onDelete: Cascade)
+  templateLines YardCostTemplateLine[]
+  estimateLines YardCostEstimateLine[]
+
+  @@unique([yardProfileId, lineCode])
+  @@index([yardProfileId, sortOrder])
+  @@map("yard_general_service_items")
+}
+
+/// Reusable cost/pricing template — e.g. different owner rate cards on the same job set.
+model YardCostTemplate {
+  id               String   @id @default(cuid())
+  yardProfileId    String   @map("yard_profile_id")
+  name             String
+  targetOwnerLabel String?  @map("target_owner_label")
+  description      String?  @db.Text
+  marginPct        Float    @default(0) @map("margin_pct")
+  isDefault        Boolean  @default(false) @map("is_default")
+  sortOrder        Int      @default(0) @map("sort_order")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  yardProfile YardProfile            @relation(fields: [yardProfileId], references: [id], onDelete: Cascade)
+  lines       YardCostTemplateLine[]
+  estimates   YardCostEstimate[]
+
+  @@index([yardProfileId, sortOrder])
+  @@map("yard_cost_templates")
+}
+
+model YardCostTemplateLine {
+  id                   String   @id @default(cuid())
+  templateId           String   @map("template_id")
+  generalServiceItemId String?  @map("general_service_item_id")
+  lineCode             String?  @map("line_code")
+  description          String
+  unit                 String?
+  labourHours          Float?   @map("labour_hours")
+  labourRate           Float?   @map("labour_rate")
+  materialCost         Float    @default(0) @map("material_cost")
+  equipmentCost        Float    @default(0) @map("equipment_cost")
+  subcontractCost      Float    @default(0) @map("subcontract_cost")
+  sortOrder            Int      @default(0) @map("sort_order")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  template           YardCostTemplate      @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  generalServiceItem YardGeneralServiceItem? @relation(fields: [generalServiceItemId], references: [id], onDelete: SetNull)
+
+  @@index([templateId, sortOrder])
+  @@map("yard_cost_template_lines")
+}
+
 model YardInvite {
   id              String           @id @default(cuid())
   projectId       String           @map("project_id")
@@ -853,6 +1032,12 @@ model YardInvite {
   status          YardInviteStatus @default(invited)
   preferredLocale ScopeLocale      @default(en) @map("preferred_locale")
   submittedAt     DateTime?        @map("submitted_at")
+  /// Shipyard portal workflow stage (received → review → … → award_received).
+  workflowStage   String?          @map("workflow_stage")
+  dueDate         DateTime?        @map("due_date")
+  priority        String           @default("normal")
+  assignedEstimatorId String?      @map("assigned_estimator_id")
+  yardCompanyId   String?          @map("yard_company_id")
   originNode      SyncOriginNode   @default(office) @map("origin_node")
   officeChangedAt DateTime         @default(now()) @map("office_changed_at")
   relayChangedAt  DateTime?        @map("relay_changed_at")
@@ -861,14 +1046,84 @@ model YardInvite {
   updatedAt       DateTime         @updatedAt @map("updated_at")
 
   project          Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignedEstimator Employee?        @relation("YardInviteEstimator", fields: [assignedEstimatorId], references: [id], onDelete: SetNull)
+  yardCompany      Company?          @relation("YardInviteCompany", fields: [yardCompanyId], references: [id], onDelete: SetNull)
   quoteMeta        QuoteMeta?
   quoteLines       QuoteLine[]
   compareSnapshots CompareSnapshot[]
+  costEstimates    YardCostEstimate[]
 
   @@index([projectId])
+  @@index([workflowStage])
+  @@index([dueDate])
+  @@index([assignedEstimatorId])
+  @@index([yardCompanyId])
   @@index([officeChangedAt])
   @@index([deletedAt])
   @@map("yard_invites")
+}
+
+/// Per-invite internal cost build-up — supports multiple quote versions (v1, v2, v3…) per RFQ.
+model YardCostEstimate {
+  id                   String   @id @default(cuid())
+  inviteId             String   @map("invite_id")
+  versionNo            Int      @default(1) @map("version_no")
+  versionLabel         String?  @map("version_label")
+  templateId           String?  @map("template_id")
+  isSelectedForQuote   Boolean  @default(false) @map("is_selected_for_quote")
+  status               String   @default("draft")
+  currency             String   @default("USD")
+  marginPct            Float    @default(0) @map("margin_pct")
+  totalLabour          Float    @default(0) @map("total_labour")
+  totalMaterial        Float    @default(0) @map("total_material")
+  totalEquipment       Float    @default(0) @map("total_equipment")
+  totalSubcontract     Float    @default(0) @map("total_subcontract")
+  subtotal             Float    @default(0)
+  grandTotal           Float    @default(0) @map("grand_total")
+  notes                String?  @db.Text
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  invite   YardInvite          @relation(fields: [inviteId], references: [id], onDelete: Cascade)
+  template YardCostTemplate?   @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  lines    YardCostEstimateLine[]
+
+  @@unique([inviteId, versionNo])
+  @@index([inviteId])
+  @@index([status])
+  @@map("yard_cost_estimates")
+}
+
+model YardCostEstimateLine {
+  id                   String   @id @default(cuid())
+  estimateId           String   @map("estimate_id")
+  specLineId           String?  @map("spec_line_id")
+  generalServiceItemId String?  @map("general_service_item_id")
+  /// spec | general_service
+  lineSource           String   @default("spec") @map("line_source")
+  description          String
+  unit                 String?
+  quantity             Float?
+  labourHours          Float?   @map("labour_hours")
+  labourRate           Float?   @map("labour_rate")
+  labourTotal          Float    @default(0) @map("labour_total")
+  materialCost         Float    @default(0) @map("material_cost")
+  equipmentCost        Float    @default(0) @map("equipment_cost")
+  subcontractCost      Float    @default(0) @map("subcontract_cost")
+  lineTotal            Float    @default(0) @map("line_total")
+  notes                String?
+  sortOrder            Int      @default(0) @map("sort_order")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  estimate           YardCostEstimate        @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  specLine           SpecLine?               @relation(fields: [specLineId], references: [id], onDelete: SetNull)
+  generalServiceItem YardGeneralServiceItem? @relation(fields: [generalServiceItemId], references: [id], onDelete: SetNull)
+
+  @@unique([estimateId, specLineId])
+  @@unique([estimateId, generalServiceItemId])
+  @@index([estimateId, sortOrder])
+  @@map("yard_cost_estimate_lines")
 }
 
 model QuoteMeta {

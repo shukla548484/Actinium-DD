@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { PageHeader, PageShell } from "@/components/layout/PageShell";
 import { TableCard } from "@/components/layout/TableCard";
 import { fmtPct } from "@/lib/superintendent/formatters";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 import {
   Table,
   TableBody,
@@ -44,7 +45,7 @@ export default function ProgressTrackerPage() {
 
       <TableCard title="Project progress">
         {loading ? (
-          <p className="p-4 text-sm text-muted-foreground">Loading…</p>
+          <ActiniumLoadingState size="md" minHeight={100} />
         ) : (
           <Table>
             <TableHeader>

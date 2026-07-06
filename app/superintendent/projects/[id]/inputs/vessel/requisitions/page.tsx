@@ -5,6 +5,7 @@ import { PageHeader, PageShell } from "@/components/layout/PageShell";
 import { VesselRequisitionBankPanel } from "@/components/superintendent/VesselRequisitionBankPanel";
 import { VesselRequisitionsPanel } from "@/components/superintendent/VesselRequisitionsPanel";
 import { useProjectVessel } from "@/components/superintendent/useProjectVessel";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 export default function VesselRequisitionsPage() {
   const { id } = useParams<{ id: string }>();
@@ -18,7 +19,7 @@ export default function VesselRequisitionsPage() {
       />
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <ActiniumLoadingState size="sm" />
       ) : (
         <div className="space-y-6">
           <VesselRequisitionBankPanel dryDockProjectId={id} />

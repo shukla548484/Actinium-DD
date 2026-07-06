@@ -9,6 +9,7 @@ import { usePaginatedApi } from "@/components/superintendent/usePaginatedApi";
 import { fmtMoney, fmtPct } from "@/lib/superintendent/formatters";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 import {
   Table,
   TableBody,
@@ -60,7 +61,7 @@ export default function SuperintendentProjectsPage() {
 
       <TableCard title="Projects">
         {loading ? (
-          <p className="p-4 text-sm text-muted-foreground">Loading…</p>
+          <ActiniumLoadingState size="md" minHeight={100} />
         ) : (
           <Table>
             <TableHeader>

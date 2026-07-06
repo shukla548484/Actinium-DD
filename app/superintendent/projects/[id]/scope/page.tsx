@@ -9,6 +9,7 @@ import { VesselScopeIntegrationBanner } from "@/components/superintendent/Vessel
 import { fmtMoney, fmtPct } from "@/lib/superintendent/formatters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 import {
   Table,
   TableBody,
@@ -91,7 +92,7 @@ export default function ProjectScopePage() {
         </CardHeader>
         <CardContent className="p-0">
           {loading ? (
-            <p className="p-4 text-sm text-muted-foreground">Loading scope…</p>
+            <ActiniumLoadingState label="Loading scope…" size="md" minHeight={100} />
           ) : (
             <Table>
               <TableHeader>

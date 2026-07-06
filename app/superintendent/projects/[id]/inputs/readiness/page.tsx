@@ -11,6 +11,7 @@ import { fmtPct } from "@/lib/superintendent/formatters";
 import type { CombinedInputReadinessReport } from "@/lib/db/superintendent/inputs";
 import { INPUT_PAGE_LABELS, inputPageHref } from "@/lib/superintendent/inputCatalog/constants";
 import type { InputPageKey } from "@/lib/superintendent/inputCatalog/types";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 const STATUS_LABEL: Record<string, string> = {
   missing: "Not started",
@@ -73,7 +74,7 @@ export default function PreDockReadinessPage() {
       />
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading readiness report…</p>
+        <ActiniumLoadingState label="Loading readiness report…" size="sm" />
       ) : !combined ? (
         <p className="text-sm text-muted-foreground">No readiness data available.</p>
       ) : (

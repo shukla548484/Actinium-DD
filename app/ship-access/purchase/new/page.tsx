@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useShipAccessContext } from "@/components/shipAccess/ShipAccessScopeBar";
 import { RequisitionSubmitForm } from "@/components/shipAccess/RequisitionSubmitForm";
 import { PageHeader, PageShell } from "@/components/layout/PageShell";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 function useCrewSession() {
   const [defaultRequestedByName, setDefaultRequestedByName] = useState("");
@@ -46,7 +47,7 @@ function ShipAccessNewRequisitionContent() {
 
 export default function ShipAccessNewRequisitionPage() {
   return (
-    <Suspense fallback={<p className="p-6 text-sm text-muted-foreground">Loading…</p>}>
+    <Suspense fallback={<ActiniumLoadingState size="md" minHeight={140} />}>
       <ShipAccessNewRequisitionContent />
     </Suspense>
   );

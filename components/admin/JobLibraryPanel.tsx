@@ -18,6 +18,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { JOB_PRIORITY_ITEMS } from "@/lib/superintendent/constants";
 import type { JobLibraryNodeDto } from "@/lib/vessel/jobLibrary/catalog";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 type AdminNode = JobLibraryNodeDto & { isActive?: boolean; sortOrder?: number };
 
@@ -293,7 +294,7 @@ export function JobLibraryPanel() {
           ) : null}
 
           {loading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <ActiniumLoadingState size="sm" />
           ) : (
             <Table>
               <TableHeader>

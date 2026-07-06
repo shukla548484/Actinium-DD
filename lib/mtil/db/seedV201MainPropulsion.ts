@@ -3,7 +3,10 @@ import { prisma } from "@/lib/prisma";
 import type { JobLibrarySeedNode } from "@/lib/vessel/jobLibrary/catalog";
 import { buildV2SprintSystemNodes } from "@/lib/mtil/v2/import/buildV2SprintJobLibraryTree";
 import { importV2SprintFromPath } from "@/lib/mtil/v2/import/importSprintWorkbook";
-import { parseV2SprintWorkbookFile } from "@/lib/mtil/v2/import/parseSprintWorkbook";
+import {
+  parseV2SprintWorkbookFile,
+  parseV2SprintWorkbookFileIfExists,
+} from "@/lib/mtil/v2/import/parseSprintWorkbook";
 import {
   MTIL_V201_MTIL_PHASE,
   MTIL_V201_TREE_CODE,
@@ -235,16 +238,17 @@ export async function isV201AllSprintsSeeded(): Promise<boolean> {
 }
 
 export function getV201SprintStats(sprint: V2SprintDefinition) {
-  const parsed = parseV2SprintWorkbookFile(sprintWorkbookPath(sprint));
+  const parsed = parseV2SprintWorkbookFileIfExists(sprintWorkbookPath(sprint));
   return {
     sprintId: sprint.id,
     sprintCode: sprint.sprintCode,
     name: sprint.name,
-    libraryVersion: parsed.libraryVersion,
+    libraryVersion: parsed.libraryVersion ?? sprint.release,
     jobCount: parsed.masterJobs.length,
     catalogTemplateCount: parsed.templates.length,
     measurementCount: parsed.measurements.length,
     checklistItemCount: parsed.checklistItems.length,
+    workbookPresent: parsed.masterJobs.length > 0,
   };
 }
 

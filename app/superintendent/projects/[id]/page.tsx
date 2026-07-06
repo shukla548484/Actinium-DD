@@ -18,6 +18,7 @@ import {
 import { formatProjectTypeLabel } from "@/lib/superintendent/engine/projectTypes";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 export const dynamic = "force-dynamic";
 
@@ -70,7 +71,7 @@ export default function ProjectDetailPage() {
   if (loading) {
     return (
       <PageShell>
-        <p className="text-sm text-muted-foreground">Loading project…</p>
+        <ActiniumLoadingState label="Loading project…" size="sm" />
       </PageShell>
     );
   }

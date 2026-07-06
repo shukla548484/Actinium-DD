@@ -43,6 +43,7 @@ import {
   formatCategoryLabel,
 } from "@/lib/tender/categories";
 import type { CalcRule, MasterSpecLine } from "@/lib/tender/types";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 const CALC_RULES: { value: CalcRule; label: string }[] = [
   { value: "lump_sum", label: "Lump sum" },
@@ -150,7 +151,7 @@ export function MasterCatalogPanel() {
   }
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading master catalog…</p>;
+    return <ActiniumLoadingState label="Loading master catalog…" size="sm" />;
   }
 
   return (

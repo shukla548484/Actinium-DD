@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { DEFAULT_EMPLOYEE_PASSWORD } from "@/lib/auth/constants";
 import type { CrewCredentialDetailDto } from "@/lib/db/crewCredentials";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 import {
   formatPhoneE164,
   isValidLocalPhoneNumber,
@@ -177,7 +178,7 @@ export function CrewCredentialEditDialog({
         </DialogHeader>
 
         {loading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <ActiniumLoadingState size="sm" />
         ) : credential ? (
           <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
             <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm space-y-1">

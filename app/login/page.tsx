@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { RbacUserType } from "@prisma/client";
 import { Anchor, Lock, Ship, Shield } from "lucide-react";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 function reasonMessage(reason: string | null): string | null {
   if (reason === "timeout") {
@@ -174,8 +175,8 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-dvh items-center justify-center text-sm text-muted-foreground">
-          Loading…
+        <div className="flex min-h-dvh items-center justify-center">
+          <ActiniumLoadingState size="lg" label="Loading Actinium-DD…" />
         </div>
       }
     >

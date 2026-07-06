@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { LabeledSelect } from "@/components/ui/LabeledSelect";
 import { equipmentSystemLabel } from "@/lib/shipAccess/crewDefectSystems";
 import type { RequisitionLineInput, VesselRequisitionDto } from "@/lib/shipAccess/requisitionDto";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 import {
   VESSEL_REQUISITION_PURPOSE_ITEMS,
   VESSEL_REQUISITION_URGENCY_ITEMS,
@@ -222,7 +223,7 @@ export function RequisitionSubmitForm({
   if (!vesselId || !loaded) {
     return (
       <Card>
-        <CardContent className="py-4 text-sm text-muted-foreground">Loading…</CardContent>
+        <ActiniumLoadingState size="md" minHeight={80} />
       </Card>
     );
   }

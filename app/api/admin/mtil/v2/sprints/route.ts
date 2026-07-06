@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdminApiAccess } from "@/lib/auth/adminAccess";
+import { isEmdrMasterRepositoryPresent } from "@/lib/emdr/paths";
 import { getEmdrRegistryReport } from "@/lib/emdr/registry";
 import {
   getV201CombinedStats,
@@ -57,6 +58,16 @@ export async function POST(req: Request) {
   }
 
   try {
+    if (isEmdrMasterRepositoryPresent()) {
+      return NextResponse.json(
+        {
+          error:
+            "EMDR V3 master repository is present. Seed from Admin → Job library (V3.0/V3.1) instead — V2 sprint seed is disabled to avoid duplicate Main Engine jobs.",
+        },
+        { status: 409 },
+      );
+    }
+
     if (!sprintId || sprintId === "all") {
       const result = await seedV201AllSprints();
       return NextResponse.json({ ok: true, ...result });

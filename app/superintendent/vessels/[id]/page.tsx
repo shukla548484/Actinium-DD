@@ -12,6 +12,7 @@ import { DatePickerField, toDateInput } from "@/components/ui/DatePickerField";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 export const dynamic = "force-dynamic";
 
@@ -66,7 +67,7 @@ export default function SuperintendentVesselDetailPage() {
   if (loading) {
     return (
       <PageShell>
-        <p className="text-sm text-muted-foreground">Loading vessel…</p>
+        <ActiniumLoadingState label="Loading vessel…" size="sm" />
       </PageShell>
     );
   }

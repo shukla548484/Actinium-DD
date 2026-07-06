@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 import {
   Table,
   TableBody,
@@ -74,7 +75,7 @@ export function ExternalQuotesPanel() {
     void load();
   }, [load]);
 
-  if (loading) return <p className="text-sm text-muted-foreground">Loading quotes…</p>;
+  if (loading) return <ActiniumLoadingState label="Loading quotes…" size="sm" />;
   if (error) return <p className="text-sm text-destructive">{error}</p>;
 
   return (
@@ -150,7 +151,7 @@ export function ExternalOversightPanel() {
     })();
   }, []);
 
-  if (loading) return <p className="text-sm text-muted-foreground">Loading portal data…</p>;
+  if (loading) return <ActiniumLoadingState label="Loading portal data…" size="sm" />;
   if (error) return <p className="text-sm text-destructive">{error}</p>;
   if (!data) return null;
 

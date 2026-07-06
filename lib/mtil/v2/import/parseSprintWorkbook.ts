@@ -85,8 +85,7 @@ export function parseV2SprintWorkbookBuffer(buffer: ArrayBuffer | Uint8Array): P
 }
 
 export function parseV2SprintWorkbookFile(path: string): ParsedEmdrSprintWorkbook {
-  const workbook = XLSX.readFile(path);
-  const bytes = XLSX.write(workbook, { type: "array", bookType: "xlsx" });
+  const bytes = fs.readFileSync(path);
   return parseV2SprintWorkbookBuffer(bytes);
 }
 

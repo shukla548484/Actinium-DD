@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DD_PROJECT_STATUS_ITEMS } from "@/lib/superintendent/constants";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 export const dynamic = "force-dynamic";
 
@@ -107,7 +108,7 @@ export default function VesselProjectStatusPage() {
 
       <TableCard title="Project status">
         {loading ? (
-          <p className="p-4 text-sm text-muted-foreground">Loading…</p>
+          <ActiniumLoadingState size="md" minHeight={100} />
         ) : (
           <Table>
             <TableHeader>

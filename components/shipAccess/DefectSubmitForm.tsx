@@ -15,6 +15,7 @@ import {
   VESSEL_DEFECT_EQUIPMENT_SYSTEMS,
 } from "@/lib/shipAccess/crewDefectSystems";
 import type { VesselDefectDto } from "@/lib/shipAccess/defectTypes";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 type Props = {
   vesselId?: string | null;
@@ -157,8 +158,8 @@ export function DefectSubmitForm({
   if (!vesselId) {
     return (
       <Card>
-        <CardContent className="py-4 text-sm text-muted-foreground">
-          Loading vessel context…
+        <CardContent className="py-4">
+          <ActiniumLoadingState label="Loading vessel context…" size="sm" />
         </CardContent>
       </Card>
     );

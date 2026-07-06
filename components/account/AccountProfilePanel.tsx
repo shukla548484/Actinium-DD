@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { RbacUserType } from "@prisma/client";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 type ProfileUser = {
   displayName: string;
@@ -44,7 +45,7 @@ export function AccountProfilePanel() {
   }, []);
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading profile…</p>;
+    return <ActiniumLoadingState label="Loading profile…" size="sm" />;
   }
 
   if (!user) {

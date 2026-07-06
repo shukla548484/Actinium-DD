@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import type { DdVesselJobDto } from "@/lib/superintendent/types";
 import { conditionRatingLabel } from "@/lib/vessel/machinery/parameters";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 export default function DryDockJobReviewPage() {
   const { id } = useParams<{ id: string }>();
@@ -84,7 +85,7 @@ export default function DryDockJobReviewPage() {
   if (!job) {
     return (
       <PageShell>
-        <p className="text-sm text-muted-foreground">Loading job…</p>
+        <ActiniumLoadingState label="Loading job…" size="sm" />
       </PageShell>
     );
   }

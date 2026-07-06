@@ -14,6 +14,7 @@ import {
   type ParsedEmdrRepositoryIndex,
 } from "@/lib/emdr/parseRepositoryIndex";
 import {
+  isEmdrMasterRepositoryPresent,
   EMDR_CODE_STANDARD_PATH,
   EMDR_MASTER_CODEBOOK_PATH,
   EMDR_REPOSITORY_INDEX_PATH,
@@ -21,6 +22,7 @@ import {
   MTIL_V2_WORKBOOKS_DIR,
   emdrWorkbookPath,
 } from "@/lib/emdr/paths";
+import { getEmdrMasterRepositoryWorkbookStats } from "@/lib/emdr/v3/v30JobLibraryTree";
 import { V2_SPRINT_REGISTRY, type V2SprintDefinition } from "@/lib/mtil/v2/sprints/registry";
 
 export type EmdrSprintAvailability = V2SprintDefinition & {
@@ -41,6 +43,18 @@ export type EmdrRegistryReport = {
   repositoryIndex: ParsedEmdrRepositoryIndex | null;
   sprints: EmdrSprintAvailability[];
   pendingReleases: { release: string; domain: string }[];
+  v30MasterRepository: {
+    present: boolean;
+    kind: "v33" | "v32" | "v31" | "v30" | null;
+    release: string;
+    jobCount: number;
+    mainEngineJobCount: number;
+    auxiliaryEngineJobCount: number;
+    boilerJobCount?: number;
+    pumpJobCount?: number;
+    systemCount: number;
+    supersedesV201Sprints: boolean;
+  } | null;
 };
 
 function fallbackCodebook(): ParsedEmdrMasterCodebook {
@@ -135,6 +149,8 @@ export function getEmdrRegistryReport(): EmdrRegistryReport {
     })
     .map((r) => ({ release: r.release, domain: r.engineeringDomain }));
 
+  const emdrStats = isEmdrMasterRepositoryPresent() ? getEmdrMasterRepositoryWorkbookStats() : null;
+
   return {
     version: EMDR_VERSION,
     masterCodeStandardVersion: MASTER_CODE_STANDARD_VERSION,
@@ -146,5 +162,19 @@ export function getEmdrRegistryReport(): EmdrRegistryReport {
     repositoryIndex,
     sprints,
     pendingReleases,
+    v30MasterRepository: emdrStats?.workbookPresent
+      ? {
+          present: true,
+          kind: emdrStats.kind,
+          release: emdrStats.release ?? "V3.0-ME-100",
+          jobCount: emdrStats.jobCount,
+          mainEngineJobCount: emdrStats.mainEngineJobCount,
+          auxiliaryEngineJobCount: emdrStats.auxiliaryEngineJobCount,
+          boilerJobCount: emdrStats.boilerJobCount,
+          pumpJobCount: emdrStats.pumpJobCount,
+          systemCount: emdrStats.systemCount,
+          supersedesV201Sprints: true,
+        }
+      : null,
   };
 }

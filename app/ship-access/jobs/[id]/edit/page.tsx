@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useShipAccessContext } from "@/components/shipAccess/ShipAccessScopeBar";
 import { VesselJobSubmitForm } from "@/components/superintendent/VesselJobSubmitForm";
 import { PageHeader, PageShell } from "@/components/layout/PageShell";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 function useCrewSession() {
   const [allowedJobCategories, setAllowedJobCategories] = useState<string[]>([]);
@@ -53,7 +54,7 @@ function ShipAccessEditJobContent() {
 
 export default function ShipAccessEditJobPage() {
   return (
-    <Suspense fallback={<p className="p-6 text-sm text-muted-foreground">Loading…</p>}>
+    <Suspense fallback={<ActiniumLoadingState size="md" minHeight={140} />}>
       <ShipAccessEditJobContent />
     </Suspense>
   );

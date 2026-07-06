@@ -21,6 +21,7 @@ import { mapSelectItems, PAGE_ACCESS_TYPE_ITEMS } from "@/lib/ui/labeledSelect";
 import { rbacUserTypeLabel } from "@/lib/rbac/userTypes";
 import { suggestPageKeysFromJobScope } from "@/lib/rbac/jobScopePages";
 import { approvalLevelLabel } from "@/lib/rbac/approvalLevel";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 type RoleOption = {
   id: string;
@@ -208,7 +209,7 @@ export function PageAccessMatrix() {
   }
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading access matrix…</p>;
+    return <ActiniumLoadingState label="Loading access matrix…" size="sm" />;
   }
 
   return (

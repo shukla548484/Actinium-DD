@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import type { RbacUserType } from "@prisma/client";
 import type { EmployeeDto } from "@/lib/admin/types";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 type Props = {
   companyId: string;
@@ -59,7 +60,7 @@ export function OrganizationEmployeeListPanel({
   return (
     <TableCard title={title} description={description}>
       {loading ? (
-        <p className="p-4 text-sm text-muted-foreground">Loading contacts…</p>
+        <ActiniumLoadingState label="Loading contacts…" size="md" minHeight={100} />
       ) : employees.length === 0 ? (
         <p className="p-4 text-sm text-muted-foreground">No contacts registered yet.</p>
       ) : (

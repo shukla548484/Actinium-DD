@@ -7,6 +7,7 @@ import { ProjectInteractiveGantt } from "@/components/superintendent/ProjectInte
 import { PageHeader, PageShell } from "@/components/layout/PageShell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +56,7 @@ export default function ProjectTimelinePage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-muted-foreground">Loading timeline…</p>
+            <ActiniumLoadingState label="Loading timeline…" size="sm" />
           ) : timeline ? (
             <ProjectInteractiveGantt projectId={id} timeline={timeline} onUpdated={load} />
           ) : (

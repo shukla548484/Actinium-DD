@@ -64,6 +64,10 @@ const DEPARTMENT_MAP: Record<string, JobCatalogDepartment> = {
 
 const WORKSHOP_MAP: Record<string, JobCatalogWorkshop> = {
   "machinery workshop": "machinery",
+  "machinery workshop / boiler service vendor": "machinery",
+  "engine room": "machinery",
+  "engine room / pump room": "machinery",
+  "pump room / cargo area": "machinery",
   machinery: "machinery",
   "pipe workshop": "pipe",
   pipe: "pipe",
@@ -116,6 +120,11 @@ const PROJECT_TYPE_MAP: Record<string, DryDockProjectType> = {
   "layup / reactivation": "layup_reactivation",
   "conversion / modification": "conversion_modification",
   "warranty repair": "warranty_repair",
+  "dry dock": "special_survey",
+  "running maintenance": "occasional_repair",
+  pms: "occasional_repair",
+  repair: "occasional_repair",
+  "class survey": "special_survey",
 };
 
 const TEMPLATE_CATEGORY_MAP: Record<string, JobTemplateCategory> = {
@@ -209,6 +218,12 @@ const RESPONSE_TYPE_MAP: Record<string, JobChecklistResponseType> = {
 const PARTY_MAP: Record<string, JobScopeResponsibleParty> = {
   vessel: "owner",
   owner: "owner",
+  "vessel crew": "owner",
+  "chief engineer": "owner",
+  "chief engineer / second engineer": "owner",
+  "second engineer": "owner",
+  "second engineer / electrical officer": "owner",
+  "chief engineer / technical superintendent": "owner",
   shipyard: "yard",
   yard: "yard",
   "vessel/yard": "owner",

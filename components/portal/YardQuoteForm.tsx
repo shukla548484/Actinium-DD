@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { TableCard } from "@/components/layout/TableCard";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 type DraftLine = {
   unitRate: number | null;
@@ -258,7 +259,7 @@ export function YardQuoteForm({ token }: Props) {
   }
 
   if (loading) {
-    return <p className="p-8 text-center text-muted-foreground">Loading quotation portal…</p>;
+    return <ActiniumLoadingState label="Loading quotation portal…" size="lg" minHeight={160} />;
   }
 
   if (!quote) {

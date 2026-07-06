@@ -25,6 +25,7 @@ import {
 import type { EntityStatus } from "@prisma/client";
 import type { VesselDto } from "@/lib/admin/types";
 import { mapSelectItems, type LabeledOption } from "@/lib/ui/labeledSelect";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 type CompanyOption = { id: string; name: string; code: string };
 
@@ -137,7 +138,7 @@ export function VesselListPanel() {
 
       <TableCard title="Vessels">
         {loading ? (
-          <p className="p-4 text-sm text-muted-foreground">Loading…</p>
+          <ActiniumLoadingState size="md" minHeight={100} />
         ) : (
           <Table>
             <TableHeader>

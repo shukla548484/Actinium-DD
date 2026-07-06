@@ -13,6 +13,7 @@ import {
 import { TableCard } from "@/components/layout/TableCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 import {
   Table,
   TableBody,
@@ -42,7 +43,7 @@ export function EntityListPage<T extends { id: string }>(
   },
 ) {
   return (
-    <Suspense fallback={<p className="p-4 text-sm text-muted-foreground">Loading…</p>}>
+    <Suspense fallback={<ActiniumLoadingState size="md" minHeight={100} />}>
       <EntityListPageInner {...props} />
     </Suspense>
   );
@@ -107,7 +108,7 @@ function EntityListPageInner<T extends { id: string }>({
 
       <TableCard title={title}>
         {loading ? (
-          <p className="p-4 text-sm text-muted-foreground">Loading…</p>
+          <ActiniumLoadingState size="md" minHeight={100} />
         ) : (
           <Table>
             <TableHeader>

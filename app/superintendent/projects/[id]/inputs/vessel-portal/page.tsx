@@ -7,6 +7,7 @@ import { VesselWorkspaceHub } from "@/components/superintendent/VesselWorkspaceH
 import { useProjectVessel } from "@/components/superintendent/useProjectVessel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 export default function VesselPortalPage() {
   const { id } = useParams<{ id: string }>();
@@ -48,7 +49,7 @@ export default function VesselPortalPage() {
       </Card>
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading vessel context…</p>
+        <ActiniumLoadingState label="Loading vessel context…" size="sm" />
       ) : (
         <VesselWorkspaceHub dryDockProjectId={id} portal />
       )}

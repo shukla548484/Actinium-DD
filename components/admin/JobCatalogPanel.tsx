@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { JOB_CATALOG_FIELD_COUNTS } from "@/lib/jobs/catalogSchema";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 type SheetStats = {
   sheetNo: number;
@@ -150,7 +151,7 @@ export function JobCatalogPanel() {
   }
 
   if (!data?.stats) {
-    return <p className="text-sm text-muted-foreground">Loading job catalog…</p>;
+    return <ActiniumLoadingState label="Loading job catalog…" size="sm" />;
   }
 
   const { stats, templates = [], masterJobs = [] } = data;

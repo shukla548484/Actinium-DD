@@ -9,6 +9,7 @@ import { PaginationBar } from "@/components/superintendent/PaginationBar";
 import { usePaginatedApi } from "@/components/superintendent/usePaginatedApi";
 import { fmtDate } from "@/lib/superintendent/formatters";
 import { Input } from "@/components/ui/input";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 import {
   Table,
   TableBody,
@@ -55,7 +56,7 @@ export default function SuperintendentVesselsPage() {
 
       <TableCard title="Vessels">
         {loading ? (
-          <p className="p-4 text-sm text-muted-foreground">Loading…</p>
+          <ActiniumLoadingState size="md" minHeight={100} />
         ) : (
           <Table>
             <TableHeader>

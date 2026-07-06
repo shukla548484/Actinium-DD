@@ -6,6 +6,7 @@ import { PageHeader, PageShell } from "@/components/layout/PageShell";
 import { VesselWorkspaceHub } from "@/components/superintendent/VesselWorkspaceHub";
 import { useProjectVessel } from "@/components/superintendent/useProjectVessel";
 import { Button } from "@/components/ui/button";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 export default function VesselWorkspacePage() {
   const { id } = useParams<{ id: string }>();
@@ -43,7 +44,7 @@ export default function VesselWorkspacePage() {
       />
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading vessel context…</p>
+        <ActiniumLoadingState label="Loading vessel context…" size="sm" />
       ) : (
         <VesselWorkspaceHub dryDockProjectId={id} />
       )}

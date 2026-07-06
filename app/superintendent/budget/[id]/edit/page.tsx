@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 
 export const dynamic = "force-dynamic";
@@ -55,7 +56,7 @@ export default function EditPage() {
   if (loading) {
     return (
       <PageShell>
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <ActiniumLoadingState size="sm" />
       </PageShell>
     );
   }

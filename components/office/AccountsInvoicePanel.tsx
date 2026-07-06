@@ -14,6 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { DdInvoiceDto } from "@/lib/db/superintendent/invoices";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 const STATUS_ITEMS = [
   { value: "all", label: "All statuses" },
@@ -130,7 +131,7 @@ export function AccountsInvoicePanel() {
       <Card>
         <CardContent className="p-0">
           {loading ? (
-            <p className="p-4 text-sm text-muted-foreground">Loading invoices…</p>
+            <ActiniumLoadingState label="Loading invoices…" size="md" minHeight={100} />
           ) : (
             <Table>
               <TableHeader>

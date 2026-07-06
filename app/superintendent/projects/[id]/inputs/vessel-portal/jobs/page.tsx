@@ -8,6 +8,7 @@ import { DynamicScopeJobWizard } from "@/components/shipAccess/DynamicScopeJobWi
 import { useProjectVessel } from "@/components/superintendent/useProjectVessel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 export default function VesselPortalJobsPage() {
   const { id } = useParams<{ id: string }>();
@@ -51,7 +52,7 @@ export default function VesselPortalJobsPage() {
       </Card>
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <ActiniumLoadingState size="sm" />
       ) : vesselId ? (
         <DynamicScopeJobWizard
           vesselId={vesselId}

@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { VesselMachineryHoursDto } from "@/lib/db/vesselMachineryHours";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 export default function ShipAccessMachineryHoursPage() {
   const ctx = useShipAccessContext();
@@ -96,7 +97,7 @@ export default function ShipAccessMachineryHoursPage() {
       />
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <ActiniumLoadingState size="sm" />
       ) : !ctx.vesselId ? (
         <Alert>
           <AlertDescription>No vessel assigned to your crew account.</AlertDescription>

@@ -17,6 +17,7 @@ import {
   VESSEL_DEFECT_STATUS_ITEMS,
 } from "@/lib/shipAccess/crewDefectSystems";
 import type { VesselDefectDto } from "@/lib/shipAccess/defectTypes";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 type Props = {
   dryDockProjectId: string;
@@ -72,7 +73,7 @@ export function VesselDefectsPanel({ dryDockProjectId }: Props) {
       <Card>
         <CardContent className="p-0">
           {loading ? (
-            <p className="p-4 text-sm text-muted-foreground">Loading defects…</p>
+            <ActiniumLoadingState label="Loading defects…" size="md" minHeight={100} />
           ) : (
             <Table>
               <TableHeader>

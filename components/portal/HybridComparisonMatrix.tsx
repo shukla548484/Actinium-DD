@@ -22,6 +22,7 @@ import { categoryLabelFromList, formatCategoryLabel } from "@/lib/tender/categor
 import { TableCard } from "@/components/layout/TableCard";
 import { fmtMoney } from "@/lib/tender/format";
 import type { HybridComparison, ComparisonRow } from "@/lib/tender/types";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 interface Props {
   projectId: string;
@@ -79,7 +80,7 @@ export function HybridComparisonMatrix({
   }, [fetchUrl]);
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading comparison…</p>;
+    return <ActiniumLoadingState label="Loading comparison…" size="sm" />;
   }
 
   if (error) {

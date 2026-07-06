@@ -22,6 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { mapSelectItems } from "@/lib/ui/labeledSelect";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 export function BudgetVsQuotePanel({
   dryDockProjectId,
@@ -134,7 +135,7 @@ export function BudgetVsQuotePanel({
         </div>
 
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
-        {loading ? <p className="text-sm text-muted-foreground">Loading…</p> : null}
+        {loading ? <ActiniumLoadingState size="sm" /> : null}
 
         {summary ? (
           <>

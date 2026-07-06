@@ -15,6 +15,7 @@ import {
 import { equipmentSystemLabel } from "@/lib/shipAccess/crewDefectSystems";
 import type { VesselRequisitionDto } from "@/lib/shipAccess/requisitionDto";
 import { requisitionStatusLabel } from "@/lib/shipAccess/requisitionTypes";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 type Props = {
   dryDockProjectId: string;
@@ -128,7 +129,7 @@ export function VesselRequisitionBankPanel({ dryDockProjectId, onIntegrated }: P
       <CardContent className="space-y-3 p-0 pb-4">
         {error ? <p className="px-4 text-sm text-destructive">{error}</p> : null}
         {loading ? (
-          <p className="px-4 text-sm text-muted-foreground">Loading requisitions…</p>
+          <ActiniumLoadingState label="Loading requisitions…" size="md" minHeight={100} />
         ) : requisitions.length === 0 ? (
           <p className="px-4 text-sm text-muted-foreground">
             No Master-approved requisitions for this vessel. Crew raise requisitions from approved

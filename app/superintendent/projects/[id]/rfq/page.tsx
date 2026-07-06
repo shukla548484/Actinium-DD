@@ -9,6 +9,7 @@ import { fmtDate } from "@/lib/superintendent/formatters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 export const dynamic = "force-dynamic";
 
@@ -71,7 +72,7 @@ export default function ProjectRfqPage() {
       />
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading RFQ workflow…</p>
+        <ActiniumLoadingState label="Loading RFQ workflow…" size="sm" />
       ) : (
         <div className="space-y-4">
           <Card>

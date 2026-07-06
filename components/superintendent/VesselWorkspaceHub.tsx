@@ -12,6 +12,7 @@ import {
 import type { InputReadinessReport } from "@/lib/db/superintendent/inputs";
 import type { VesselDryDockReadinessDto } from "@/lib/db/vesselReadiness";
 import { VesselReadinessKpiPanel } from "@/components/superintendent/VesselReadinessKpiPanel";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 type Props = {
   dryDockProjectId: string;
@@ -118,7 +119,7 @@ export function VesselWorkspaceHub({ dryDockProjectId, portal }: Props) {
       ) : null}
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading vessel summary…</p>
+        <ActiniumLoadingState label="Loading vessel summary…" size="sm" />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {sections.map((item) => {

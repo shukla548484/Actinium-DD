@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import type { CrewPageAccessDto } from "@/lib/db/crewPageAccess";
 import { cn } from "@/lib/utils";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 type Props = {
   vesselId: string;
@@ -92,7 +93,7 @@ export function CrewPageAccessPanel({ vesselId, employeeId, backHref }: Props) {
   }
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading page assignments…</p>;
+    return <ActiniumLoadingState label="Loading page assignments…" size="sm" />;
   }
 
   if (error && !detail) {

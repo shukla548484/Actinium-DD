@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { InputReadinessReport, InputSubmissionDto } from "@/lib/db/superintendent/inputs";
 import type { InputSectionDef } from "@/lib/superintendent/inputCatalog/types";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 type Props = {
   dryDockProjectId: string;
@@ -82,7 +83,7 @@ export function InputReviewQueue({ dryDockProjectId }: Props) {
   };
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading review queue…</p>;
+    return <ActiniumLoadingState label="Loading review queue…" size="sm" />;
   }
 
   return (

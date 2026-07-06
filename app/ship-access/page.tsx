@@ -6,6 +6,7 @@ import { useShipAccessContext } from "@/components/shipAccess/ShipAccessScopeBar
 import { PageHeader, PageShell } from "@/components/layout/PageShell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 export default function ShipAccessOverviewPage() {
   const ctx = useShipAccessContext();
@@ -46,7 +47,7 @@ export default function ShipAccessOverviewPage() {
           </CardHeader>
           <CardContent className="text-sm">
             {ctx.loading ? (
-              <p className="text-muted-foreground">Loading…</p>
+              <ActiniumLoadingState size="sm" />
             ) : ctx.vessel ? (
               <p className="font-medium">
                 {ctx.vessel.name} <span className="text-muted-foreground">({ctx.vessel.code})</span>
@@ -67,7 +68,7 @@ export default function ShipAccessOverviewPage() {
           </CardHeader>
           <CardContent className="text-sm">
             {ctx.loading ? (
-              <p className="text-muted-foreground">Loading…</p>
+              <ActiniumLoadingState size="sm" />
             ) : ctx.dryDockProject ? (
               <div className="space-y-1">
                 <p className="font-medium">{ctx.dryDockProject.name}</p>

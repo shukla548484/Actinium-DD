@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 import {
   Table,
   TableBody,
@@ -62,7 +63,7 @@ export function ExecutiveBudgetPanel() {
     void load();
   }, [load]);
 
-  if (loading) return <p className="text-sm text-muted-foreground">Loading budget summary…</p>;
+  if (loading) return <ActiniumLoadingState label="Loading budget summary…" size="sm" />;
   if (error) return <p className="text-sm text-destructive">{error}</p>;
   if (!summary) return null;
 

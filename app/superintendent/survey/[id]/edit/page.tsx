@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { LabeledSelect } from "@/components/ui/LabeledSelect";
 import { SURVEY_TYPE_ITEMS, SURVEY_STATUS_ITEMS } from "@/lib/superintendent/constants";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 export const dynamic = "force-dynamic";
 
 type Item = { id: string; surveyType: string; title: string; description: string | null; dueDate: string | null; status: string; classReference: string | null; };
@@ -47,7 +48,7 @@ export default function EditPage() {
   if (loading) {
     return (
       <PageShell>
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <ActiniumLoadingState size="sm" />
       </PageShell>
     );
   }

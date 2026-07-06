@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { fmtPct } from "@/lib/superintendent/formatters";
 import { conditionRatingLabel } from "@/lib/vessel/machinery/parameters";
 import type { MachineryAssetDto } from "@/lib/db/vesselMachineryAssets";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 type DashboardData = {
   machineryHealthScore: number | null;
@@ -74,7 +75,7 @@ export function MachineryDashboardPanel({ vesselId, dryDockProjectId }: Props) {
     return <p className="text-sm text-muted-foreground">Select a vessel to view machinery status.</p>;
   }
 
-  if (loading) return <p className="text-sm text-muted-foreground">Loading machinery dashboard…</p>;
+  if (loading) return <ActiniumLoadingState label="Loading machinery dashboard…" size="sm" />;
   if (!data) return null;
 
   const overdueTotal = data.overdueJobs + data.runningHoursDue;

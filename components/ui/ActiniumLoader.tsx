@@ -6,15 +6,43 @@ export type ActiniumLoaderSize = "xs" | "sm" | "md" | "lg" | "xl" | "page";
 
 const SIZE_CONFIG: Record<
   ActiniumLoaderSize,
-  { ring: number; logo: number; stroke: number; gap: number; labelClass: string }
+  {
+    ring: number;
+    logo: number;
+    stroke: number;
+    gap: number;
+    dotsGap: number;
+    dot: number;
+    labelClass: string;
+  }
 > = {
-  xs: { ring: 14, logo: 0, stroke: 2, gap: 0, labelClass: "text-[10px]" },
-  sm: { ring: 22, logo: 0, stroke: 2.5, gap: 0, labelClass: "text-xs" },
-  md: { ring: 36, logo: 18, stroke: 3, gap: 8, labelClass: "text-sm" },
-  lg: { ring: 56, logo: 28, stroke: 3.5, gap: 12, labelClass: "text-sm" },
-  xl: { ring: 72, logo: 36, stroke: 4, gap: 14, labelClass: "text-base" },
-  page: { ring: 64, logo: 32, stroke: 4, gap: 16, labelClass: "text-sm" },
+  xs: { ring: 14, logo: 0, stroke: 1.25, gap: 0, dotsGap: 4.5, dot: 4.5, labelClass: "text-[10px]" },
+  sm: { ring: 22, logo: 0, stroke: 1.5, gap: 0, dotsGap: 6, dot: 5.25, labelClass: "text-xs" },
+  md: { ring: 36, logo: 18, stroke: 1.75, gap: 8, dotsGap: 7.5, dot: 7.5, labelClass: "text-sm" },
+  lg: { ring: 56, logo: 28, stroke: 2, gap: 12, dotsGap: 9, dot: 9, labelClass: "text-sm" },
+  xl: { ring: 72, logo: 36, stroke: 2.25, gap: 14, dotsGap: 10.5, dot: 10.5, labelClass: "text-base" },
+  page: { ring: 64, logo: 32, stroke: 2, gap: 16, dotsGap: 10.5, dot: 9.75, labelClass: "text-sm" },
 };
+
+const DOT_COLORS = ["var(--dd-rose-bright)", "var(--dd-orange-bright)", "var(--dd-yellow-bright)"] as const;
+
+function ActiniumLoaderDots({ dot, gap }: { dot: number; gap: number }) {
+  return (
+    <div
+      className="flex items-center justify-center"
+      style={{ gap, marginTop: gap }}
+      aria-hidden="true"
+    >
+      {DOT_COLORS.map((color) => (
+        <span
+          key={color}
+          className="actinium-loader-dot shrink-0"
+          style={{ width: dot, height: dot, backgroundColor: color }}
+        />
+      ))}
+    </div>
+  );
+}
 
 export type ActiniumLoaderProps = {
   size?: ActiniumLoaderSize;
@@ -67,6 +95,7 @@ export function ActiniumLoader({
           </div>
         ) : null}
       </div>
+      <ActiniumLoaderDots dot={config.dot} gap={config.dotsGap} />
       {showLabel ? (
         <p
           className={cn(

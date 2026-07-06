@@ -7,6 +7,7 @@ import { PageHeader, PageShell } from "@/components/layout/PageShell";
 import { fmtPct } from "@/lib/superintendent/formatters";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +48,7 @@ export default function ProjectWorkshopsPage() {
         description={`${totalJobs} jobs allocated across ${workshops.length} workshops.`}
       />
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading workshops…</p>
+        <ActiniumLoadingState label="Loading workshops…" size="sm" />
       ) : workshops.length === 0 ? (
         <p className="text-sm text-muted-foreground">No workshop allocation yet.</p>
       ) : (

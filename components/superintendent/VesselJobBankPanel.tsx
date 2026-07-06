@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { DdVesselJobDto } from "@/lib/superintendent/types";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 type Props = {
   dryDockProjectId: string;
@@ -135,7 +136,7 @@ export function VesselJobBankPanel({ dryDockProjectId, onIntegrated }: Props) {
       <CardContent className="space-y-3 p-0 pb-4">
         {error ? <p className="px-4 text-sm text-destructive">{error}</p> : null}
         {loading ? (
-          <p className="px-4 text-sm text-muted-foreground">Loading job bank…</p>
+          <ActiniumLoadingState label="Loading job bank…" size="md" minHeight={100} />
         ) : jobs.length === 0 ? (
           <p className="px-4 text-sm text-muted-foreground">
             No eligible vessel jobs for this project. Ship staff can propose jobs from the vessel portal.

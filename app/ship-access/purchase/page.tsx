@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import { equipmentSystemLabel } from "@/lib/shipAccess/crewDefectSystems";
 import type { VesselRequisitionDto } from "@/lib/shipAccess/requisitionDto";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 import {
   requisitionStatusLabel,
   VESSEL_REQUISITION_STATUS_ITEMS,
@@ -43,7 +44,7 @@ function useCrewRole() {
 
 export default function ShipAccessPurchasePage() {
   return (
-    <Suspense fallback={<p className="p-6 text-sm text-muted-foreground">Loading requisitions…</p>}>
+    <Suspense fallback={<ActiniumLoadingState label="Loading requisitions…" size="md" minHeight={140} />}>
       <ShipAccessPurchaseContent />
     </Suspense>
   );
@@ -174,7 +175,7 @@ function ShipAccessPurchaseContent() {
       <Card>
         <CardContent className="p-0">
           {loading ? (
-            <p className="p-4 text-sm text-muted-foreground">Loading requisitions…</p>
+            <ActiniumLoadingState label="Loading requisitions…" size="md" minHeight={100} />
           ) : (
             <Table>
               <TableHeader>

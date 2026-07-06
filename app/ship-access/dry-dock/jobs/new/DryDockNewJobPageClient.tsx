@@ -9,6 +9,7 @@ import {
 } from "@/components/shipAccess/DynamicScopeJobWizard";
 import { PageHeader, PageShell } from "@/components/layout/PageShell";
 import type { VesselDefectDto } from "@/lib/shipAccess/defectTypes";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 export default function DryDockNewJobPageClient() {
   const ctx = useShipAccessContext();
@@ -65,7 +66,7 @@ export default function DryDockNewJobPageClient() {
           jobsApiBase="/api/ship-access/jobs"
         />
       ) : (
-        <p className="text-sm text-muted-foreground">Loading vessel context…</p>
+        <ActiniumLoadingState label="Loading vessel context…" size="sm" />
       )}
     </PageShell>
   );

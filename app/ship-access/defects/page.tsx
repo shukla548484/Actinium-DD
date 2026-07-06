@@ -22,6 +22,7 @@ import {
   VESSEL_DEFECT_STATUS_ITEMS,
 } from "@/lib/shipAccess/crewDefectSystems";
 import type { VesselDefectDto } from "@/lib/shipAccess/defectTypes";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 function useCrewRole() {
   const [roleCode, setRoleCode] = useState<string | null>(null);
@@ -45,7 +46,7 @@ function useCrewRole() {
 
 export default function ShipAccessDefectsPage() {
   return (
-    <Suspense fallback={<p className="p-6 text-sm text-muted-foreground">Loading defects…</p>}>
+    <Suspense fallback={<ActiniumLoadingState label="Loading defects…" size="md" minHeight={140} />}>
       <ShipAccessDefectsContent />
     </Suspense>
   );
@@ -153,7 +154,7 @@ function ShipAccessDefectsContent() {
       <Card>
         <CardContent className="p-0">
           {loading ? (
-            <p className="p-4 text-sm text-muted-foreground">Loading defects…</p>
+            <ActiniumLoadingState label="Loading defects…" size="md" minHeight={100} />
           ) : (
             <Table>
               <TableHeader>

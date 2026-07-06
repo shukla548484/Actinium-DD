@@ -33,6 +33,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { formatRegisterCell, REGISTER_CONFIG, type RegisterFieldDef } from "@/lib/shipyard/registerConfig";
 import type { YardJobOption, YardProjectOption, YardRegisterType } from "@/lib/shipyard/registerTypes";
 import { mapSelectItems } from "@/lib/ui/labeledSelect";
+import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 
 function defaultFormValues(fields: RegisterFieldDef[]): Record<string, unknown> {
   const values: Record<string, unknown> = {};
@@ -314,7 +315,7 @@ export function YardRegisterPanel({
       ) : (
         <TableCard title={config.title}>
           {loading ? (
-            <p className="p-4 text-sm text-muted-foreground">Loading…</p>
+            <ActiniumLoadingState size="md" minHeight={100} />
           ) : (
             <Table>
               <TableHeader>
