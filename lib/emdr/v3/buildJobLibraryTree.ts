@@ -40,6 +40,7 @@ function departmentForMachinery(machinery: string): string {
   if (/fire fighting/i.test(machinery)) return "Safety";
   if (/inert gas|\bigg\b|scrubber/i.test(machinery)) return "Machinery";
   if (/compressed air|starting air/i.test(machinery)) return "Machinery";
+  if (/electrical motor/i.test(machinery)) return "Electrical";
   if (/deck|mast|rigging|lifting|cargo pumping|cargo tank heating|steam coils|windlass|winch|capstan/i.test(machinery)) {
     return "Deck";
   }
@@ -163,6 +164,7 @@ function categoryCodeForMachinery(machinery: string, kind: EmdrMasterRepositoryR
   if (/fire fighting/i.test(machinery)) return `fire_fighting_${kind}`;
   if (/inert gas|\bigg\b|scrubber/i.test(machinery)) return `inert_gas_${kind}`;
   if (/compressed air|starting air/i.test(machinery)) return `compressed_air_${kind}`;
+  if (/electrical motor/i.test(machinery)) return `electrical_motors_${kind}`;
   if (/windlass|winch|capstan|deck machinery/i.test(machinery)) return `deck_machinery_winch_${kind}`;
   if (/steering gear/i.test(machinery)) return `steering_gear_${kind}`;
   if (/rudder|stern gear/i.test(machinery)) return `rudder_stern_${kind}`;
@@ -212,6 +214,7 @@ export function buildEmdrMasterRepositoryTree(
     "Pumps",
     "Compressors",
     "Purifiers",
+    "Purifiers / Centrifugal Separators",
     "Heat Exchangers, Heaters & Condensers",
     "Cargo Oil Pump Turbine System",
     "Deck Heating, Cargo Tank Heating & Steam Coils",
@@ -230,6 +233,7 @@ export function buildEmdrMasterRepositoryTree(
     "Fire Fighting Systems",
     "Inert Gas / IGG / Scrubber System",
     "Compressed Air & Starting Air System",
+    "Electrical Motors / Motor Overhauling",
     "Fresh Water Generator",
     "Air Conditioning & Ventilation",
     "Refrigeration Plant",
@@ -282,6 +286,7 @@ export function buildEmdrMasterRepositoryTree(
   const fireFightingJobs = data.masterJobs.filter((j) => /fire fighting/i.test(j.machinery)).length;
   const inertGasJobs = data.masterJobs.filter((j) => /inert gas|\bigg\b|scrubber/i.test(j.machinery)).length;
   const compressedAirJobs = data.masterJobs.filter((j) => /compressed air|starting air/i.test(j.machinery)).length;
+  const electricalMotorJobs = data.masterJobs.filter((j) => /electrical motor/i.test(j.machinery)).length;
   const fwgJobs = data.masterJobs.filter((j) => /fresh water generator|\bfwg\b/i.test(j.machinery)).length;
   const acJobs = data.masterJobs.filter((j) => /air conditioning|\bhvac\b/i.test(j.machinery)).length;
   const refJobs = data.masterJobs.filter((j) => /refrigeration/i.test(j.machinery)).length;
@@ -305,6 +310,7 @@ export function buildEmdrMasterRepositoryTree(
     fireFightingJobs ? `${fireFightingJobs} FFS` : null,
     inertGasJobs ? `${inertGasJobs} IGG` : null,
     compressedAirJobs ? `${compressedAirJobs} CAS` : null,
+    electricalMotorJobs ? `${electricalMotorJobs} EMO` : null,
     fwgJobs ? `${fwgJobs} FWG` : null,
     acJobs ? `${acJobs} AC` : null,
     refJobs ? `${refJobs} REF` : null,
@@ -340,6 +346,7 @@ export function buildEmdrMasterRepositoryTree(
       fireFightingJobCount: fireFightingJobs,
       inertGasJobCount: inertGasJobs,
       compressedAirJobCount: compressedAirJobs,
+      electricalMotorJobCount: electricalMotorJobs,
       fwgJobCount: fwgJobs,
       airConditioningJobCount: acJobs,
       refrigerationJobCount: refJobs,

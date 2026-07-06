@@ -255,6 +255,9 @@ async function linkMasterJobsToNodes(mtilPhase: number) {
         { referenceCode: { startsWith: "JOBS-MGPS-" } },
         { referenceCode: { startsWith: "JOBS-ANC-" } },
         { referenceCode: { startsWith: "JOBS-VRCS-" } },
+        { referenceCode: { startsWith: "JOBS-DMK-" } },
+        { referenceCode: { startsWith: "JOBS-EMO-" } },
+        { referenceCode: { startsWith: "JOBS-PCS-" } },
       ],
       deletedAt: null,
     },
@@ -317,12 +320,15 @@ export async function isEmdrMasterRepositorySeeded(): Promise<boolean> {
         { jobId: { startsWith: "JOBS-MGPS-" } },
         { jobId: { startsWith: "JOBS-ANC-" } },
         { jobId: { startsWith: "JOBS-VRCS-" } },
+        { jobId: { startsWith: "JOBS-DMK-" } },
+        { jobId: { startsWith: "JOBS-EMO-" } },
+        { jobId: { startsWith: "JOBS-PCS-" } },
       ],
       activeFlag: true,
     },
   });
 
-  if (kind === "v312") return activeJobs >= 14640;
+  if (kind === "v312") return activeJobs >= 15167;
   if (kind === "v311") return activeJobs >= 13000;
   if (kind === "v310") return activeJobs >= 12000;
   if (kind === "v39") return activeJobs >= 11000;
@@ -412,6 +418,7 @@ export async function seedEmdrMasterRepository() {
   const fireFightingJobs = parsed.masterJobs.filter((j) => /fire fighting/i.test(j.machinery)).length;
   const inertGasJobs = parsed.masterJobs.filter((j) => /inert gas|\bigg\b|scrubber/i.test(j.machinery)).length;
   const compressedAirJobs = parsed.masterJobs.filter((j) => /compressed air|starting air/i.test(j.machinery)).length;
+  const electricalMotorJobs = parsed.masterJobs.filter((j) => /electrical motor/i.test(j.machinery)).length;
   const fwgJobs = parsed.masterJobs.filter((j) => /fresh water generator|\bfwg\b/i.test(j.machinery)).length;
   const acJobs = parsed.masterJobs.filter((j) => /air conditioning|\bhvac\b/i.test(j.machinery)).length;
   const refJobs = parsed.masterJobs.filter((j) => /refrigeration/i.test(j.machinery)).length;
@@ -438,6 +445,7 @@ export async function seedEmdrMasterRepository() {
     fireFightingJobCount: fireFightingJobs,
     inertGasJobCount: inertGasJobs,
     compressedAirJobCount: compressedAirJobs,
+    electricalMotorJobCount: electricalMotorJobs,
     fwgJobCount: fwgJobs,
     airConditioningJobCount: acJobs,
     refrigerationJobCount: refJobs,

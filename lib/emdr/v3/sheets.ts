@@ -30,7 +30,7 @@ export const EMDR_V310_RELEASE =
 export const EMDR_V311_RELEASE =
   "V3.11-ME-AE-BLR-PMP-CMP-PUR-HEX-COPT-DECK-FWG-AC-REF-DMW-LSA-FFS";
 export const EMDR_V312_RELEASE =
-  "V3.12-ME-AE-BLR-PMP-CMP-PUR-HEX-COPT-DECK-FWG-AC-REF-DMW-LSA-FFS-IGG-CAS-STG";
+  "V3.12-ME-AE-BLR-PMP-CMP-PUR-HEX-COPT-DECK-FWG-AC-REF-DMW-LSA-FFS-IGG-CAS-STG-DMK-EMO-PCS";
 
 export const MTIL_V30_TREE_CODE = "mtil_v30_main_engine";
 export const MTIL_V30_MTIL_PHASE = 300;
@@ -115,7 +115,7 @@ export function getEmdrMasterRepositoryReleaseConfig(
       release: EMDR_V312_RELEASE,
       treeCode: MTIL_V312_TREE_CODE,
       treeName:
-        "Main Propulsion, Auxiliary, Boilers, Pumps, Compressors, Purifiers, Heat Exchangers, COPT, Deck, FWG, AC, Refrigeration, Deck Machinery, LSA, Fire Fighting, Inert Gas, Compressed Air, Steering Gear, Rudder, Anodes, ICCP, MGPS, Anchor & VRCS (V3.12)",
+        "Main Propulsion, Auxiliary, Boilers, Pumps, Compressors, Purifiers, Heat Exchangers, COPT, Deck, FWG, AC, Refrigeration, Deck Machinery, LSA, Fire Fighting, Inert Gas, Compressed Air, Steering Gear, Rudder, Anodes, ICCP, MGPS, Anchor, VRCS, Typewise Deck Machinery, Electrical Motors & Typewise Purifiers (V3.12)",
       mtilPhase: MTIL_V312_MTIL_PHASE,
       includesAuxiliaryEngine: true,
       includesBoilers: true,

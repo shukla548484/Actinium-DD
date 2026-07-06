@@ -55,6 +55,7 @@ const EMPTY_STATS = {
   fireFightingSystemCount: 0,
   inertGasSystemCount: 0,
   compressedAirSystemCount: 0,
+  electricalMotorSystemCount: 0,
   fwgSystemCount: 0,
   airConditioningSystemCount: 0,
   refrigerationSystemCount: 0,
@@ -77,6 +78,7 @@ const EMPTY_STATS = {
   fireFightingJobCount: 0,
   inertGasJobCount: 0,
   compressedAirJobCount: 0,
+  electricalMotorJobCount: 0,
   fwgJobCount: 0,
   airConditioningJobCount: 0,
   refrigerationJobCount: 0,
@@ -128,6 +130,7 @@ export function getEmdrMasterRepositoryWorkbookStats() {
   const fireFightingJobs = countDeckFamilyJobs(jobs, /fire fighting/i);
   const inertGasJobs = countDeckFamilyJobs(jobs, /inert gas|\bigg\b|scrubber/i);
   const compressedAirJobs = countDeckFamilyJobs(jobs, /compressed air|starting air/i);
+  const electricalMotorJobs = countDeckFamilyJobs(jobs, /electrical motor/i);
   const fwgJobs = countDeckFamilyJobs(jobs, /fresh water generator|\bfwg\b/i);
   const acJobs = countDeckFamilyJobs(jobs, /air conditioning|\bhvac\b/i);
   const refJobs = countDeckFamilyJobs(jobs, /refrigeration/i);
@@ -141,7 +144,9 @@ export function getEmdrMasterRepositoryWorkbookStats() {
     boilerSystemCount: idx.filter((s) => s.machineryFamily === "Boilers").length,
     pumpSystemCount: idx.filter((s) => s.machineryFamily === "Pumps").length,
     compressorSystemCount: idx.filter((s) => s.machineryFamily === "Compressors").length,
-    purifierSystemCount: idx.filter((s) => s.machineryFamily === "Purifiers").length,
+    purifierSystemCount: idx.filter(
+      (s) => s.machineryFamily === "Purifiers" || s.machineryFamily === "Purifiers / Centrifugal Separators",
+    ).length,
     heatExchangerSystemCount: idx.filter(
       (s) => s.machineryFamily === "Heat Exchangers, Heaters & Condensers",
     ).length,
@@ -170,6 +175,9 @@ export function getEmdrMasterRepositoryWorkbookStats() {
     compressedAirSystemCount: idx.filter(
       (s) => s.machineryFamily === "Compressed Air & Starting Air System",
     ).length,
+    electricalMotorSystemCount: idx.filter(
+      (s) => s.machineryFamily === "Electrical Motors / Motor Overhauling",
+    ).length,
     fwgSystemCount: idx.filter((s) => s.machineryFamily === "Fresh Water Generator").length,
     airConditioningSystemCount: idx.filter(
       (s) => s.machineryFamily === "Air Conditioning & Ventilation",
@@ -194,6 +202,7 @@ export function getEmdrMasterRepositoryWorkbookStats() {
     fireFightingJobCount: fireFightingJobs,
     inertGasJobCount: inertGasJobs,
     compressedAirJobCount: compressedAirJobs,
+    electricalMotorJobCount: electricalMotorJobs,
     fwgJobCount: fwgJobs,
     airConditioningJobCount: acJobs,
     refrigerationJobCount: refJobs,

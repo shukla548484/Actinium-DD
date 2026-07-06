@@ -112,6 +112,30 @@ export const EMDR_V310_MASTER_REPOSITORY_PATH = path.join(
   EMDR_V310_MASTER_REPOSITORY_FILENAME,
 );
 
+export const EMDR_V311_DMK_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_11_Deck_Machinery_Windlass_Mooring_Winches_Capstan.xlsx";
+
+export const EMDR_V311_DMK_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V311_DMK_MASTER_REPOSITORY_FILENAME,
+);
+
+export const EMDR_V315_PCS_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_15_Purifiers_Centrifugal_Separators.xlsx";
+
+export const EMDR_V315_PCS_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V315_PCS_MASTER_REPOSITORY_FILENAME,
+);
+
+export const EMDR_V314_EMO_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_14_Electrical_Motors_Overhauling.xlsx";
+
+export const EMDR_V314_EMO_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V314_EMO_MASTER_REPOSITORY_FILENAME,
+);
+
 export const EMDR_V311_MASTER_REPOSITORY_FILENAME =
   "Actinium_SM_EMDR_Master_Repository_V3_11_Fire_Fighting_Systems.xlsx";
 
@@ -179,6 +203,10 @@ export function isEmdrV36MasterRepositoryPresent(): boolean {
 
 export function isEmdrV37MasterRepositoryPresent(): boolean {
   return fs.existsSync(EMDR_V37_MASTER_REPOSITORY_PATH);
+}
+
+export function isEmdrV314EmoMasterRepositoryPresent(): boolean {
+  return fs.existsSync(EMDR_V314_EMO_MASTER_REPOSITORY_PATH);
 }
 
 export function isEmdrV312MasterRepositoryPresent(): boolean {
