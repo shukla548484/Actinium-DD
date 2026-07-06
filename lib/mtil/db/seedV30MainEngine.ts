@@ -248,6 +248,13 @@ async function linkMasterJobsToNodes(mtilPhase: number) {
         { referenceCode: { startsWith: "JOBS-FFS-" } },
         { referenceCode: { startsWith: "JOBS-IGG-" } },
         { referenceCode: { startsWith: "JOBS-ACSA-" } },
+        { referenceCode: { startsWith: "JOBS-STG-" } },
+        { referenceCode: { startsWith: "JOBS-RUD-" } },
+        { referenceCode: { startsWith: "JOBS-ANO-" } },
+        { referenceCode: { startsWith: "JOBS-ICCP-" } },
+        { referenceCode: { startsWith: "JOBS-MGPS-" } },
+        { referenceCode: { startsWith: "JOBS-ANC-" } },
+        { referenceCode: { startsWith: "JOBS-VRCS-" } },
       ],
       deletedAt: null,
     },
@@ -303,12 +310,19 @@ export async function isEmdrMasterRepositorySeeded(): Promise<boolean> {
         { jobId: { startsWith: "JOBS-FFS-" } },
         { jobId: { startsWith: "JOBS-IGG-" } },
         { jobId: { startsWith: "JOBS-ACSA-" } },
+        { jobId: { startsWith: "JOBS-STG-" } },
+        { jobId: { startsWith: "JOBS-RUD-" } },
+        { jobId: { startsWith: "JOBS-ANO-" } },
+        { jobId: { startsWith: "JOBS-ICCP-" } },
+        { jobId: { startsWith: "JOBS-MGPS-" } },
+        { jobId: { startsWith: "JOBS-ANC-" } },
+        { jobId: { startsWith: "JOBS-VRCS-" } },
       ],
       activeFlag: true,
     },
   });
 
-  if (kind === "v312") return activeJobs >= 14400;
+  if (kind === "v312") return activeJobs >= 14640;
   if (kind === "v311") return activeJobs >= 13000;
   if (kind === "v310") return activeJobs >= 12000;
   if (kind === "v39") return activeJobs >= 11000;

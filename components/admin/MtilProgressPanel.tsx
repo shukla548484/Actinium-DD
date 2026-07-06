@@ -271,7 +271,7 @@ function v3SeedButtonLabel(kind: V3MasterKind | null | undefined): string {
 
 function v3RepositoryTitle(kind: V3MasterKind | null | undefined): string {
   if (kind === "v312") {
-    return "V3.12 — Full machinery repo incl. Inert Gas, Scrubber & Compressed Air";
+    return "V3.12 — Full machinery repo incl. Inert Gas, Scrubber, Compressed Air & Steering Gear";
   }
   if (kind === "v311") {
     return "V3.11 — Full machinery repo incl. Fire Fighting Systems";
@@ -315,7 +315,7 @@ function v3VersionLabel(kind: V3MasterKind | undefined): string {
 
 function v3RepositoryFootnote(kind: V3MasterKind | null | undefined): string {
   if (kind === "v312") {
-    return "V3.12 merges the cumulative V3.7–V3.11 base with inert gas, scrubber and compressed/starting air system jobs — seeding retires older trees and deactivates legacy sprint job IDs.";
+    return "V3.12 merges the cumulative V3.7–V3.11 base with inert gas, scrubber, compressed/starting air, steering gear (typewise), rudder, anodes, ICCP, MGPS, anchor and VRCS jobs — seeding retires older trees and deactivates legacy sprint job IDs.";
   }
   if (kind === "v311") {
     return "V3.11 merges the cumulative V3.7–V3.10 base with fire fighting systems jobs — seeding retires older trees and deactivates legacy sprint job IDs.";

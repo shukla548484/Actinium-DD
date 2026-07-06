@@ -11,6 +11,7 @@ import {
   EMDR_V39_MASTER_REPOSITORY_PATH,
   EMDR_V39_CAS_MASTER_REPOSITORY_PATH,
   EMDR_V310_MASTER_REPOSITORY_PATH,
+  EMDR_V310_STG_MASTER_REPOSITORY_PATH,
   EMDR_V311_MASTER_REPOSITORY_PATH,
   EMDR_V312_MASTER_REPOSITORY_PATH,
   isEmdrV33MasterRepositoryPresent,
@@ -20,6 +21,7 @@ import { mergeParsedEmdrRepositories } from "@/lib/emdr/v3/mergeMasterRepositori
 import { parseV38IncrementalRepositoryIfExists } from "@/lib/emdr/v3/parseV38IncrementalRepository";
 import { parseV312IncrementalRepositoryIfExists } from "@/lib/emdr/v3/parseV312IncrementalRepository";
 import { parseV311IncrementalRepositoryIfExists } from "@/lib/emdr/v3/parseV311IncrementalRepository";
+import { parseV310SteeringGearRepositoryIfExists } from "@/lib/emdr/v3/parseV310SteeringGearRepository";
 import { parseV310IncrementalRepositoryIfExists } from "@/lib/emdr/v3/parseV310IncrementalRepository";
 import {
   parseV3MasterRepositoryFileIfExists,
@@ -56,6 +58,10 @@ function loadV312SupplementParsed(): ParsedV3MasterRepository | null {
 
 function loadV311SupplementParsed(): ParsedV3MasterRepository | null {
   return parseV311IncrementalRepositoryIfExists(EMDR_V311_MASTER_REPOSITORY_PATH);
+}
+
+function loadV310StgSupplementParsed(): ParsedV3MasterRepository | null {
+  return parseV310SteeringGearRepositoryIfExists(EMDR_V310_STG_MASTER_REPOSITORY_PATH);
 }
 
 function loadV310SupplementParsed(): ParsedV3MasterRepository | null {
@@ -151,6 +157,7 @@ function loadMergedMasterRepository(): ParsedV3MasterRepository | null {
   const v311 = loadV311SupplementParsed();
   const v312 = loadV312SupplementParsed();
   const v39Cas = loadV39CasSupplementParsed();
+  const v310Stg = loadV310StgSupplementParsed();
 
   if (v38 && merged) merged = mergeParsedEmdrRepositories(merged, v38);
   else if (v38) merged = v38;
@@ -170,9 +177,12 @@ function loadMergedMasterRepository(): ParsedV3MasterRepository | null {
   if (v39Cas && merged) merged = mergeParsedEmdrRepositories(merged, v39Cas);
   else if (v39Cas) merged = v39Cas;
 
+  if (v310Stg && merged) merged = mergeParsedEmdrRepositories(merged, v310Stg);
+  else if (v310Stg) merged = v310Stg;
+
   if (!merged) return null;
 
-  if (v312 || v39Cas) return finalizeMergedRepository(merged, EMDR_V312_RELEASE);
+  if (v312 || v39Cas || v310Stg) return finalizeMergedRepository(merged, EMDR_V312_RELEASE);
   if (v311) return finalizeMergedRepository(merged, EMDR_V311_RELEASE);
   if (v310) return finalizeMergedRepository(merged, EMDR_V310_RELEASE);
   if (v39) return finalizeMergedRepository(merged, EMDR_V39_RELEASE);
@@ -184,7 +194,7 @@ function loadMergedMasterRepository(): ParsedV3MasterRepository | null {
 export function resolveLoadedEmdrMasterRepositoryKind(): EmdrMasterRepositoryKind | null {
   if (cachedLoadedKind !== undefined) return cachedLoadedKind;
 
-  if (loadV312SupplementParsed() || loadV39CasSupplementParsed()) {
+  if (loadV312SupplementParsed() || loadV39CasSupplementParsed() || loadV310StgSupplementParsed()) {
     cachedLoadedKind = "v312";
     return cachedLoadedKind;
   }
@@ -256,6 +266,8 @@ export function loadEmdrMasterRepositoryParsed(): ParsedV3MasterRepository | nul
 }
 
 export function loadEmdrMasterRepositoryParsedFromPath(path: string): ParsedV3MasterRepository {
+  const v310Stg = parseV310SteeringGearRepositoryIfExists(path);
+  if (v310Stg) return v310Stg;
   const v39Cas = parseV39CompressedAirRepositoryIfExists(path);
   if (v39Cas) return v39Cas;
   const v312 = parseV312IncrementalRepositoryIfExists(path);

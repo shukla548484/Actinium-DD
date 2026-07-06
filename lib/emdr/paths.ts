@@ -96,6 +96,14 @@ export const EMDR_V37_MASTER_REPOSITORY_PATH = path.join(
   EMDR_V37_MASTER_REPOSITORY_FILENAME,
 );
 
+export const EMDR_V310_STG_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_10_Steering_Gear_System_Rev2_Rudder_Anodes_ICCP_MGPS_Anchor_VRCS.xlsx";
+
+export const EMDR_V310_STG_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V310_STG_MASTER_REPOSITORY_FILENAME,
+);
+
 export const EMDR_V310_MASTER_REPOSITORY_FILENAME =
   "Actinium_SM_EMDR_Master_Repository_V3_10_LSA_Davits_Rescue_Boat.xlsx";
 

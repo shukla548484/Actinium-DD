@@ -33,6 +33,9 @@ function workshopLabel(workshop: ParsedMasterJobRow["workshop"]): string {
 function departmentForMachinery(machinery: string): string {
   if (/^main engine$/i.test(machinery.trim())) return "Main Propulsion";
   if (/steering gear/i.test(machinery)) return "Machinery";
+  if (/rudder|stern gear|mooring|anchor/i.test(machinery)) return "Deck";
+  if (/cathodic|anode/i.test(machinery)) return "Hull";
+  if (/iccp|mgps|anti-fouling|valve remote|vrcs/i.test(machinery)) return "Machinery";
   if (/life saving|davit|rescue boat/i.test(machinery)) return "Deck";
   if (/fire fighting/i.test(machinery)) return "Safety";
   if (/inert gas|\bigg\b|scrubber/i.test(machinery)) return "Machinery";
@@ -162,6 +165,12 @@ function categoryCodeForMachinery(machinery: string, kind: EmdrMasterRepositoryR
   if (/compressed air|starting air/i.test(machinery)) return `compressed_air_${kind}`;
   if (/windlass|winch|capstan|deck machinery/i.test(machinery)) return `deck_machinery_winch_${kind}`;
   if (/steering gear/i.test(machinery)) return `steering_gear_${kind}`;
+  if (/rudder|stern gear/i.test(machinery)) return `rudder_stern_${kind}`;
+  if (/cathodic|anode/i.test(machinery)) return `cathodic_anodes_${kind}`;
+  if (/iccp/i.test(machinery)) return `iccp_${kind}`;
+  if (/mgps|anti-fouling/i.test(machinery)) return `mgps_${kind}`;
+  if (/mooring|anchor/i.test(machinery)) return `mooring_anchor_${kind}`;
+  if (/valve remote|vrcs/i.test(machinery)) return `vrcs_${kind}`;
   if (/fresh water generator|\bfwg\b/i.test(machinery)) return `fwg_${kind}`;
   if (/air conditioning|\bhvac\b/i.test(machinery)) return `air_conditioning_${kind}`;
   if (/refrigeration/i.test(machinery)) return `refrigeration_${kind}`;
@@ -210,6 +219,12 @@ export function buildEmdrMasterRepositoryTree(
     "Deck & Engine Room Lifting Appliances",
     "Cargo Pumping System",
     "Steering Gear System",
+    "Rudder & Stern Gear Interface",
+    "Cathodic Protection / Anodes",
+    "ICCP System",
+    "MGPS / Anti-Fouling System",
+    "Mooring / Anchoring System",
+    "Valve Remote Control System",
     "Deck Machinery – Windlass / Winches / Capstans",
     "Life Saving Appliances / Davits / Rescue Boat Davit",
     "Fire Fighting Systems",

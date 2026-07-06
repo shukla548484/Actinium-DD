@@ -518,7 +518,9 @@ export function synthesizeV3ScopeSteps(masterJobs: ParsedMasterJobRow[]): Parsed
     sequenceNo: 1,
     workStep: job.jobDescription || job.standardJobName,
     responsibleParty: mapResponsibleParty(
-      /engineer|vessel|crew/i.test(job.responsibleUserRole) ? "Vessel" : job.responsibleUserRole || "Vessel",
+      /engineer|vessel|crew|officer|bosun|master|superintendent|oiler|chief/i.test(job.responsibleUserRole)
+        ? "Vessel"
+        : job.responsibleUserRole || "Vessel",
     ),
     permitRequired: null,
     qaHoldPoint: false,
