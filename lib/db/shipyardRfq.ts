@@ -27,6 +27,7 @@ export type ShipyardRfqQueueRow = {
   submittedAt: string | null;
   createdAt: string;
   hasCostEstimate: boolean;
+  estimateVersionCount: number;
 };
 
 export type ShipyardEstimatorOption = {

@@ -35,6 +35,7 @@ function departmentForMachinery(machinery: string): string {
   if (/steering gear/i.test(machinery)) return "Machinery";
   if (/life saving|davit|rescue boat/i.test(machinery)) return "Deck";
   if (/fire fighting/i.test(machinery)) return "Safety";
+  if (/inert gas|\bigg\b|scrubber/i.test(machinery)) return "Machinery";
   if (/deck|mast|rigging|lifting|cargo pumping|cargo tank heating|steam coils|windlass|winch|capstan/i.test(machinery)) {
     return "Deck";
   }
@@ -146,6 +147,7 @@ export function buildV30SystemNodes(data: ParsedMtilWorkbook): JobLibrarySeedNod
     includesDeckMachineryWinch: false,
     includesLsaDavits: false,
     includesFireFighting: false,
+    includesInertGas: false,
   };
   const meJobs = data.masterJobs.filter((j) => j.jobId.startsWith("JOBS-ME-"));
   return buildMachinerySystemNodes(meJobs.length ? meJobs : data.masterJobs, config);
@@ -154,6 +156,7 @@ export function buildV30SystemNodes(data: ParsedMtilWorkbook): JobLibrarySeedNod
 function categoryCodeForMachinery(machinery: string, kind: EmdrMasterRepositoryReleaseConfig["kind"]): string {
   if (/life saving|davit|rescue boat/i.test(machinery)) return `lsa_davits_${kind}`;
   if (/fire fighting/i.test(machinery)) return `fire_fighting_${kind}`;
+  if (/inert gas|\bigg\b|scrubber/i.test(machinery)) return `inert_gas_${kind}`;
   if (/windlass|winch|capstan|deck machinery/i.test(machinery)) return `deck_machinery_winch_${kind}`;
   if (/steering gear/i.test(machinery)) return `steering_gear_${kind}`;
   if (/fresh water generator|\bfwg\b/i.test(machinery)) return `fwg_${kind}`;
@@ -207,6 +210,7 @@ export function buildEmdrMasterRepositoryTree(
     "Deck Machinery – Windlass / Winches / Capstans",
     "Life Saving Appliances / Davits / Rescue Boat Davit",
     "Fire Fighting Systems",
+    "Inert Gas / IGG / Scrubber System",
     "Fresh Water Generator",
     "Air Conditioning & Ventilation",
     "Refrigeration Plant",
@@ -257,6 +261,7 @@ export function buildEmdrMasterRepositoryTree(
     /life saving|davit|rescue boat/i.test(j.machinery),
   ).length;
   const fireFightingJobs = data.masterJobs.filter((j) => /fire fighting/i.test(j.machinery)).length;
+  const inertGasJobs = data.masterJobs.filter((j) => /inert gas|\bigg\b|scrubber/i.test(j.machinery)).length;
   const fwgJobs = data.masterJobs.filter((j) => /fresh water generator|\bfwg\b/i.test(j.machinery)).length;
   const acJobs = data.masterJobs.filter((j) => /air conditioning|\bhvac\b/i.test(j.machinery)).length;
   const refJobs = data.masterJobs.filter((j) => /refrigeration/i.test(j.machinery)).length;
@@ -278,6 +283,7 @@ export function buildEmdrMasterRepositoryTree(
     dmwWinchJobs ? `${dmwWinchJobs} DMW` : null,
     lsaDavitsJobs ? `${lsaDavitsJobs} LSA` : null,
     fireFightingJobs ? `${fireFightingJobs} FFS` : null,
+    inertGasJobs ? `${inertGasJobs} IGG` : null,
     fwgJobs ? `${fwgJobs} FWG` : null,
     acJobs ? `${acJobs} AC` : null,
     refJobs ? `${refJobs} REF` : null,
@@ -311,6 +317,7 @@ export function buildEmdrMasterRepositoryTree(
       deckMachineryWinchJobCount: dmwWinchJobs,
       lsaDavitsJobCount: lsaDavitsJobs,
       fireFightingJobCount: fireFightingJobs,
+      inertGasJobCount: inertGasJobs,
       fwgJobCount: fwgJobs,
       airConditioningJobCount: acJobs,
       refrigerationJobCount: refJobs,

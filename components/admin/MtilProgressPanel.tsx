@@ -136,7 +136,7 @@ const WORKBOOK_SHEETS = [
   { sheet: "spares", label: "Spares" },
 ] as const;
 
-type V3MasterKind = "v311" | "v310" | "v39" | "v38" | "v37" | "v36" | "v34" | "v33" | "v32" | "v31" | "v30";
+type V3MasterKind = "v312" | "v311" | "v310" | "v39" | "v38" | "v37" | "v36" | "v34" | "v33" | "v32" | "v31" | "v30";
 
 type V3Report = {
   kind: V3MasterKind | null;
@@ -161,6 +161,7 @@ type V3Report = {
     deckMachineryWinchJobCount?: number;
     lsaDavitsJobCount?: number;
     fireFightingJobCount?: number;
+    inertGasJobCount?: number;
     fwgJobCount?: number;
     airConditioningJobCount?: number;
     refrigerationJobCount?: number;
@@ -181,6 +182,7 @@ type V3Report = {
     deckMachineryWinchSystemCount?: number;
     lsaDavitsSystemCount?: number;
     fireFightingSystemCount?: number;
+    inertGasSystemCount?: number;
     fwgSystemCount?: number;
     airConditioningSystemCount?: number;
     refrigerationSystemCount?: number;
@@ -216,6 +218,7 @@ function formatV3JobCounts(stats: V3Report["stats"]): string[] {
     (stats.deckMachineryWinchJobCount ?? 0) > 0 ? `${stats.deckMachineryWinchJobCount!.toLocaleString()} DMW-W` : null,
     (stats.lsaDavitsJobCount ?? 0) > 0 ? `${stats.lsaDavitsJobCount!.toLocaleString()} LSA` : null,
     (stats.fireFightingJobCount ?? 0) > 0 ? `${stats.fireFightingJobCount!.toLocaleString()} FFS` : null,
+    (stats.inertGasJobCount ?? 0) > 0 ? `${stats.inertGasJobCount!.toLocaleString()} IGG` : null,
     (stats.fwgJobCount ?? 0) > 0 ? `${stats.fwgJobCount!.toLocaleString()} FWG` : null,
     (stats.airConditioningJobCount ?? 0) > 0 ? `${stats.airConditioningJobCount!.toLocaleString()} AC` : null,
     (stats.refrigerationJobCount ?? 0) > 0 ? `${stats.refrigerationJobCount!.toLocaleString()} REF` : null,
@@ -240,6 +243,7 @@ function formatV3SystemCounts(stats: V3Report["stats"]): string[] {
     (stats.deckMachineryWinchSystemCount ?? 0) > 0 ? `${stats.deckMachineryWinchSystemCount} DMW-W` : null,
     (stats.lsaDavitsSystemCount ?? 0) > 0 ? `${stats.lsaDavitsSystemCount} LSA` : null,
     (stats.fireFightingSystemCount ?? 0) > 0 ? `${stats.fireFightingSystemCount} FFS` : null,
+    (stats.inertGasSystemCount ?? 0) > 0 ? `${stats.inertGasSystemCount} IGG` : null,
     (stats.fwgSystemCount ?? 0) > 0 ? `${stats.fwgSystemCount} FWG` : null,
     (stats.airConditioningSystemCount ?? 0) > 0 ? `${stats.airConditioningSystemCount} AC` : null,
     (stats.refrigerationSystemCount ?? 0) > 0 ? `${stats.refrigerationSystemCount} REF` : null,
@@ -247,6 +251,7 @@ function formatV3SystemCounts(stats: V3Report["stats"]): string[] {
 }
 
 function v3SeedButtonLabel(kind: V3MasterKind | null | undefined): string {
+  if (kind === "v312") return "Seed V3.12 Full Master Repository (Inert Gas / IGG / Scrubber)";
   if (kind === "v311") return "Seed V3.11 Full Master Repository (Fire Fighting Systems)";
   if (kind === "v310") return "Seed V3.10 Full Master Repository (LSA Davits & Rescue Boat)";
   if (kind === "v39") return "Seed V3.9 Full Master Repository (Deck Machinery — Windlass, Winches & Capstans)";
@@ -261,6 +266,9 @@ function v3SeedButtonLabel(kind: V3MasterKind | null | undefined): string {
 }
 
 function v3RepositoryTitle(kind: V3MasterKind | null | undefined): string {
+  if (kind === "v312") {
+    return "V3.12 — Full machinery repo incl. Inert Gas / IGG / Scrubber";
+  }
   if (kind === "v311") {
     return "V3.11 — Full machinery repo incl. Fire Fighting Systems";
   }
@@ -287,6 +295,7 @@ function v3RepositoryTitle(kind: V3MasterKind | null | undefined): string {
 }
 
 function v3VersionLabel(kind: V3MasterKind | undefined): string {
+  if (kind === "v312") return "V3.12";
   if (kind === "v311") return "V3.11";
   if (kind === "v310") return "V3.10";
   if (kind === "v39") return "V3.9";
@@ -301,6 +310,9 @@ function v3VersionLabel(kind: V3MasterKind | undefined): string {
 }
 
 function v3RepositoryFootnote(kind: V3MasterKind | null | undefined): string {
+  if (kind === "v312") {
+    return "V3.12 merges the cumulative V3.7–V3.11 base with inert gas generator and scrubber system jobs — seeding retires older trees and deactivates legacy sprint job IDs.";
+  }
   if (kind === "v311") {
     return "V3.11 merges the cumulative V3.7–V3.10 base with fire fighting systems jobs — seeding retires older trees and deactivates legacy sprint job IDs.";
   }
@@ -981,6 +993,8 @@ export function MtilProgressPanel() {
                 ? v3.kind === "v33"
                   ? " · merged V3.1 + V3.3 bundle"
                   : " · merged V3.1 + V3.2 bundle"
+                : v3.kind === "v312"
+                  ? " · cumulative V3.12 repository"
                 : v3.kind === "v311"
                   ? " · cumulative V3.11 repository"
                 : v3.kind === "v310"

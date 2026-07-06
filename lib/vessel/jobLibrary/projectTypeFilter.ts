@@ -3,6 +3,7 @@ import type { DryDockProjectType } from "@prisma/client";
 /** Department root codes shown for each dry dock project type. */
 const ROOT_DEPARTMENTS_BY_PROJECT_TYPE: Partial<Record<DryDockProjectType, Set<string>>> = {
   special_survey: new Set([
+    "mtil_v312_main_propulsion",
     "mtil_v311_main_propulsion",
     "mtil_v310_main_propulsion",
     "mtil_v39_main_propulsion",
@@ -30,6 +31,7 @@ const ROOT_DEPARTMENTS_BY_PROJECT_TYPE: Partial<Record<DryDockProjectType, Set<s
     "accommodation_jobs",
   ]),
   intermediate_survey: new Set([
+    "mtil_v312_main_propulsion",
     "mtil_v311_main_propulsion",
     "mtil_v310_main_propulsion",
     "mtil_v39_main_propulsion",
@@ -52,6 +54,7 @@ const ROOT_DEPARTMENTS_BY_PROJECT_TYPE: Partial<Record<DryDockProjectType, Set<s
     "instrumentation_jobs",
   ]),
   damage_repair: new Set([
+    "mtil_v312_main_propulsion",
     "mtil_v311_main_propulsion",
     "mtil_v310_main_propulsion",
     "mtil_v39_main_propulsion",
@@ -71,6 +74,7 @@ const ROOT_DEPARTMENTS_BY_PROJECT_TYPE: Partial<Record<DryDockProjectType, Set<s
     "navigation_jobs",
   ]),
   occasional_repair: new Set([
+    "mtil_v312_main_propulsion",
     "mtil_v311_main_propulsion",
     "mtil_v310_main_propulsion",
     "mtil_v39_main_propulsion",

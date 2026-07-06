@@ -45,7 +45,7 @@ export type EmdrRegistryReport = {
   pendingReleases: { release: string; domain: string }[];
   v30MasterRepository: {
     present: boolean;
-    kind: "v311" | "v310" | "v39" | "v38" | "v37" | "v36" | "v34" | "v33" | "v32" | "v31" | "v30" | null;
+    kind: "v312" | "v311" | "v310" | "v39" | "v38" | "v37" | "v36" | "v34" | "v33" | "v32" | "v31" | "v30" | null;
     release: string;
     jobCount: number;
     mainEngineJobCount: number;

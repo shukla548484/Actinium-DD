@@ -21,6 +21,7 @@ import {
   MTIL_V39_TREE_CODE,
   MTIL_V310_TREE_CODE,
   MTIL_V311_TREE_CODE,
+  MTIL_V312_TREE_CODE,
   type EmdrMasterRepositoryReleaseConfig,
 } from "@/lib/emdr/v3/sheets";
 import {
@@ -60,6 +61,7 @@ const SUPERSEDED_EMDR_TREE_CODES = [
   MTIL_V39_TREE_CODE,
   MTIL_V310_TREE_CODE,
   MTIL_V311_TREE_CODE,
+  MTIL_V312_TREE_CODE,
 ];
 
 async function insertNode(
@@ -244,6 +246,7 @@ async function linkMasterJobsToNodes(mtilPhase: number) {
         { referenceCode: { startsWith: "JOBS-DMW-" } },
         { referenceCode: { startsWith: "JOBS-LSA-" } },
         { referenceCode: { startsWith: "JOBS-FFS-" } },
+        { referenceCode: { startsWith: "JOBS-IGG-" } },
       ],
       deletedAt: null,
     },
@@ -297,11 +300,13 @@ export async function isEmdrMasterRepositorySeeded(): Promise<boolean> {
         { jobId: { startsWith: "JOBS-DMW-" } },
         { jobId: { startsWith: "JOBS-LSA-" } },
         { jobId: { startsWith: "JOBS-FFS-" } },
+        { jobId: { startsWith: "JOBS-IGG-" } },
       ],
       activeFlag: true,
     },
   });
 
+  if (kind === "v312") return activeJobs >= 14000;
   if (kind === "v311") return activeJobs >= 13000;
   if (kind === "v310") return activeJobs >= 12000;
   if (kind === "v39") return activeJobs >= 11000;
@@ -389,6 +394,7 @@ export async function seedEmdrMasterRepository() {
     /life saving|davit|rescue boat/i.test(j.machinery),
   ).length;
   const fireFightingJobs = parsed.masterJobs.filter((j) => /fire fighting/i.test(j.machinery)).length;
+  const inertGasJobs = parsed.masterJobs.filter((j) => /inert gas|\bigg\b|scrubber/i.test(j.machinery)).length;
   const fwgJobs = parsed.masterJobs.filter((j) => /fresh water generator|\bfwg\b/i.test(j.machinery)).length;
   const acJobs = parsed.masterJobs.filter((j) => /air conditioning|\bhvac\b/i.test(j.machinery)).length;
   const refJobs = parsed.masterJobs.filter((j) => /refrigeration/i.test(j.machinery)).length;
@@ -413,6 +419,7 @@ export async function seedEmdrMasterRepository() {
     deckMachineryWinchJobCount: dmwWinchJobs,
     lsaDavitsJobCount: lsaDavitsJobs,
     fireFightingJobCount: fireFightingJobs,
+    inertGasJobCount: inertGasJobs,
     fwgJobCount: fwgJobs,
     airConditioningJobCount: acJobs,
     refrigerationJobCount: refJobs,

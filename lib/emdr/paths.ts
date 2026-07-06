@@ -112,6 +112,14 @@ export const EMDR_V311_MASTER_REPOSITORY_PATH = path.join(
   EMDR_V311_MASTER_REPOSITORY_FILENAME,
 );
 
+export const EMDR_V312_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_12_Inert_Gas_IGG_Scrubber.xlsx";
+
+export const EMDR_V312_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V312_MASTER_REPOSITORY_FILENAME,
+);
+
 export const EMDR_V39_MASTER_REPOSITORY_FILENAME =
   "Actinium_SM_EMDR_Master_Repository_V3_9_Deck_Machinery_Windlass_Winches_Capstans.xlsx";
 
@@ -157,6 +165,10 @@ export function isEmdrV37MasterRepositoryPresent(): boolean {
   return fs.existsSync(EMDR_V37_MASTER_REPOSITORY_PATH);
 }
 
+export function isEmdrV312MasterRepositoryPresent(): boolean {
+  return fs.existsSync(EMDR_V312_MASTER_REPOSITORY_PATH);
+}
+
 export function isEmdrV311MasterRepositoryPresent(): boolean {
   return fs.existsSync(EMDR_V311_MASTER_REPOSITORY_PATH);
 }
@@ -175,6 +187,7 @@ export function isEmdrV38MasterRepositoryPresent(): boolean {
 
 export function isEmdrMasterRepositoryPresent(): boolean {
   return (
+    isEmdrV312MasterRepositoryPresent() ||
     isEmdrV311MasterRepositoryPresent() ||
     isEmdrV310MasterRepositoryPresent() ||
     isEmdrV39MasterRepositoryPresent() ||
@@ -190,6 +203,7 @@ export function isEmdrMasterRepositoryPresent(): boolean {
 }
 
 export type EmdrMasterRepositoryKind =
+  | "v312"
   | "v311"
   | "v310"
   | "v39"
@@ -204,6 +218,7 @@ export type EmdrMasterRepositoryKind =
 
 /** Highest installed V3.x master repository file on disk (may still fail parse if corrupt). */
 export function resolveEmdrMasterRepositoryKind(): EmdrMasterRepositoryKind | null {
+  if (isEmdrV312MasterRepositoryPresent()) return "v312";
   if (isEmdrV311MasterRepositoryPresent()) return "v311";
   if (isEmdrV310MasterRepositoryPresent()) return "v310";
   if (isEmdrV39MasterRepositoryPresent()) return "v39";
@@ -220,6 +235,7 @@ export function resolveEmdrMasterRepositoryKind(): EmdrMasterRepositoryKind | nu
 
 /** Primary workbook path for display — prefer highest version present. */
 export function resolveEmdrMasterRepositoryPath(): string | null {
+  if (isEmdrV312MasterRepositoryPresent()) return EMDR_V312_MASTER_REPOSITORY_PATH;
   if (isEmdrV311MasterRepositoryPresent()) return EMDR_V311_MASTER_REPOSITORY_PATH;
   if (isEmdrV310MasterRepositoryPresent()) return EMDR_V310_MASTER_REPOSITORY_PATH;
   if (isEmdrV39MasterRepositoryPresent()) return EMDR_V39_MASTER_REPOSITORY_PATH;
