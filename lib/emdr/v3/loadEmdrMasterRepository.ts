@@ -97,13 +97,6 @@ function isV39Job(job: ParsedV3MasterRepository["masterJobs"][number]): boolean 
   return job.jobId.startsWith("JOBS-DMW-") || /windlass|winch|capstan|deck machinery/i.test(job.machinery);
 }
 
-function isCompressedAirJob(job: ParsedV3MasterRepository["masterJobs"][number]): boolean {
-  return (
-    job.jobId.startsWith("JOBS-ACSA-") ||
-    /compressed air|starting air/i.test(job.machinery)
-  );
-}
-
 function isV312Job(job: ParsedV3MasterRepository["masterJobs"][number]): boolean {
   return (
     job.jobId.startsWith("JOBS-IGG-") ||
