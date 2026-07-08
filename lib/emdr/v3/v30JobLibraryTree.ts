@@ -79,6 +79,10 @@ const EMPTY_STATS = {
   inertGasJobCount: 0,
   compressedAirJobCount: 0,
   electricalMotorJobCount: 0,
+  shipboardPumpJobCount: 0,
+  typewiseHeatExchangerJobCount: 0,
+  shipboardPumpSystemCount: 0,
+  typewiseHeatExchangerSystemCount: 0,
   fwgJobCount: 0,
   airConditioningJobCount: 0,
   refrigerationJobCount: 0,
@@ -131,6 +135,8 @@ export function getEmdrMasterRepositoryWorkbookStats() {
   const inertGasJobs = countDeckFamilyJobs(jobs, /inert gas|\bigg\b|scrubber/i);
   const compressedAirJobs = countDeckFamilyJobs(jobs, /compressed air|starting air/i);
   const electricalMotorJobs = countDeckFamilyJobs(jobs, /electrical motor/i);
+  const shipboardPumpJobs = jobs.filter((j) => j.jobId.startsWith("JOBS-PUMP-")).length;
+  const typewiseHeatExchangerJobs = jobs.filter((j) => j.jobId.startsWith("JOBS-HEX-")).length;
   const fwgJobs = countDeckFamilyJobs(jobs, /fresh water generator|\bfwg\b/i);
   const acJobs = countDeckFamilyJobs(jobs, /air conditioning|\bhvac\b/i);
   const refJobs = countDeckFamilyJobs(jobs, /refrigeration/i);
@@ -178,6 +184,10 @@ export function getEmdrMasterRepositoryWorkbookStats() {
     electricalMotorSystemCount: idx.filter(
       (s) => s.machineryFamily === "Electrical Motors / Motor Overhauling",
     ).length,
+    shipboardPumpSystemCount: idx.filter((s) => s.machineryFamily === "Shipboard Pumps").length,
+    typewiseHeatExchangerSystemCount: idx.filter(
+      (s) => s.machineryFamily === "Heat Exchangers / Coolers / Heaters / Condensers",
+    ).length,
     fwgSystemCount: idx.filter((s) => s.machineryFamily === "Fresh Water Generator").length,
     airConditioningSystemCount: idx.filter(
       (s) => s.machineryFamily === "Air Conditioning & Ventilation",
@@ -203,6 +213,8 @@ export function getEmdrMasterRepositoryWorkbookStats() {
     inertGasJobCount: inertGasJobs,
     compressedAirJobCount: compressedAirJobs,
     electricalMotorJobCount: electricalMotorJobs,
+    shipboardPumpJobCount: shipboardPumpJobs,
+    typewiseHeatExchangerJobCount: typewiseHeatExchangerJobs,
     fwgJobCount: fwgJobs,
     airConditioningJobCount: acJobs,
     refrigerationJobCount: refJobs,

@@ -164,6 +164,8 @@ type V3Report = {
     inertGasJobCount?: number;
     compressedAirJobCount?: number;
     electricalMotorJobCount?: number;
+    shipboardPumpJobCount?: number;
+    typewiseHeatExchangerJobCount?: number;
     fwgJobCount?: number;
     airConditioningJobCount?: number;
     refrigerationJobCount?: number;
@@ -187,6 +189,8 @@ type V3Report = {
     inertGasSystemCount?: number;
     compressedAirSystemCount?: number;
     electricalMotorSystemCount?: number;
+    shipboardPumpSystemCount?: number;
+    typewiseHeatExchangerSystemCount?: number;
     fwgSystemCount?: number;
     airConditioningSystemCount?: number;
     refrigerationSystemCount?: number;
@@ -225,6 +229,8 @@ function formatV3JobCounts(stats: V3Report["stats"]): string[] {
     (stats.inertGasJobCount ?? 0) > 0 ? `${stats.inertGasJobCount!.toLocaleString()} IGG` : null,
     (stats.compressedAirJobCount ?? 0) > 0 ? `${stats.compressedAirJobCount!.toLocaleString()} CAS` : null,
     (stats.electricalMotorJobCount ?? 0) > 0 ? `${stats.electricalMotorJobCount!.toLocaleString()} EMO` : null,
+    (stats.shipboardPumpJobCount ?? 0) > 0 ? `${stats.shipboardPumpJobCount!.toLocaleString()} PUMP` : null,
+    (stats.typewiseHeatExchangerJobCount ?? 0) > 0 ? `${stats.typewiseHeatExchangerJobCount!.toLocaleString()} HEX-TW` : null,
     (stats.fwgJobCount ?? 0) > 0 ? `${stats.fwgJobCount!.toLocaleString()} FWG` : null,
     (stats.airConditioningJobCount ?? 0) > 0 ? `${stats.airConditioningJobCount!.toLocaleString()} AC` : null,
     (stats.refrigerationJobCount ?? 0) > 0 ? `${stats.refrigerationJobCount!.toLocaleString()} REF` : null,
@@ -252,6 +258,8 @@ function formatV3SystemCounts(stats: V3Report["stats"]): string[] {
     (stats.inertGasSystemCount ?? 0) > 0 ? `${stats.inertGasSystemCount} IGG` : null,
     (stats.compressedAirSystemCount ?? 0) > 0 ? `${stats.compressedAirSystemCount} CAS` : null,
     (stats.electricalMotorSystemCount ?? 0) > 0 ? `${stats.electricalMotorSystemCount} EMO` : null,
+    (stats.shipboardPumpSystemCount ?? 0) > 0 ? `${stats.shipboardPumpSystemCount} PUMP` : null,
+    (stats.typewiseHeatExchangerSystemCount ?? 0) > 0 ? `${stats.typewiseHeatExchangerSystemCount} HEX-TW` : null,
     (stats.fwgSystemCount ?? 0) > 0 ? `${stats.fwgSystemCount} FWG` : null,
     (stats.airConditioningSystemCount ?? 0) > 0 ? `${stats.airConditioningSystemCount} AC` : null,
     (stats.refrigerationSystemCount ?? 0) > 0 ? `${stats.refrigerationSystemCount} REF` : null,
@@ -275,7 +283,7 @@ function v3SeedButtonLabel(kind: V3MasterKind | null | undefined): string {
 
 function v3RepositoryTitle(kind: V3MasterKind | null | undefined): string {
   if (kind === "v312") {
-    return "V3.12 — Full machinery repo incl. Inert Gas, Scrubber, Compressed Air, Steering Gear & Electrical Motors";
+    return "V3.12 — Full machinery repo incl. Inert Gas, Scrubber, Compressed Air, Steering Gear, Electrical Motors, Typewise Shipboard Pumps & Typewise Heat Exchangers";
   }
   if (kind === "v311") {
     return "V3.11 — Full machinery repo incl. Fire Fighting Systems";
@@ -319,7 +327,7 @@ function v3VersionLabel(kind: V3MasterKind | undefined): string {
 
 function v3RepositoryFootnote(kind: V3MasterKind | null | undefined): string {
   if (kind === "v312") {
-    return "V3.12 merges the cumulative V3.7–V3.11 base with inert gas, scrubber, compressed/starting air, steering gear (typewise), rudder, anodes, ICCP, MGPS, anchor, VRCS, typewise deck machinery, electrical motor overhauling and typewise purifier / centrifugal separator jobs — seeding retires older trees and deactivates legacy sprint job IDs.";
+    return "V3.12 merges the cumulative V3.7–V3.11 base with inert gas, scrubber, compressed/starting air, steering gear (typewise), rudder, anodes, ICCP, MGPS, anchor, VRCS, typewise deck machinery, electrical motor overhauling, typewise purifier / centrifugal separator, typewise shipboard pump and typewise heat exchanger / cooler / heater / condenser jobs — seeding retires older trees and deactivates legacy sprint job IDs.";
   }
   if (kind === "v311") {
     return "V3.11 merges the cumulative V3.7–V3.10 base with fire fighting systems jobs — seeding retires older trees and deactivates legacy sprint job IDs.";
@@ -602,6 +610,8 @@ export function MtilProgressPanel() {
       pumpJobCount?: number;
       compressorJobCount?: number;
       purifierJobCount?: number;
+      shipboardPumpJobCount?: number;
+    typewiseHeatExchangerJobCount?: number;
       heatExchangerJobCount?: number;
       coptJobCount?: number;
       deckHeatingJobCount?: number;
@@ -631,6 +641,8 @@ export function MtilProgressPanel() {
       body.pumpJobCount && body.pumpJobCount > 0 ? `${body.pumpJobCount} PMP` : null,
       body.compressorJobCount && body.compressorJobCount > 0 ? `${body.compressorJobCount} CMP` : null,
       body.purifierJobCount && body.purifierJobCount > 0 ? `${body.purifierJobCount} PUR` : null,
+      body.shipboardPumpJobCount && body.shipboardPumpJobCount > 0 ? `${body.shipboardPumpJobCount} PUMP` : null,
+      body.typewiseHeatExchangerJobCount && body.typewiseHeatExchangerJobCount > 0 ? `${body.typewiseHeatExchangerJobCount} HEX-TW` : null,
       body.heatExchangerJobCount && body.heatExchangerJobCount > 0 ? `${body.heatExchangerJobCount} HEX` : null,
       body.coptJobCount && body.coptJobCount > 0 ? `${body.coptJobCount} COPT` : null,
       body.deckHeatingJobCount && body.deckHeatingJobCount > 0 ? `${body.deckHeatingJobCount} DHK` : null,

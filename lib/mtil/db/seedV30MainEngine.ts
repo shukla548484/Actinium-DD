@@ -258,6 +258,8 @@ async function linkMasterJobsToNodes(mtilPhase: number) {
         { referenceCode: { startsWith: "JOBS-DMK-" } },
         { referenceCode: { startsWith: "JOBS-EMO-" } },
         { referenceCode: { startsWith: "JOBS-PCS-" } },
+        { referenceCode: { startsWith: "JOBS-PUMP-" } },
+        { referenceCode: { startsWith: "JOBS-HEX-" } },
       ],
       deletedAt: null,
     },
@@ -323,12 +325,14 @@ export async function isEmdrMasterRepositorySeeded(): Promise<boolean> {
         { jobId: { startsWith: "JOBS-DMK-" } },
         { jobId: { startsWith: "JOBS-EMO-" } },
         { jobId: { startsWith: "JOBS-PCS-" } },
+        { jobId: { startsWith: "JOBS-PUMP-" } },
+        { jobId: { startsWith: "JOBS-HEX-" } },
       ],
       activeFlag: true,
     },
   });
 
-  if (kind === "v312") return activeJobs >= 15167;
+  if (kind === "v312") return activeJobs >= 15719;
   if (kind === "v311") return activeJobs >= 13000;
   if (kind === "v310") return activeJobs >= 12000;
   if (kind === "v39") return activeJobs >= 11000;
@@ -419,6 +423,8 @@ export async function seedEmdrMasterRepository() {
   const inertGasJobs = parsed.masterJobs.filter((j) => /inert gas|\bigg\b|scrubber/i.test(j.machinery)).length;
   const compressedAirJobs = parsed.masterJobs.filter((j) => /compressed air|starting air/i.test(j.machinery)).length;
   const electricalMotorJobs = parsed.masterJobs.filter((j) => /electrical motor/i.test(j.machinery)).length;
+  const shipboardPumpJobs = parsed.masterJobs.filter((j) => j.jobId.startsWith("JOBS-PUMP-")).length;
+  const typewiseHeatExchangerJobs = parsed.masterJobs.filter((j) => j.jobId.startsWith("JOBS-HEX-")).length;
   const fwgJobs = parsed.masterJobs.filter((j) => /fresh water generator|\bfwg\b/i.test(j.machinery)).length;
   const acJobs = parsed.masterJobs.filter((j) => /air conditioning|\bhvac\b/i.test(j.machinery)).length;
   const refJobs = parsed.masterJobs.filter((j) => /refrigeration/i.test(j.machinery)).length;
@@ -446,6 +452,8 @@ export async function seedEmdrMasterRepository() {
     inertGasJobCount: inertGasJobs,
     compressedAirJobCount: compressedAirJobs,
     electricalMotorJobCount: electricalMotorJobs,
+    shipboardPumpJobCount: shipboardPumpJobs,
+    typewiseHeatExchangerJobCount: typewiseHeatExchangerJobs,
     fwgJobCount: fwgJobs,
     airConditioningJobCount: acJobs,
     refrigerationJobCount: refJobs,

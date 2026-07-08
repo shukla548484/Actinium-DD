@@ -68,6 +68,8 @@ const WORKSHOP_MAP: Record<string, JobCatalogWorkshop> = {
   "engine room": "machinery",
   "engine room / workshop": "machinery",
   "engine room / purifier room / workshop": "machinery",
+  "engine room / pump room / workshop": "machinery",
+  "engine room / heat exchanger / workshop": "machinery",
   "engine room / pump room / cargo pump room": "machinery",
   "engine room / pump room": "machinery",
   "main deck / cargo tanks": "deck",
@@ -352,6 +354,7 @@ export function mapVesselTypes(value: unknown): string[] {
   const raw = cellStr(value);
   if (!raw) return ["All Types"];
   if (raw.toLowerCase() === "all") return ["All Types"];
+  if (/^all vessels?$/i.test(raw)) return ["All Types"];
   const items = splitSemicolon(raw);
   for (const item of items) {
     const known = MTIL_VESSEL_TYPES.some(

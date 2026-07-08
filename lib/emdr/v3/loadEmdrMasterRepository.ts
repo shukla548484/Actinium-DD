@@ -16,6 +16,8 @@ import {
   EMDR_V311_DMK_MASTER_REPOSITORY_PATH,
   EMDR_V314_EMO_MASTER_REPOSITORY_PATH,
   EMDR_V315_PCS_MASTER_REPOSITORY_PATH,
+  EMDR_V316_PUMP_MASTER_REPOSITORY_PATH,
+  EMDR_V317_HEX_MASTER_REPOSITORY_PATH,
   EMDR_V312_MASTER_REPOSITORY_PATH,
   isEmdrV33MasterRepositoryPresent,
   type EmdrMasterRepositoryKind,
@@ -25,6 +27,8 @@ import { parseV38IncrementalRepositoryIfExists } from "@/lib/emdr/v3/parseV38Inc
 import { parseV312IncrementalRepositoryIfExists } from "@/lib/emdr/v3/parseV312IncrementalRepository";
 import { parseV311DeckMachineryRepositoryIfExists } from "@/lib/emdr/v3/parseV311DeckMachineryRepository";
 import { parseV315PurifiersRepositoryIfExists } from "@/lib/emdr/v3/parseV315PurifiersRepository";
+import { parseV316ShipboardPumpsRepositoryIfExists } from "@/lib/emdr/v3/parseV316ShipboardPumpsRepository";
+import { parseV317HeatExchangersRepositoryIfExists } from "@/lib/emdr/v3/parseV317HeatExchangersRepository";
 import { parseV314ElectricalMotorsRepositoryIfExists } from "@/lib/emdr/v3/parseV314ElectricalMotorsRepository";
 import { parseV311IncrementalRepositoryIfExists } from "@/lib/emdr/v3/parseV311IncrementalRepository";
 import { parseV310SteeringGearRepositoryIfExists } from "@/lib/emdr/v3/parseV310SteeringGearRepository";
@@ -68,6 +72,14 @@ function loadV311SupplementParsed(): ParsedV3MasterRepository | null {
 
 function loadV311DmkSupplementParsed(): ParsedV3MasterRepository | null {
   return parseV311DeckMachineryRepositoryIfExists(EMDR_V311_DMK_MASTER_REPOSITORY_PATH);
+}
+
+function loadV316PumpSupplementParsed(): ParsedV3MasterRepository | null {
+  return parseV316ShipboardPumpsRepositoryIfExists(EMDR_V316_PUMP_MASTER_REPOSITORY_PATH);
+}
+
+function loadV317HexSupplementParsed(): ParsedV3MasterRepository | null {
+  return parseV317HeatExchangersRepositoryIfExists(EMDR_V317_HEX_MASTER_REPOSITORY_PATH);
 }
 
 function loadV315PcsSupplementParsed(): ParsedV3MasterRepository | null {
@@ -179,6 +191,8 @@ function loadMergedMasterRepository(): ParsedV3MasterRepository | null {
   const v311Dmk = loadV311DmkSupplementParsed();
   const v314Emo = loadV314EmoSupplementParsed();
   const v315Pcs = loadV315PcsSupplementParsed();
+  const v316Pump = loadV316PumpSupplementParsed();
+  const v317Hex = loadV317HexSupplementParsed();
 
   if (v38 && merged) merged = mergeParsedEmdrRepositories(merged, v38);
   else if (v38) merged = v38;
@@ -210,9 +224,15 @@ function loadMergedMasterRepository(): ParsedV3MasterRepository | null {
   if (v315Pcs && merged) merged = mergeParsedEmdrRepositories(merged, v315Pcs);
   else if (v315Pcs) merged = v315Pcs;
 
+  if (v316Pump && merged) merged = mergeParsedEmdrRepositories(merged, v316Pump);
+  else if (v316Pump) merged = v316Pump;
+
+  if (v317Hex && merged) merged = mergeParsedEmdrRepositories(merged, v317Hex);
+  else if (v317Hex) merged = v317Hex;
+
   if (!merged) return null;
 
-  if (v312 || v39Cas || v310Stg || v311Dmk || v314Emo || v315Pcs) return finalizeMergedRepository(merged, EMDR_V312_RELEASE);
+  if (v312 || v39Cas || v310Stg || v311Dmk || v314Emo || v315Pcs || v316Pump || v317Hex) return finalizeMergedRepository(merged, EMDR_V312_RELEASE);
   if (v311) return finalizeMergedRepository(merged, EMDR_V311_RELEASE);
   if (v310) return finalizeMergedRepository(merged, EMDR_V310_RELEASE);
   if (v39) return finalizeMergedRepository(merged, EMDR_V39_RELEASE);
@@ -224,7 +244,7 @@ function loadMergedMasterRepository(): ParsedV3MasterRepository | null {
 export function resolveLoadedEmdrMasterRepositoryKind(): EmdrMasterRepositoryKind | null {
   if (cachedLoadedKind !== undefined) return cachedLoadedKind;
 
-  if (loadV312SupplementParsed() || loadV39CasSupplementParsed() || loadV310StgSupplementParsed() || loadV311DmkSupplementParsed() || loadV314EmoSupplementParsed() || loadV315PcsSupplementParsed()) {
+  if (loadV312SupplementParsed() || loadV39CasSupplementParsed() || loadV310StgSupplementParsed() || loadV311DmkSupplementParsed() || loadV314EmoSupplementParsed() || loadV315PcsSupplementParsed() || loadV316PumpSupplementParsed() || loadV317HexSupplementParsed()) {
     cachedLoadedKind = "v312";
     return cachedLoadedKind;
   }
@@ -296,6 +316,10 @@ export function loadEmdrMasterRepositoryParsed(): ParsedV3MasterRepository | nul
 }
 
 export function loadEmdrMasterRepositoryParsedFromPath(path: string): ParsedV3MasterRepository {
+  const v316Pump = parseV316ShipboardPumpsRepositoryIfExists(path);
+  if (v316Pump) return v316Pump;
+  const v317Hex = parseV317HeatExchangersRepositoryIfExists(path);
+  if (v317Hex) return v317Hex;
   const v315Pcs = parseV315PurifiersRepositoryIfExists(path);
   if (v315Pcs) return v315Pcs;
   const v310Stg = parseV310SteeringGearRepositoryIfExists(path);

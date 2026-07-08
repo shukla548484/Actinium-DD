@@ -128,6 +128,22 @@ export const EMDR_V315_PCS_MASTER_REPOSITORY_PATH = path.join(
   EMDR_V315_PCS_MASTER_REPOSITORY_FILENAME,
 );
 
+export const EMDR_V316_PUMP_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_16_Shipboard_Pumps.xlsx";
+
+export const EMDR_V316_PUMP_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V316_PUMP_MASTER_REPOSITORY_FILENAME,
+);
+
+export const EMDR_V317_HEX_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_17_Heat_Exchangers_Coolers_Heaters_Condensers.xlsx";
+
+export const EMDR_V317_HEX_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V317_HEX_MASTER_REPOSITORY_FILENAME,
+);
+
 export const EMDR_V314_EMO_MASTER_REPOSITORY_FILENAME =
   "Actinium_SM_EMDR_Master_Repository_V3_14_Electrical_Motors_Overhauling.xlsx";
 
@@ -207,6 +223,14 @@ export function isEmdrV37MasterRepositoryPresent(): boolean {
 
 export function isEmdrV314EmoMasterRepositoryPresent(): boolean {
   return fs.existsSync(EMDR_V314_EMO_MASTER_REPOSITORY_PATH);
+}
+
+export function isEmdrV316PumpMasterRepositoryPresent(): boolean {
+  return fs.existsSync(EMDR_V316_PUMP_MASTER_REPOSITORY_PATH);
+}
+
+export function isEmdrV317HexMasterRepositoryPresent(): boolean {
+  return fs.existsSync(EMDR_V317_HEX_MASTER_REPOSITORY_PATH);
 }
 
 export function isEmdrV312MasterRepositoryPresent(): boolean {
