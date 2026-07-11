@@ -30,7 +30,7 @@ export const EMDR_V310_RELEASE =
 export const EMDR_V311_RELEASE =
   "V3.11-ME-AE-BLR-PMP-CMP-PUR-HEX-COPT-DECK-FWG-AC-REF-DMW-LSA-FFS";
 export const EMDR_V312_RELEASE =
-  "V3.12-ME-AE-BLR-PMP-CMP-PUR-HEX-COPT-DECK-FWG-AC-REF-DMW-LSA-FFS-IGG-CAS-STG-DMK-EMO-PCS-PUMP-HEX";
+  "V3.12-ME-AE-BLR-PMP-CMP-PUR-HEX-COPT-DECK-FWG-AC-REF-DMW-LSA-FFS-IGG-CAS-STG-DMK-EMO-PCS-PUMP-HEX-IGS-ENV-EPD-FLS-PROP-HVAC-AUTO-IAS-VPSO-NAVCOM-TGLI-HYPN-AGLH-WMTP-DFMT-HULL-CHHC-DWSS-SCACS-SVSS-CSST-EDMC";
 
 export const MTIL_V30_TREE_CODE = "mtil_v30_main_engine";
 export const MTIL_V30_MTIL_PHASE = 300;
@@ -115,7 +115,7 @@ export function getEmdrMasterRepositoryReleaseConfig(
       release: EMDR_V312_RELEASE,
       treeCode: MTIL_V312_TREE_CODE,
       treeName:
-        "Main Propulsion, Auxiliary, Boilers, Pumps, Compressors, Purifiers, Heat Exchangers, COPT, Deck, FWG, AC, Refrigeration, Deck Machinery, LSA, Fire Fighting, Inert Gas, Compressed Air, Steering Gear, Rudder, Anodes, ICCP, MGPS, Anchor, VRCS, Typewise Deck Machinery, Electrical Motors, Typewise Purifiers, Typewise Shipboard Pumps & Typewise Heat Exchangers (V3.12)",
+        "Main Propulsion, Auxiliary, Boilers, Pumps, Compressors, Purifiers, Heat Exchangers, COPT, Deck, FWG, AC, Refrigeration, Deck Machinery, LSA, Fire Fighting, Inert Gas, Compressed Air, Steering Gear, Rudder, Anodes, ICCP, MGPS, Anchor, VRCS, Typewise Deck Machinery, Electrical Motors, Typewise Purifiers, Typewise Shipboard Pumps, Typewise Heat Exchangers, Typewise Inert Gas / IGG / Nitrogen, Environmental Machinery / OWS / STP / ODME / BWTS, Electrical Power Generation & Distribution, Typewise Fire Fighting / Life Saving / Safety Systems, Typewise Propulsion Line / Shafting / Propeller / Thrusters, Typewise HVAC / Ventilation / Air Handling Systems, Typewise Automation / IAS / UMS / Alarm Monitoring & Control Systems, Typewise Valves / Piping / Sea Chest / Overboard Systems, Typewise Navigation / Communication Equipment, Typewise Tank Gauging / Level / Sounding / Instrumentation, Typewise Hydraulic / Pneumatic Power Systems, Typewise Accommodation / Galley / Laundry / Hotel Equipment, Typewise Workshop Machinery / Engine-Room Tools / Portable Equipment, Typewise Deck Fittings / Mooring-Towing / Access & Closing Appliances, Typewise Hull Structure / Tanks / Coatings / Dry-Dock Hull Survey, Typewise Cargo Hold / Hatch Cover / Container / Bulk Equipment, Typewise Domestic Water / Sanitary / Drainage, Typewise Security / CCTV / Access Control / IT Network & Cyber Systems, Typewise Special Vessel Systems — RORO / LNG / LPG / Container / AMP, Typewise Class / Statutory / Certification / Survey Test Package & Typewise Emergency / Damage Control / Misc Critical Systems — Final Gap Closure (V3.12)",
       mtilPhase: MTIL_V312_MTIL_PHASE,
       includesAuxiliaryEngine: true,
       includesBoilers: true,

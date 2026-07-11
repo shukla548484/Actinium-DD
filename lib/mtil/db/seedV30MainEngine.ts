@@ -32,6 +32,24 @@ import { resolveLoadedEmdrMasterRepositoryKind } from "@/lib/emdr/v3/loadEmdrMas
 import { MTIL_V201_TREE_CODE } from "@/lib/mtil/v2/sprints/registry";
 import type { JobLibrarySeedNode } from "@/lib/vessel/jobLibrary/catalog";
 import { validateEmdrSprintWorkbook } from "@/lib/emdr/validateSprintWorkbook";
+import { isV323TypewiseFfsJobId } from "@/lib/emdr/v3/parseV323FireLsaSafetyRepository";
+import { isV324TypewisePropJobId } from "@/lib/emdr/v3/parseV324PropulsionShaftingRepository";
+import { isV325TypewiseHvacJobId } from "@/lib/emdr/v3/parseV325HvacVentilationRepository";
+import { isV326TypewiseAutoJobId } from "@/lib/emdr/v3/parseV326AutomationIasRepository";
+import { isV327TypewiseVpsoJobId } from "@/lib/emdr/v3/parseV327ValvesPipingRepository";
+import { isV328TypewiseNavcomJobId } from "@/lib/emdr/v3/parseV328NavigationCommunicationRepository";
+import { isV329TypewiseTgliJobId } from "@/lib/emdr/v3/parseV329TankGaugingRepository";
+import { isV330TypewiseHypnJobId } from "@/lib/emdr/v3/parseV330HydraulicPneumaticRepository";
+import { isV331TypewiseAglhJobId } from "@/lib/emdr/v3/parseV331AccommodationRepository";
+import { isV332TypewiseWmtpJobId } from "@/lib/emdr/v3/parseV332WorkshopMachineryRepository";
+import { isV333TypewiseDfmtJobId } from "@/lib/emdr/v3/parseV333DeckFittingsRepository";
+import { isV334TypewiseHullJobId } from "@/lib/emdr/v3/parseV334HullStructureRepository";
+import { isV335TypewiseChhcJobId } from "@/lib/emdr/v3/parseV335CargoHoldRepository";
+import { isV336TypewiseDwssJobId } from "@/lib/emdr/v3/parseV336DomesticWaterRepository";
+import { isV337TypewiseScacsJobId } from "@/lib/emdr/v3/parseV337SecurityCctvRepository";
+import { isV339TypewiseSvssJobId } from "@/lib/emdr/v3/parseV339SpecialVesselRepository";
+import { isV340TypewiseCsstJobId } from "@/lib/emdr/v3/parseV340ClassStatutoryRepository";
+import { isV341TypewiseEdmcJobId } from "@/lib/emdr/v3/parseV341GapClosureRepository";
 import { validateMtilWorkbook } from "@/lib/mtil/import/validateWorkbook";
 
 /** V2.0.1 sprint prefixes superseded by V3.x — deactivated on seed to prevent duplicate picker entries. */
@@ -63,6 +81,37 @@ const SUPERSEDED_EMDR_TREE_CODES = [
   MTIL_V311_TREE_CODE,
   MTIL_V312_TREE_CODE,
 ];
+
+async function releaseMtilJobCodeSlot(mtilJobCode: string | null | undefined, keepId?: string) {
+  if (!mtilJobCode) return;
+  await prisma.jobLibraryNode.updateMany({
+    where: {
+      mtilJobCode,
+      ...(keepId ? { id: { not: keepId } } : {}),
+    },
+    data: { mtilJobCode: null },
+  });
+}
+
+async function findExistingSeedChildNode(parentId: string, child: JobLibrarySeedNode) {
+  const atParent = await prisma.jobLibraryNode.findFirst({
+    where: { parentId, code: child.code },
+    orderBy: { updatedAt: "desc" },
+  });
+  if (atParent) return atParent;
+
+  if (child.nodeType !== "standard_job") return null;
+
+  const lookup: Prisma.JobLibraryNodeWhereInput[] = [];
+  if (child.mtilJobCode) lookup.push({ mtilJobCode: child.mtilJobCode });
+  if (child.referenceCode) lookup.push({ referenceCode: child.referenceCode });
+  if (lookup.length === 0) return null;
+
+  return prisma.jobLibraryNode.findFirst({
+    where: { OR: lookup },
+    orderBy: { updatedAt: "desc" },
+  });
+}
 
 async function insertNode(
   node: JobLibrarySeedNode,
@@ -100,15 +149,22 @@ async function insertNode(
 async function mergeChildNodes(parentId: string, children: JobLibrarySeedNode[]) {
   for (let i = 0; i < children.length; i++) {
     const child = children[i]!;
-    const existing = await prisma.jobLibraryNode.findFirst({
-      where: { parentId, code: child.code, deletedAt: null },
-    });
+    const existing = await findExistingSeedChildNode(parentId, child);
 
     if (existing) {
+      if (existing.deletedAt) {
+        await prisma.jobLibraryNode.update({
+          where: { id: existing.id },
+          data: { deletedAt: null, isActive: true },
+        });
+      }
       if (child.nodeType === "standard_job") {
+        await releaseMtilJobCodeSlot(child.mtilJobCode ?? null, existing.id);
         await prisma.jobLibraryNode.update({
           where: { id: existing.id },
           data: {
+            parentId,
+            sortOrder: i,
             name: child.name,
             description: child.description ?? null,
             referenceCode: child.referenceCode ?? null,
@@ -129,6 +185,43 @@ async function mergeChildNodes(parentId: string, children: JobLibrarySeedNode[])
       await insertNode(child, parentId, i);
     }
   }
+}
+
+async function retireDuplicateStandardJobNodes() {
+  const duplicates = await prisma.jobLibraryNode.findMany({
+    where: {
+      nodeType: "standard_job",
+      deletedAt: null,
+      referenceCode: { not: null },
+    },
+    select: { id: true, referenceCode: true, mtilJobCode: true },
+    orderBy: [{ referenceCode: "asc" }, { mtilJobCode: "desc" }],
+  });
+
+  const keepByReference = new Map<string, string>();
+  const staleIds: string[] = [];
+  for (const node of duplicates) {
+    const ref = node.referenceCode!;
+    const keptId = keepByReference.get(ref);
+    if (!keptId) {
+      keepByReference.set(ref, node.id);
+      continue;
+    }
+    if (node.mtilJobCode) {
+      staleIds.push(keptId);
+      keepByReference.set(ref, node.id);
+      continue;
+    }
+    staleIds.push(node.id);
+  }
+
+  if (staleIds.length === 0) return 0;
+
+  await prisma.jobLibraryNode.updateMany({
+    where: { id: { in: staleIds } },
+    data: { deletedAt: new Date(), isActive: false, mtilJobCode: null, referenceCode: null },
+  });
+  return staleIds.length;
 }
 
 async function softDeleteSubtree(rootId: string) {
@@ -260,17 +353,49 @@ async function linkMasterJobsToNodes(mtilPhase: number) {
         { referenceCode: { startsWith: "JOBS-PCS-" } },
         { referenceCode: { startsWith: "JOBS-PUMP-" } },
         { referenceCode: { startsWith: "JOBS-HEX-" } },
+        { referenceCode: { startsWith: "JOBS-IGS-" } },
+        { referenceCode: { startsWith: "JOBS-ENV-" } },
+        { referenceCode: { startsWith: "JOBS-EPD-" } },
+        { referenceCode: { startsWith: "JOBS-PROP-" } },
+        { referenceCode: { startsWith: "JOBS-HVAC-" } },
+        { referenceCode: { startsWith: "JOBS-AUTO-" } },
+        { referenceCode: { startsWith: "JOBS-VPSO-" } },
+        { referenceCode: { startsWith: "JOBS-NAVCOM-" } },
+        { referenceCode: { startsWith: "JOBS-TGLI-" } },
+        { referenceCode: { startsWith: "JOBS-HYPN-" } },
+        { referenceCode: { startsWith: "JOBS-AGLH-" } },
+        { referenceCode: { startsWith: "JOBS-WMTP-" } },
+        { referenceCode: { startsWith: "JOBS-DFMT-" } },
+        { referenceCode: { startsWith: "JOBS-HULL-" } },
+        { referenceCode: { startsWith: "JOBS-CHHC-" } },
+        { referenceCode: { startsWith: "JOBS-DWSS-" } },
+        { referenceCode: { startsWith: "JOBS-SCACS-" } },
+        { referenceCode: { startsWith: "JOBS-SVSS-" } },
+        { referenceCode: { startsWith: "JOBS-CSST-" } },
+        { referenceCode: { startsWith: "JOBS-EDMC-" } },
       ],
       deletedAt: null,
     },
-    select: { id: true, referenceCode: true },
+    select: { id: true, referenceCode: true, mtilJobCode: true },
   });
 
+  const nodesByReference = new Map<string, (typeof nodes)[number]>();
+  for (const node of nodes) {
+    if (!node.referenceCode) continue;
+    const existing = nodesByReference.get(node.referenceCode);
+    if (!existing) {
+      nodesByReference.set(node.referenceCode, node);
+      continue;
+    }
+    if (node.mtilJobCode && !existing.mtilJobCode) {
+      nodesByReference.set(node.referenceCode, node);
+    }
+  }
+
   let linked = 0;
-  for (const n of nodes) {
-    if (!n.referenceCode) continue;
+  for (const n of nodesByReference.values()) {
     const updated = await prisma.masterJobLibrary.updateMany({
-      where: { jobId: n.referenceCode },
+      where: { jobId: n.referenceCode! },
       data: { jobLibraryNodeId: n.id, activeFlag: true },
     });
     linked += updated.count;
@@ -327,12 +452,32 @@ export async function isEmdrMasterRepositorySeeded(): Promise<boolean> {
         { jobId: { startsWith: "JOBS-PCS-" } },
         { jobId: { startsWith: "JOBS-PUMP-" } },
         { jobId: { startsWith: "JOBS-HEX-" } },
+        { jobId: { startsWith: "JOBS-IGS-" } },
+        { jobId: { startsWith: "JOBS-ENV-" } },
+        { jobId: { startsWith: "JOBS-EPD-" } },
+        { jobId: { startsWith: "JOBS-PROP-" } },
+        { jobId: { startsWith: "JOBS-HVAC-" } },
+        { jobId: { startsWith: "JOBS-AUTO-" } },
+        { jobId: { startsWith: "JOBS-VPSO-" } },
+        { jobId: { startsWith: "JOBS-NAVCOM-" } },
+        { jobId: { startsWith: "JOBS-TGLI-" } },
+        { jobId: { startsWith: "JOBS-HYPN-" } },
+        { jobId: { startsWith: "JOBS-AGLH-" } },
+        { jobId: { startsWith: "JOBS-WMTP-" } },
+        { jobId: { startsWith: "JOBS-DFMT-" } },
+        { jobId: { startsWith: "JOBS-HULL-" } },
+        { jobId: { startsWith: "JOBS-CHHC-" } },
+        { jobId: { startsWith: "JOBS-DWSS-" } },
+        { jobId: { startsWith: "JOBS-SCACS-" } },
+        { jobId: { startsWith: "JOBS-SVSS-" } },
+        { jobId: { startsWith: "JOBS-CSST-" } },
+        { jobId: { startsWith: "JOBS-EDMC-" } },
       ],
       activeFlag: true,
     },
   });
 
-  if (kind === "v312") return activeJobs >= 15719;
+  if (kind === "v312") return activeJobs >= 28500;
   if (kind === "v311") return activeJobs >= 13000;
   if (kind === "v310") return activeJobs >= 12000;
   if (kind === "v39") return activeJobs >= 11000;
@@ -394,6 +539,7 @@ export async function seedEmdrMasterRepository() {
     await mergeChildNodes(categoryId, category.children ?? []);
   }
 
+  const retiredDuplicateNodes = await retireDuplicateStandardJobNodes();
   const linkedNodes = await linkMasterJobsToNodes(config.mtilPhase);
 
   const meJobs = parsed.masterJobs.filter((j) => j.jobId.startsWith("JOBS-ME-")).length;
@@ -425,8 +571,31 @@ export async function seedEmdrMasterRepository() {
   const electricalMotorJobs = parsed.masterJobs.filter((j) => /electrical motor/i.test(j.machinery)).length;
   const shipboardPumpJobs = parsed.masterJobs.filter((j) => j.jobId.startsWith("JOBS-PUMP-")).length;
   const typewiseHeatExchangerJobs = parsed.masterJobs.filter((j) => j.jobId.startsWith("JOBS-HEX-")).length;
+  const typewiseInertGasJobs = parsed.masterJobs.filter((j) => j.jobId.startsWith("JOBS-IGS-")).length;
+  const environmentalMachineryJobs = parsed.masterJobs.filter((j) => j.jobId.startsWith("JOBS-ENV-")).length;
+  const electricalPowerJobs = parsed.masterJobs.filter((j) => j.jobId.startsWith("JOBS-EPD-")).length;
+  const typewiseFireLsaSafetyJobs = parsed.masterJobs.filter((j) => isV323TypewiseFfsJobId(j.jobId)).length;
+  const propulsionShaftingJobs = parsed.masterJobs.filter((j) => isV324TypewisePropJobId(j.jobId)).length;
+  const hvacVentilationJobs = parsed.masterJobs.filter((j) => isV325TypewiseHvacJobId(j.jobId)).length;
+  const automationIasJobs = parsed.masterJobs.filter((j) => isV326TypewiseAutoJobId(j.jobId)).length;
+  const valvesPipingJobs = parsed.masterJobs.filter((j) => isV327TypewiseVpsoJobId(j.jobId)).length;
+  const navigationCommunicationJobs = parsed.masterJobs.filter((j) => isV328TypewiseNavcomJobId(j.jobId)).length;
+  const tankGaugingJobs = parsed.masterJobs.filter((j) => isV329TypewiseTgliJobId(j.jobId)).length;
+  const hydraulicPneumaticJobs = parsed.masterJobs.filter((j) => isV330TypewiseHypnJobId(j.jobId)).length;
+  const accommodationGalleyJobs = parsed.masterJobs.filter((j) => isV331TypewiseAglhJobId(j.jobId)).length;
+  const workshopMachineryJobs = parsed.masterJobs.filter((j) => isV332TypewiseWmtpJobId(j.jobId)).length;
+  const deckFittingsJobs = parsed.masterJobs.filter((j) => isV333TypewiseDfmtJobId(j.jobId)).length;
+  const hullStructureJobs = parsed.masterJobs.filter((j) => isV334TypewiseHullJobId(j.jobId)).length;
+  const cargoHoldJobs = parsed.masterJobs.filter((j) => isV335TypewiseChhcJobId(j.jobId)).length;
+  const domesticWaterJobs = parsed.masterJobs.filter((j) => isV336TypewiseDwssJobId(j.jobId)).length;
+  const securityCctvJobs = parsed.masterJobs.filter((j) => isV337TypewiseScacsJobId(j.jobId)).length;
+  const specialVesselJobs = parsed.masterJobs.filter((j) => isV339TypewiseSvssJobId(j.jobId)).length;
+  const classStatutoryJobs = parsed.masterJobs.filter((j) => isV340TypewiseCsstJobId(j.jobId)).length;
+  const gapClosureEdmcJobs = parsed.masterJobs.filter((j) => isV341TypewiseEdmcJobId(j.jobId)).length;
   const fwgJobs = parsed.masterJobs.filter((j) => /fresh water generator|\bfwg\b/i.test(j.machinery)).length;
-  const acJobs = parsed.masterJobs.filter((j) => /air conditioning|\bhvac\b/i.test(j.machinery)).length;
+  const acJobs = parsed.masterJobs.filter(
+    (j) => /air conditioning|\bhvac\b/i.test(j.machinery) && !isV325TypewiseHvacJobId(j.jobId),
+  ).length;
   const refJobs = parsed.masterJobs.filter((j) => /refrigeration/i.test(j.machinery)).length;
 
   return {
@@ -454,6 +623,27 @@ export async function seedEmdrMasterRepository() {
     electricalMotorJobCount: electricalMotorJobs,
     shipboardPumpJobCount: shipboardPumpJobs,
     typewiseHeatExchangerJobCount: typewiseHeatExchangerJobs,
+    typewiseInertGasJobCount: typewiseInertGasJobs,
+    environmentalMachineryJobCount: environmentalMachineryJobs,
+    electricalPowerJobCount: electricalPowerJobs,
+    typewiseFireLsaSafetyJobCount: typewiseFireLsaSafetyJobs,
+    propulsionShaftingJobCount: propulsionShaftingJobs,
+    hvacVentilationJobCount: hvacVentilationJobs,
+    automationIasJobCount: automationIasJobs,
+    valvesPipingJobCount: valvesPipingJobs,
+    navigationCommunicationJobCount: navigationCommunicationJobs,
+    tankGaugingJobCount: tankGaugingJobs,
+    hydraulicPneumaticJobCount: hydraulicPneumaticJobs,
+    accommodationGalleyJobCount: accommodationGalleyJobs,
+    workshopMachineryJobCount: workshopMachineryJobs,
+    deckFittingsJobCount: deckFittingsJobs,
+    hullStructureJobCount: hullStructureJobs,
+    cargoHoldJobCount: cargoHoldJobs,
+    domesticWaterJobCount: domesticWaterJobs,
+    securityCctvJobCount: securityCctvJobs,
+    specialVesselJobCount: specialVesselJobs,
+    classStatutoryJobCount: classStatutoryJobs,
+    gapClosureEdmcJobCount: gapClosureEdmcJobs,
     fwgJobCount: fwgJobs,
     airConditioningJobCount: acJobs,
     refrigerationJobCount: refJobs,
@@ -464,6 +654,7 @@ export async function seedEmdrMasterRepository() {
     imported: importResult.imported,
     linkedNodes,
     retiredSupersededNodes: retiredNodes,
+    retiredDuplicateNodes,
     deactivatedV201Jobs: deactivatedJobs,
     validation: {
       mtilWarnings: mtilValidation.warnings.length,

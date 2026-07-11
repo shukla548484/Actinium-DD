@@ -144,6 +144,174 @@ export const EMDR_V317_HEX_MASTER_REPOSITORY_PATH = path.join(
   EMDR_V317_HEX_MASTER_REPOSITORY_FILENAME,
 );
 
+export const EMDR_V320_IGS_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_20_Inert_Gas_IGG_Nitrogen_System.xlsx";
+
+export const EMDR_V320_IGS_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V320_IGS_MASTER_REPOSITORY_FILENAME,
+);
+
+export const EMDR_V321_ENV_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_21_Environmental_Machinery_OWS_STP_Incinerator_ODME_BWTS.xlsx";
+
+export const EMDR_V321_ENV_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V321_ENV_MASTER_REPOSITORY_FILENAME,
+);
+
+export const EMDR_V322_EPD_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_22_Electrical_Power_Generation_Distribution.xlsx";
+
+export const EMDR_V322_EPD_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V322_EPD_MASTER_REPOSITORY_FILENAME,
+);
+
+export const EMDR_V323_FLS_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_23_Fire_Fighting_Life_Saving_Safety_Systems.xlsx";
+
+export const EMDR_V323_FLS_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V323_FLS_MASTER_REPOSITORY_FILENAME,
+);
+
+export const EMDR_V324_PROP_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_24_Propulsion_Shafting_Propeller_Thrusters.xlsx";
+
+export const EMDR_V324_PROP_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V324_PROP_MASTER_REPOSITORY_FILENAME,
+);
+
+export const EMDR_V325_HVAC_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_25_HVAC_Ventilation_Air_Handling_Systems.xlsx";
+
+export const EMDR_V325_HVAC_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V325_HVAC_MASTER_REPOSITORY_FILENAME,
+);
+
+export const EMDR_V326_AUTO_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_26_Automation_IAS_UMS_Alarm_Control_Systems.xlsx";
+
+export const EMDR_V326_AUTO_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V326_AUTO_MASTER_REPOSITORY_FILENAME,
+);
+
+export const EMDR_V327_VPSO_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_27_Valves_Piping_SeaChest_Overboard_Systems.xlsx";
+
+export const EMDR_V327_VPSO_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V327_VPSO_MASTER_REPOSITORY_FILENAME,
+);
+
+export const EMDR_V328_NAVCOM_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_28_Navigation_Communication_Equipment.xlsx";
+
+export const EMDR_V328_NAVCOM_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V328_NAVCOM_MASTER_REPOSITORY_FILENAME,
+);
+
+export const EMDR_V329_TGLI_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_29_Tank_Gauging_Level_Sounding_Instrumentation.xlsx";
+
+export const EMDR_V329_TGLI_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V329_TGLI_MASTER_REPOSITORY_FILENAME,
+);
+
+export const EMDR_V330_HYPN_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_30_Hydraulic_Pneumatic_Power_Systems.xlsx";
+
+export const EMDR_V330_HYPN_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V330_HYPN_MASTER_REPOSITORY_FILENAME,
+);
+
+export const EMDR_V331_AGLH_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_31_Accommodation_Galley_Laundry_Hotel_Equipment.xlsx";
+
+export const EMDR_V331_AGLH_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V331_AGLH_MASTER_REPOSITORY_FILENAME,
+);
+
+export const EMDR_V332_WMTP_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_32_Workshop_Machinery_Tools_Portable_Equipment.xlsx";
+
+export const EMDR_V332_WMTP_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V332_WMTP_MASTER_REPOSITORY_FILENAME,
+);
+
+export const EMDR_V333_DFMT_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_33_Deck_Fittings_Mooring_Towing_Access_Closing_Appliances.xlsx";
+
+export const EMDR_V333_DFMT_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V333_DFMT_MASTER_REPOSITORY_FILENAME,
+);
+
+export const EMDR_V334_HULL_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_34_Hull_Structure_Tanks_Coatings_DryDock_Survey.xlsx";
+
+export const EMDR_V334_HULL_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V334_HULL_MASTER_REPOSITORY_FILENAME,
+);
+
+export const EMDR_V335_CHHC_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_35_Cargo_Hold_Hatch_Cover_Container_Bulk_Equipment.xlsx";
+
+export const EMDR_V335_CHHC_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V335_CHHC_MASTER_REPOSITORY_FILENAME,
+);
+
+export const EMDR_V336_DWSS_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_36_Domestic_Water_Sanitary_Drainage_Service_Systems.xlsx";
+
+export const EMDR_V336_DWSS_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V336_DWSS_MASTER_REPOSITORY_FILENAME,
+);
+
+export const EMDR_V337_SCACS_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_37_Security_CCTV_Access_Control_IT_Cyber_Systems.xlsx";
+
+export const EMDR_V337_SCACS_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V337_SCACS_MASTER_REPOSITORY_FILENAME,
+);
+
+export const EMDR_V339_SVSS_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_39_Special_Vessel_Systems_RORO_LNG_LPG_Container_AMP.xlsx";
+
+export const EMDR_V339_SVSS_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V339_SVSS_MASTER_REPOSITORY_FILENAME,
+);
+
+export const EMDR_V340_CSST_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_40_Class_Statutory_Certification_Survey_Test_Package.xlsx";
+
+export const EMDR_V340_CSST_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V340_CSST_MASTER_REPOSITORY_FILENAME,
+);
+
+export const EMDR_V341_EDMC_MASTER_REPOSITORY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V3_41_Final_Gap_Closure_Emergency_Damage_Control_Misc_Critical_Systems.xlsx";
+
+export const EMDR_V341_EDMC_MASTER_REPOSITORY_PATH = path.join(
+  EMDR_DATA_ROOT,
+  EMDR_V341_EDMC_MASTER_REPOSITORY_FILENAME,
+);
+
 export const EMDR_V314_EMO_MASTER_REPOSITORY_FILENAME =
   "Actinium_SM_EMDR_Master_Repository_V3_14_Electrical_Motors_Overhauling.xlsx";
 
@@ -233,6 +401,90 @@ export function isEmdrV317HexMasterRepositoryPresent(): boolean {
   return fs.existsSync(EMDR_V317_HEX_MASTER_REPOSITORY_PATH);
 }
 
+export function isEmdrV320IgsMasterRepositoryPresent(): boolean {
+  return fs.existsSync(EMDR_V320_IGS_MASTER_REPOSITORY_PATH);
+}
+
+export function isEmdrV321EnvMasterRepositoryPresent(): boolean {
+  return fs.existsSync(EMDR_V321_ENV_MASTER_REPOSITORY_PATH);
+}
+
+export function isEmdrV322EpdMasterRepositoryPresent(): boolean {
+  return fs.existsSync(EMDR_V322_EPD_MASTER_REPOSITORY_PATH);
+}
+
+export function isEmdrV323FlsMasterRepositoryPresent(): boolean {
+  return fs.existsSync(EMDR_V323_FLS_MASTER_REPOSITORY_PATH);
+}
+
+export function isEmdrV324PropMasterRepositoryPresent(): boolean {
+  return fs.existsSync(EMDR_V324_PROP_MASTER_REPOSITORY_PATH);
+}
+
+export function isEmdrV325HvacMasterRepositoryPresent(): boolean {
+  return fs.existsSync(EMDR_V325_HVAC_MASTER_REPOSITORY_PATH);
+}
+
+export function isEmdrV326AutoMasterRepositoryPresent(): boolean {
+  return fs.existsSync(EMDR_V326_AUTO_MASTER_REPOSITORY_PATH);
+}
+
+export function isEmdrV327VpsoMasterRepositoryPresent(): boolean {
+  return fs.existsSync(EMDR_V327_VPSO_MASTER_REPOSITORY_PATH);
+}
+
+export function isEmdrV328NavcomMasterRepositoryPresent(): boolean {
+  return fs.existsSync(EMDR_V328_NAVCOM_MASTER_REPOSITORY_PATH);
+}
+
+export function isEmdrV329TgliMasterRepositoryPresent(): boolean {
+  return fs.existsSync(EMDR_V329_TGLI_MASTER_REPOSITORY_PATH);
+}
+
+export function isEmdrV330HypnMasterRepositoryPresent(): boolean {
+  return fs.existsSync(EMDR_V330_HYPN_MASTER_REPOSITORY_PATH);
+}
+
+export function isEmdrV331AglhMasterRepositoryPresent(): boolean {
+  return fs.existsSync(EMDR_V331_AGLH_MASTER_REPOSITORY_PATH);
+}
+
+export function isEmdrV332WmtpMasterRepositoryPresent(): boolean {
+  return fs.existsSync(EMDR_V332_WMTP_MASTER_REPOSITORY_PATH);
+}
+
+export function isEmdrV333DfmtMasterRepositoryPresent(): boolean {
+  return fs.existsSync(EMDR_V333_DFMT_MASTER_REPOSITORY_PATH);
+}
+
+export function isEmdrV334HullMasterRepositoryPresent(): boolean {
+  return fs.existsSync(EMDR_V334_HULL_MASTER_REPOSITORY_PATH);
+}
+
+export function isEmdrV335ChhcMasterRepositoryPresent(): boolean {
+  return fs.existsSync(EMDR_V335_CHHC_MASTER_REPOSITORY_PATH);
+}
+
+export function isEmdrV336DwssMasterRepositoryPresent(): boolean {
+  return fs.existsSync(EMDR_V336_DWSS_MASTER_REPOSITORY_PATH);
+}
+
+export function isEmdrV337ScacsMasterRepositoryPresent(): boolean {
+  return fs.existsSync(EMDR_V337_SCACS_MASTER_REPOSITORY_PATH);
+}
+
+export function isEmdrV339SvssMasterRepositoryPresent(): boolean {
+  return fs.existsSync(EMDR_V339_SVSS_MASTER_REPOSITORY_PATH);
+}
+
+export function isEmdrV340CsstMasterRepositoryPresent(): boolean {
+  return fs.existsSync(EMDR_V340_CSST_MASTER_REPOSITORY_PATH);
+}
+
+export function isEmdrV341EdmcMasterRepositoryPresent(): boolean {
+  return fs.existsSync(EMDR_V341_EDMC_MASTER_REPOSITORY_PATH);
+}
+
 export function isEmdrV312MasterRepositoryPresent(): boolean {
   return fs.existsSync(EMDR_V312_MASTER_REPOSITORY_PATH);
 }
@@ -303,6 +555,40 @@ export function resolveEmdrMasterRepositoryKind(): EmdrMasterRepositoryKind | nu
   if (isEmdrV31MasterRepositoryPresent()) return "v31";
   if (isEmdrV30MasterRepositoryPresent()) return "v30";
   return null;
+}
+
+/** V4.0 consolidated metadata overlay (provenance index — not a replacement base). */
+export const EMDR_V40_METADATA_OVERLAY_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V4_0_Final_Consolidated_Master.xlsx";
+
+export const EMDR_V40_METADATA_OVERLAY_PATH = path.join(
+  process.env.HOME ?? "",
+  "Downloads",
+  EMDR_V40_METADATA_OVERLAY_FILENAME,
+);
+
+/** V4.1 validated upload / RFQ / budget-ready export output. */
+export const EMDR_V41_EXPORT_FILENAME =
+  "Actinium_SM_EMDR_Master_Repository_V4_1_Validated_Upload_RFQ_Budget_Ready.xlsx";
+
+export const EMDR_V41_EXPORT_DIR = path.join(process.cwd(), "data", "emdr", "exports");
+
+export const EMDR_V41_EXPORT_REPO_PATH = path.join(EMDR_V41_EXPORT_DIR, EMDR_V41_EXPORT_FILENAME);
+
+export const EMDR_V41_EXPORT_DOWNLOADS_PATH = path.join(
+  process.env.HOME ?? "",
+  "Downloads",
+  EMDR_V41_EXPORT_FILENAME,
+);
+
+export function resolveEmdrV40MetadataOverlayPath(): string {
+  const alt = path.join(
+    process.env.HOME ?? "",
+    "Downloads",
+    "Actinium_SM_EMDR_Master_Repository_V4_0_Final_Consolidated_Master(1).xlsx",
+  );
+  if (fs.existsSync(alt)) return alt;
+  return EMDR_V40_METADATA_OVERLAY_PATH;
 }
 
 /** Primary workbook path for display — prefer highest version present. */

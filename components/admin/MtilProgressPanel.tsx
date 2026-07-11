@@ -166,6 +166,27 @@ type V3Report = {
     electricalMotorJobCount?: number;
     shipboardPumpJobCount?: number;
     typewiseHeatExchangerJobCount?: number;
+    typewiseInertGasJobCount?: number;
+    environmentalMachineryJobCount?: number;
+    electricalPowerJobCount?: number;
+    typewiseFireLsaSafetyJobCount?: number;
+    propulsionShaftingJobCount?: number;
+    hvacVentilationJobCount?: number;
+    automationIasJobCount?: number;
+    valvesPipingJobCount?: number;
+    navigationCommunicationJobCount?: number;
+    tankGaugingJobCount?: number;
+    hydraulicPneumaticJobCount?: number;
+    accommodationGalleyJobCount?: number;
+    workshopMachineryJobCount?: number;
+    deckFittingsJobCount?: number;
+    hullStructureJobCount?: number;
+    cargoHoldJobCount?: number;
+    domesticWaterJobCount?: number;
+    securityCctvJobCount?: number;
+    specialVesselJobCount?: number;
+    classStatutoryJobCount?: number;
+    gapClosureEdmcJobCount?: number;
     fwgJobCount?: number;
     airConditioningJobCount?: number;
     refrigerationJobCount?: number;
@@ -191,6 +212,27 @@ type V3Report = {
     electricalMotorSystemCount?: number;
     shipboardPumpSystemCount?: number;
     typewiseHeatExchangerSystemCount?: number;
+    typewiseInertGasSystemCount?: number;
+    environmentalMachinerySystemCount?: number;
+    electricalPowerSystemCount?: number;
+    fireLsaSafetySystemCount?: number;
+    propulsionShaftingSystemCount?: number;
+    hvacVentilationSystemCount?: number;
+    automationIasSystemCount?: number;
+    valvesPipingSystemCount?: number;
+    navigationCommunicationSystemCount?: number;
+    tankGaugingSystemCount?: number;
+    hydraulicPneumaticSystemCount?: number;
+    accommodationGalleySystemCount?: number;
+    workshopMachinerySystemCount?: number;
+    deckFittingsSystemCount?: number;
+    hullStructureSystemCount?: number;
+    cargoHoldSystemCount?: number;
+    domesticWaterSystemCount?: number;
+    securityCctvSystemCount?: number;
+    specialVesselSystemCount?: number;
+    classStatutorySystemCount?: number;
+    gapClosureEdmcSystemCount?: number;
     fwgSystemCount?: number;
     airConditioningSystemCount?: number;
     refrigerationSystemCount?: number;
@@ -231,6 +273,27 @@ function formatV3JobCounts(stats: V3Report["stats"]): string[] {
     (stats.electricalMotorJobCount ?? 0) > 0 ? `${stats.electricalMotorJobCount!.toLocaleString()} EMO` : null,
     (stats.shipboardPumpJobCount ?? 0) > 0 ? `${stats.shipboardPumpJobCount!.toLocaleString()} PUMP` : null,
     (stats.typewiseHeatExchangerJobCount ?? 0) > 0 ? `${stats.typewiseHeatExchangerJobCount!.toLocaleString()} HEX-TW` : null,
+    (stats.typewiseInertGasJobCount ?? 0) > 0 ? `${stats.typewiseInertGasJobCount!.toLocaleString()} IGS` : null,
+    (stats.environmentalMachineryJobCount ?? 0) > 0 ? `${stats.environmentalMachineryJobCount!.toLocaleString()} ENV` : null,
+    (stats.electricalPowerJobCount ?? 0) > 0 ? `${stats.electricalPowerJobCount!.toLocaleString()} EPD` : null,
+    (stats.typewiseFireLsaSafetyJobCount ?? 0) > 0 ? `${stats.typewiseFireLsaSafetyJobCount!.toLocaleString()} FLS` : null,
+    (stats.propulsionShaftingJobCount ?? 0) > 0 ? `${stats.propulsionShaftingJobCount!.toLocaleString()} PROP` : null,
+    (stats.hvacVentilationJobCount ?? 0) > 0 ? `${stats.hvacVentilationJobCount!.toLocaleString()} HVAC` : null,
+    (stats.automationIasJobCount ?? 0) > 0 ? `${stats.automationIasJobCount!.toLocaleString()} AUTO` : null,
+    (stats.valvesPipingJobCount ?? 0) > 0 ? `${stats.valvesPipingJobCount!.toLocaleString()} VPSO` : null,
+    (stats.navigationCommunicationJobCount ?? 0) > 0 ? `${stats.navigationCommunicationJobCount!.toLocaleString()} NAVCOM` : null,
+    (stats.tankGaugingJobCount ?? 0) > 0 ? `${stats.tankGaugingJobCount!.toLocaleString()} TGLI` : null,
+    (stats.hydraulicPneumaticJobCount ?? 0) > 0 ? `${stats.hydraulicPneumaticJobCount!.toLocaleString()} HYPN` : null,
+    (stats.accommodationGalleyJobCount ?? 0) > 0 ? `${stats.accommodationGalleyJobCount!.toLocaleString()} AGLH` : null,
+    (stats.workshopMachineryJobCount ?? 0) > 0 ? `${stats.workshopMachineryJobCount!.toLocaleString()} WMTP` : null,
+    (stats.deckFittingsJobCount ?? 0) > 0 ? `${stats.deckFittingsJobCount!.toLocaleString()} DFMT` : null,
+    (stats.hullStructureJobCount ?? 0) > 0 ? `${stats.hullStructureJobCount!.toLocaleString()} HULL` : null,
+    (stats.cargoHoldJobCount ?? 0) > 0 ? `${stats.cargoHoldJobCount!.toLocaleString()} CHHC` : null,
+    (stats.domesticWaterJobCount ?? 0) > 0 ? `${stats.domesticWaterJobCount!.toLocaleString()} DWSS` : null,
+    (stats.securityCctvJobCount ?? 0) > 0 ? `${stats.securityCctvJobCount!.toLocaleString()} SCACS` : null,
+    (stats.specialVesselJobCount ?? 0) > 0 ? `${stats.specialVesselJobCount!.toLocaleString()} SVSS` : null,
+    (stats.classStatutoryJobCount ?? 0) > 0 ? `${stats.classStatutoryJobCount!.toLocaleString()} CSST` : null,
+    (stats.gapClosureEdmcJobCount ?? 0) > 0 ? `${stats.gapClosureEdmcJobCount!.toLocaleString()} EDMC` : null,
     (stats.fwgJobCount ?? 0) > 0 ? `${stats.fwgJobCount!.toLocaleString()} FWG` : null,
     (stats.airConditioningJobCount ?? 0) > 0 ? `${stats.airConditioningJobCount!.toLocaleString()} AC` : null,
     (stats.refrigerationJobCount ?? 0) > 0 ? `${stats.refrigerationJobCount!.toLocaleString()} REF` : null,
@@ -260,6 +323,27 @@ function formatV3SystemCounts(stats: V3Report["stats"]): string[] {
     (stats.electricalMotorSystemCount ?? 0) > 0 ? `${stats.electricalMotorSystemCount} EMO` : null,
     (stats.shipboardPumpSystemCount ?? 0) > 0 ? `${stats.shipboardPumpSystemCount} PUMP` : null,
     (stats.typewiseHeatExchangerSystemCount ?? 0) > 0 ? `${stats.typewiseHeatExchangerSystemCount} HEX-TW` : null,
+    (stats.typewiseInertGasSystemCount ?? 0) > 0 ? `${stats.typewiseInertGasSystemCount} IGS` : null,
+    (stats.environmentalMachinerySystemCount ?? 0) > 0 ? `${stats.environmentalMachinerySystemCount} ENV` : null,
+    (stats.electricalPowerSystemCount ?? 0) > 0 ? `${stats.electricalPowerSystemCount} EPD` : null,
+    (stats.fireLsaSafetySystemCount ?? 0) > 0 ? `${stats.fireLsaSafetySystemCount} FLS` : null,
+    (stats.propulsionShaftingSystemCount ?? 0) > 0 ? `${stats.propulsionShaftingSystemCount} PROP` : null,
+    (stats.hvacVentilationSystemCount ?? 0) > 0 ? `${stats.hvacVentilationSystemCount} HVAC` : null,
+    (stats.automationIasSystemCount ?? 0) > 0 ? `${stats.automationIasSystemCount} AUTO` : null,
+    (stats.valvesPipingSystemCount ?? 0) > 0 ? `${stats.valvesPipingSystemCount} VPSO` : null,
+    (stats.navigationCommunicationSystemCount ?? 0) > 0 ? `${stats.navigationCommunicationSystemCount} NAVCOM` : null,
+    (stats.tankGaugingSystemCount ?? 0) > 0 ? `${stats.tankGaugingSystemCount} TGLI` : null,
+    (stats.hydraulicPneumaticSystemCount ?? 0) > 0 ? `${stats.hydraulicPneumaticSystemCount} HYPN` : null,
+    (stats.accommodationGalleySystemCount ?? 0) > 0 ? `${stats.accommodationGalleySystemCount} AGLH` : null,
+    (stats.workshopMachinerySystemCount ?? 0) > 0 ? `${stats.workshopMachinerySystemCount} WMTP` : null,
+    (stats.deckFittingsSystemCount ?? 0) > 0 ? `${stats.deckFittingsSystemCount} DFMT` : null,
+    (stats.hullStructureSystemCount ?? 0) > 0 ? `${stats.hullStructureSystemCount} HULL` : null,
+    (stats.cargoHoldSystemCount ?? 0) > 0 ? `${stats.cargoHoldSystemCount} CHHC` : null,
+    (stats.domesticWaterSystemCount ?? 0) > 0 ? `${stats.domesticWaterSystemCount} DWSS` : null,
+    (stats.securityCctvSystemCount ?? 0) > 0 ? `${stats.securityCctvSystemCount} SCACS` : null,
+    (stats.specialVesselSystemCount ?? 0) > 0 ? `${stats.specialVesselSystemCount} SVSS` : null,
+    (stats.classStatutorySystemCount ?? 0) > 0 ? `${stats.classStatutorySystemCount} CSST` : null,
+    (stats.gapClosureEdmcSystemCount ?? 0) > 0 ? `${stats.gapClosureEdmcSystemCount} EDMC` : null,
     (stats.fwgSystemCount ?? 0) > 0 ? `${stats.fwgSystemCount} FWG` : null,
     (stats.airConditioningSystemCount ?? 0) > 0 ? `${stats.airConditioningSystemCount} AC` : null,
     (stats.refrigerationSystemCount ?? 0) > 0 ? `${stats.refrigerationSystemCount} REF` : null,
@@ -283,7 +367,7 @@ function v3SeedButtonLabel(kind: V3MasterKind | null | undefined): string {
 
 function v3RepositoryTitle(kind: V3MasterKind | null | undefined): string {
   if (kind === "v312") {
-    return "V3.12 — Full machinery repo incl. Inert Gas, Scrubber, Compressed Air, Steering Gear, Electrical Motors, Typewise Shipboard Pumps & Typewise Heat Exchangers";
+    return "V3.12 — Full machinery repo incl. Inert Gas, Scrubber, Compressed Air, Steering Gear, Electrical Motors, Typewise Shipboard Pumps, Typewise Heat Exchangers, Typewise Inert Gas / IGG / Nitrogen, Environmental Machinery & Electrical Power Generation & Distribution";
   }
   if (kind === "v311") {
     return "V3.11 — Full machinery repo incl. Fire Fighting Systems";
@@ -327,7 +411,7 @@ function v3VersionLabel(kind: V3MasterKind | undefined): string {
 
 function v3RepositoryFootnote(kind: V3MasterKind | null | undefined): string {
   if (kind === "v312") {
-    return "V3.12 merges the cumulative V3.7–V3.11 base with inert gas, scrubber, compressed/starting air, steering gear (typewise), rudder, anodes, ICCP, MGPS, anchor, VRCS, typewise deck machinery, electrical motor overhauling, typewise purifier / centrifugal separator, typewise shipboard pump and typewise heat exchanger / cooler / heater / condenser jobs — seeding retires older trees and deactivates legacy sprint job IDs.";
+    return "V3.12 merges the cumulative V3.7–V3.11 base with inert gas, scrubber, compressed/starting air, steering gear (typewise), rudder, anodes, ICCP, MGPS, anchor, VRCS, typewise deck machinery, electrical motor overhauling, typewise purifier / centrifugal separator, typewise shipboard pump, typewise heat exchanger / cooler / heater / condenser, environmental machinery (OWS / STP / ODME / BWTS) and electrical power generation & distribution jobs — seeding retires older trees and deactivates legacy sprint job IDs.";
   }
   if (kind === "v311") {
     return "V3.11 merges the cumulative V3.7–V3.10 base with fire fighting systems jobs — seeding retires older trees and deactivates legacy sprint job IDs.";
@@ -612,6 +696,27 @@ export function MtilProgressPanel() {
       purifierJobCount?: number;
       shipboardPumpJobCount?: number;
     typewiseHeatExchangerJobCount?: number;
+    typewiseInertGasJobCount?: number;
+    environmentalMachineryJobCount?: number;
+    electricalPowerJobCount?: number;
+    typewiseFireLsaSafetyJobCount?: number;
+    propulsionShaftingJobCount?: number;
+    hvacVentilationJobCount?: number;
+    automationIasJobCount?: number;
+    valvesPipingJobCount?: number;
+    navigationCommunicationJobCount?: number;
+    tankGaugingJobCount?: number;
+    hydraulicPneumaticJobCount?: number;
+    accommodationGalleyJobCount?: number;
+    workshopMachineryJobCount?: number;
+    deckFittingsJobCount?: number;
+    hullStructureJobCount?: number;
+    cargoHoldJobCount?: number;
+    domesticWaterJobCount?: number;
+    securityCctvJobCount?: number;
+    specialVesselJobCount?: number;
+    classStatutoryJobCount?: number;
+    gapClosureEdmcJobCount?: number;
       heatExchangerJobCount?: number;
       coptJobCount?: number;
       deckHeatingJobCount?: number;
@@ -643,6 +748,27 @@ export function MtilProgressPanel() {
       body.purifierJobCount && body.purifierJobCount > 0 ? `${body.purifierJobCount} PUR` : null,
       body.shipboardPumpJobCount && body.shipboardPumpJobCount > 0 ? `${body.shipboardPumpJobCount} PUMP` : null,
       body.typewiseHeatExchangerJobCount && body.typewiseHeatExchangerJobCount > 0 ? `${body.typewiseHeatExchangerJobCount} HEX-TW` : null,
+      body.typewiseInertGasJobCount && body.typewiseInertGasJobCount > 0 ? `${body.typewiseInertGasJobCount} IGS` : null,
+      body.environmentalMachineryJobCount && body.environmentalMachineryJobCount > 0 ? `${body.environmentalMachineryJobCount} ENV` : null,
+      body.electricalPowerJobCount && body.electricalPowerJobCount > 0 ? `${body.electricalPowerJobCount} EPD` : null,
+      body.typewiseFireLsaSafetyJobCount && body.typewiseFireLsaSafetyJobCount > 0 ? `${body.typewiseFireLsaSafetyJobCount} FLS` : null,
+      body.propulsionShaftingJobCount && body.propulsionShaftingJobCount > 0 ? `${body.propulsionShaftingJobCount} PROP` : null,
+      body.hvacVentilationJobCount && body.hvacVentilationJobCount > 0 ? `${body.hvacVentilationJobCount} HVAC` : null,
+      body.automationIasJobCount && body.automationIasJobCount > 0 ? `${body.automationIasJobCount} AUTO` : null,
+      body.valvesPipingJobCount && body.valvesPipingJobCount > 0 ? `${body.valvesPipingJobCount} VPSO` : null,
+      body.navigationCommunicationJobCount && body.navigationCommunicationJobCount > 0 ? `${body.navigationCommunicationJobCount} NAVCOM` : null,
+      body.tankGaugingJobCount && body.tankGaugingJobCount > 0 ? `${body.tankGaugingJobCount} TGLI` : null,
+      body.hydraulicPneumaticJobCount && body.hydraulicPneumaticJobCount > 0 ? `${body.hydraulicPneumaticJobCount} HYPN` : null,
+      body.accommodationGalleyJobCount && body.accommodationGalleyJobCount > 0 ? `${body.accommodationGalleyJobCount} AGLH` : null,
+      body.workshopMachineryJobCount && body.workshopMachineryJobCount > 0 ? `${body.workshopMachineryJobCount} WMTP` : null,
+      body.deckFittingsJobCount && body.deckFittingsJobCount > 0 ? `${body.deckFittingsJobCount} DFMT` : null,
+      body.hullStructureJobCount && body.hullStructureJobCount > 0 ? `${body.hullStructureJobCount} HULL` : null,
+      body.cargoHoldJobCount && body.cargoHoldJobCount > 0 ? `${body.cargoHoldJobCount} CHHC` : null,
+      body.domesticWaterJobCount && body.domesticWaterJobCount > 0 ? `${body.domesticWaterJobCount} DWSS` : null,
+      body.securityCctvJobCount && body.securityCctvJobCount > 0 ? `${body.securityCctvJobCount} SCACS` : null,
+      body.specialVesselJobCount && body.specialVesselJobCount > 0 ? `${body.specialVesselJobCount} SVSS` : null,
+      body.classStatutoryJobCount && body.classStatutoryJobCount > 0 ? `${body.classStatutoryJobCount} CSST` : null,
+      body.gapClosureEdmcJobCount && body.gapClosureEdmcJobCount > 0 ? `${body.gapClosureEdmcJobCount} EDMC` : null,
       body.heatExchangerJobCount && body.heatExchangerJobCount > 0 ? `${body.heatExchangerJobCount} HEX` : null,
       body.coptJobCount && body.coptJobCount > 0 ? `${body.coptJobCount} COPT` : null,
       body.deckHeatingJobCount && body.deckHeatingJobCount > 0 ? `${body.deckHeatingJobCount} DHK` : null,

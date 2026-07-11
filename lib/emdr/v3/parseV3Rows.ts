@@ -566,7 +566,11 @@ export type V3RepositoryIndexRow = {
     | "Life Saving Appliances / Davits / Rescue Boat Davit"
     | "Fire Fighting Systems"
     | "Inert Gas / IGG / Scrubber System"
-    | "Compressed Air & Starting Air System";
+    | "Compressed Air & Starting Air System"
+    | "Environmental Machinery / OWS / STP / Incinerator / ODME / BWTS"
+    | "Propulsion Line / Shafting / Stern Tube / Propeller / Thrusters"
+    | "HVAC / Ventilation Systems"
+    | "Automation / IAS / UMS / Alarm Monitoring & Control Systems";
 };
 
 export function parseV3UnifiedRepositoryIndex(rows: Array<Record<string, unknown>>): V3RepositoryIndexRow[] {

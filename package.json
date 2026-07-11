@@ -17,6 +17,8 @@
     "db:deploy": "tsx scripts/deploy-db.ts",
     "db:seed:admin": "tsx scripts/seed-admin.ts",
     "mtil:import-phase1": "tsx scripts/import-mtil-phase1.ts",
+    "emdr:export-v41": "tsx scripts/exportV41UploadReady.ts",
+    "emdr:import-v41": "tsx scripts/importV41UploadReady.ts",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
     "desktop:install": "npm install --prefix desktop",
