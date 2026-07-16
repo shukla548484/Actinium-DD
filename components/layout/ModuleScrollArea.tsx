@@ -17,6 +17,7 @@ export function isSidebarModulePath(pathname: string): boolean {
     pathname.startsWith("/superintendent") ||
     pathname.startsWith("/admin") ||
     pathname.startsWith("/shipyard") ||
-    pathname.startsWith("/ship-access")
+    pathname.startsWith("/ship-access") ||
+    pathname.startsWith("/purchase")
   );
 }

@@ -4,7 +4,6 @@ import {
   Building2,
   ClipboardList,
   Compass,
-  FolderPlus,
   List,
   PlusCircle,
   Settings,
@@ -12,6 +11,7 @@ import {
   ShoppingCart,
 } from "lucide-react";
 import { adminNavItems } from "@/lib/navigation/adminNavItems";
+import { purchaseNavItems } from "@/lib/navigation/purchaseNavItems";
 import { shipAccessNavItems } from "@/lib/navigation/shipAccessNavItems";
 import { shipyardNavChildren } from "@/lib/navigation/shipyardNavItems";
 import { superintendentNavItems } from "@/lib/navigation/superintendentNavItems";
@@ -61,7 +61,6 @@ export const topNavItems: TopNavItem[] = [
     children: adminNavItems.map((item) => ({
       href: item.href,
       label: item.label,
-      description: item.description,
       icon: item.icon,
     })),
   },
@@ -100,21 +99,21 @@ export const topNavItems: TopNavItem[] = [
     children: shipAccessNavItems.map((item) => ({
       href: item.href,
       label: item.label,
-      description: item.description,
       icon: item.icon,
     })),
   },
   {
     id: "purchase",
-    label: "Purchase Module",
-    href: "/projects",
-    description: "Tender specs, yard invites & comparison",
+    label: "Purchase",
+    href: "/purchase/dashboard",
+    description: "Requisitions, RFQ, quotes, POs, invoices & vendors",
     icon: ShoppingCart,
     tier: "priority",
-    children: [
-      { href: "/projects", label: "Tender projects", icon: List },
-      { href: "/projects/new", label: "New tender", icon: FolderPlus },
-    ],
+    children: purchaseNavItems.map((item) => ({
+      href: item.href,
+      label: item.label,
+      icon: item.icon,
+    })),
   },
   {
     id: "company",
@@ -141,7 +140,6 @@ export const topNavItems: TopNavItem[] = [
     children: superintendentNavItems.map((item) => ({
       href: item.href,
       label: item.label,
-      description: item.description,
       icon: item.icon,
     })),
   },
@@ -160,12 +158,12 @@ export function resolveActiveNavId(pathname: string): TopNavId {
   if (pathname.startsWith("/ship-access")) return "shipAccess";
   if (pathname.startsWith("/superintendent")) return "superintendent";
   if (pathname.startsWith("/shipyard")) return "shipyard";
+  if (pathname.startsWith("/purchase")) return "purchase";
   if (pathname.startsWith("/admin/companies") || pathname.startsWith("/admin/vessels")) {
     return "company";
   }
   if (pathname.startsWith("/admin")) return "admin";
   if (pathname === "/projects/new") return "jobs";
-  if (pathname.includes("yards") || pathname.includes("comparison")) return "purchase";
   if (pathname.startsWith("/projects")) return "jobs";
   return "company";
 }

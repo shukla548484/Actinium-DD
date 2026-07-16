@@ -88,8 +88,18 @@ function ModuleDropdown({
     const el = triggerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    setPanelPos({ top: rect.bottom + 4, left: rect.left });
+    setPanelPos({ top: rect.bottom, left: rect.left });
   }, []);
+
+  const navigateTo = useCallback(
+    (href: string) => {
+      onClose();
+      // Hard navigation from the portaled menu is the reliable path — soft
+      // router.push from a closing portal was getting cancelled.
+      window.location.assign(href);
+    },
+    [onClose],
+  );
 
   useEffect(() => {
     setMounted(true);
@@ -135,9 +145,7 @@ function ModuleDropdown({
       onMouseEnter={onCancelClose}
       onMouseLeave={onScheduleClose}
     >
-      <div
-        className="dropdown-scroll min-w-[15rem] w-64 max-h-[min(600px,calc(100dvh-var(--dd-nav-height,3rem)))] overflow-y-auto overscroll-contain rounded-lg border border-border bg-popover py-1.5 text-popover-foreground shadow-lg"
-      >
+      <div className="dropdown-scroll min-w-[15rem] w-64 max-h-[min(600px,calc(100dvh-var(--dd-nav-height,3rem)))] overflow-y-auto overscroll-contain rounded-lg border border-border bg-popover py-1.5 text-popover-foreground shadow-lg">
         {sections.flatMap((group) =>
           group.items.map((sub) => {
             const subActive =
@@ -148,9 +156,8 @@ function ModuleDropdown({
                 href={sub.href}
                 label={sub.label}
                 icon={sub.icon}
-                description={sub.description}
                 active={subActive}
-                onClick={onClose}
+                onNavigate={navigateTo}
               />
             );
           }),
@@ -171,10 +178,21 @@ function ModuleDropdown({
         }}
         onMouseLeave={onScheduleClose}
       >
-        <div className={btnClass} aria-haspopup="menu" aria-expanded={isOpen}>
+        <button
+          type="button"
+          className={btnClass}
+          aria-haspopup="menu"
+          aria-expanded={isOpen}
+          onClick={() => {
+            onCancelClose();
+            updatePosition();
+            if (isOpen) onClose();
+            else onOpen();
+          }}
+        >
           <Icon className="size-5 shrink-0" aria-hidden />
           <span>{item.label}</span>
-        </div>
+        </button>
       </div>
       {panel && createPortal(panel, document.body)}
     </>
@@ -348,11 +366,13 @@ export function TopNavBar({
                             href={sub.href}
                             label={sub.label}
                             icon={sub.icon}
-                            description={sub.description}
                             active={
                               pathname === sub.href || pathname.startsWith(`${sub.href}/`)
                             }
-                            onClick={() => setMobileOpen(false)}
+                            onNavigate={(href) => {
+                              setMobileOpen(false);
+                              window.location.assign(href);
+                            }}
                             className="rounded-md hover:bg-accent"
                           />
                         )),

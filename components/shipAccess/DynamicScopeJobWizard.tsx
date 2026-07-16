@@ -13,6 +13,7 @@ import { CONDITION_RATING_ITEMS } from "@/lib/vessel/machinery/parameters";
 import { uploadPendingVesselJobFiles } from "@/components/shipAccess/VesselJobAttachmentsPanel";
 import type { DdVesselJobDto } from "@/lib/superintendent/types";
 import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
+import type { MachineryAssetDto } from "@/lib/db/vesselMachineryAssets";
 
 export type DefectJobPrefill = {
   id: string;
@@ -58,24 +59,36 @@ export function DynamicScopeJobWizard({
   const [pendingPhotos, setPendingPhotos] = useState<File[]>([]);
   const [resolvedTemplate, setResolvedTemplate] = useState<JobInputFieldDef[]>([]);
   const [templateLoading, setTemplateLoading] = useState(false);
+  const [machineryAssets, setMachineryAssets] = useState<MachineryAssetDto[]>([]);
+  const [machineryLoading, setMachineryLoading] = useState(true);
+  const [selectedMachineryAssetId, setSelectedMachineryAssetId] = useState("");
 
   const standardJob = path.find((n) => n.nodeType === "standard_job") ?? null;
   const template = resolvedTemplate.length > 0 ? resolvedTemplate : (standardJob?.inputTemplate ?? []);
+  const selectedMachineryAsset =
+    machineryAssets.find((asset) => asset.id === selectedMachineryAssetId) ?? null;
 
   useEffect(() => {
     if (!defectPrefill) return;
-    setFormValues((prev) => ({
-      ...prev,
-      conditionDescription:
-        prev.conditionDescription ||
-        [defectPrefill.title, defectPrefill.description].filter(Boolean).join("\n\n"),
-      observedDefect:
-        prev.observedDefect || defectPrefill.equipmentLabel || defectPrefill.title,
-      repairRecommendation:
-        prev.repairRecommendation ||
-        `Scope repair linked to Master-approved defect: ${defectPrefill.title}`,
-    }));
-    if (defectPrefill.priority) setPriority(defectPrefill.priority);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setFormValues((prev) => ({
+        ...prev,
+        conditionDescription:
+          prev.conditionDescription ||
+          [defectPrefill.title, defectPrefill.description].filter(Boolean).join("\n\n"),
+        observedDefect:
+          prev.observedDefect || defectPrefill.equipmentLabel || defectPrefill.title,
+        repairRecommendation:
+          prev.repairRecommendation ||
+          `Scope repair linked to Master-approved defect: ${defectPrefill.title}`,
+      }));
+      if (defectPrefill.priority) setPriority(defectPrefill.priority);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [defectPrefill]);
 
   const loadChildren = useCallback(async (parentId: string | null) => {
@@ -94,8 +107,24 @@ export function DynamicScopeJobWizard({
   }, [dryDockProjectId, vesselId, jobLibraryApiBase]);
 
   useEffect(() => {
-    void loadChildren(null);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) void loadChildren(null);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [loadChildren]);
+
+  useEffect(() => {
+    const qs = new URLSearchParams({ vesselId });
+    void fetch(`/api/ship-access/machinery/assets?${qs.toString()}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { assets?: MachineryAssetDto[] } | null) => {
+        setMachineryAssets(data?.assets ?? []);
+      })
+      .finally(() => setMachineryLoading(false));
+  }, [vesselId]);
 
   function selectNode(node: JobLibraryNodeDto) {
     const nextPath = [...path, node];
@@ -123,6 +152,7 @@ export function DynamicScopeJobWizard({
     if (step === "details") {
       setStep("pick");
       setPath([]);
+      setSelectedMachineryAssetId("");
       void loadChildren(null);
       return;
     }
@@ -178,8 +208,19 @@ export function DynamicScopeJobWizard({
       runningHoursAtSurvey: formValues.runningHours
         ? Number.parseInt(formValues.runningHours, 10)
         : null,
+      lastOverhaulDate: formValues.lastOverhaul || null,
+      linkedPmsReference: selectedMachineryAsset
+        ? `machinery:${selectedMachineryAsset.id}`
+        : null,
       linkedDefectId: linkedDefectId ?? null,
-      formData: formValues,
+      formData: {
+        ...formValues,
+        machineryAssetId: selectedMachineryAsset?.id ?? "",
+        machineryAssetName: selectedMachineryAsset?.name ?? "",
+        machineryAssetMaker: selectedMachineryAsset?.maker ?? "",
+        machineryAssetModel: selectedMachineryAsset?.model ?? "",
+        machineryAssetSerialNumber: selectedMachineryAsset?.serialNumber ?? "",
+      },
       createdByName: createdByName.trim() || null,
       createdByRole: "vessel",
       submit: submitForReview,
@@ -203,6 +244,7 @@ export function DynamicScopeJobWizard({
       setFormValues({});
       setPendingPhotos([]);
       setResolvedTemplate([]);
+      setSelectedMachineryAssetId("");
       setStep("pick");
       void loadChildren(null);
       onSaved?.();
@@ -211,6 +253,37 @@ export function DynamicScopeJobWizard({
     } finally {
       setSaving(false);
     }
+  }
+
+  function formatDateForInput(value: string | null): string {
+    return value ? value.slice(0, 10) : "";
+  }
+
+  function applyMachineryAsset(assetId: string) {
+    setSelectedMachineryAssetId(assetId);
+    const asset = machineryAssets.find((item) => item.id === assetId);
+    if (!asset) return;
+
+    const makeModel = [asset.maker, asset.model].filter(Boolean).join(" / ");
+    setFormValues((prev) => ({
+      ...prev,
+      machineryAssetId: asset.id,
+      equipmentTag: prev.equipmentTag || asset.name,
+      department: prev.department || asset.department,
+      runningHours: asset.currentRunningHours != null ? String(asset.currentRunningHours) : prev.runningHours || "",
+      lastOverhaul: formatDateForInput(asset.lastOverhaulDate) || prev.lastOverhaul || "",
+      makeModel: prev.makeModel || makeModel,
+      engineMake: prev.engineMake || asset.maker || "",
+      engineModel: prev.engineModel || asset.model || "",
+      turbochargerMake: prev.turbochargerMake || asset.maker || "",
+      turbochargerModel: prev.turbochargerModel || asset.model || "",
+      pumpName: prev.pumpName || asset.name,
+      motorNameNo: prev.motorNameNo || asset.name,
+      generatorNo: prev.generatorNo || asset.name,
+      equipmentSerialNumber: prev.equipmentSerialNumber || asset.serialNumber || "",
+      machineryNotes: prev.machineryNotes || asset.notes || "",
+    }));
+    if (asset.conditionRating) setConditionRating(asset.conditionRating);
   }
 
   function renderField(field: JobInputFieldDef) {
@@ -394,6 +467,42 @@ export function DynamicScopeJobWizard({
               <ActiniumLoadingState label="Loading job form template…" size="sm" />
             ) : null}
 
+            <div className="space-y-3 rounded-md border p-3">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Machinery / equipment from vessel register</Label>
+                  {machineryLoading ? (
+                    <ActiniumLoadingState label="Loading machinery…" size="sm" />
+                  ) : machineryAssets.length > 0 ? (
+                    <LabeledSelect
+                      items={machineryAssets.map((asset) => ({
+                        value: asset.id,
+                        label: `${asset.name}${asset.department ? ` · ${asset.department}` : ""}`,
+                      }))}
+                      value={selectedMachineryAssetId}
+                      onValueChange={applyMachineryAsset}
+                      placeholder="Select machinery"
+                      className="w-full"
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No machinery registered for this vessel.</p>
+                  )}
+                </div>
+                {selectedMachineryAsset ? (
+                  <div className="text-sm text-muted-foreground">
+                    <p className="font-medium text-foreground">{selectedMachineryAsset.name}</p>
+                    <p>{[selectedMachineryAsset.maker, selectedMachineryAsset.model].filter(Boolean).join(" / ") || "Maker/model not recorded"}</p>
+                    <p>
+                      Running hours: {selectedMachineryAsset.currentRunningHours ?? "—"} · Last overhaul:{" "}
+                      {selectedMachineryAsset.lastOverhaulDate
+                        ? new Date(selectedMachineryAsset.lastOverhaulDate).toLocaleDateString()
+                        : "—"}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Priority</Label>
@@ -425,7 +534,11 @@ export function DynamicScopeJobWizard({
                     {fields.map((field) => (
                       <div
                         key={field.key}
-                        className={field.type === "textarea" ? "sm:col-span-2 space-y-2" : "space-y-2"}
+                        className={
+                          field.type === "textarea" || field.type === "photos_note"
+                            ? "sm:col-span-2 space-y-2"
+                            : "space-y-2"
+                        }
                       >
                         <Label>
                           {field.label}

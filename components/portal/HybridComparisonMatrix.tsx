@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { categoryLabelFromList, formatCategoryLabel } from "@/lib/tender/categories";
+import { categoryLabelFromList } from "@/lib/tender/categories";
 import { TableCard } from "@/components/layout/TableCard";
 import { fmtMoney } from "@/lib/tender/format";
 import type { HybridComparison, ComparisonRow } from "@/lib/tender/types";
@@ -47,6 +47,18 @@ function lowestYard(
     }
   }
   return lowest;
+}
+
+function scoreTone(score: number): string {
+  if (score >= 85) return "bg-emerald-50 text-emerald-700";
+  if (score >= 70) return "bg-amber-50 text-amber-700";
+  return "bg-rose-50 text-rose-700";
+}
+
+function issueTone(severity: "low" | "medium" | "high"): string {
+  if (severity === "high") return "border-rose-200 bg-rose-50/70";
+  if (severity === "medium") return "border-amber-200 bg-amber-50/70";
+  return "border-muted bg-muted/40";
 }
 
 export function HybridComparisonMatrix({
@@ -118,6 +130,60 @@ export function HybridComparisonMatrix({
           Download Excel
         </Button>
       </div>
+
+      {data.health.length > 0 ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {data.health.map((yardHealth) => (
+            <Card key={yardHealth.inviteId}>
+              <CardHeader className="space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-sm">{yardHealth.yardName}</CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                      Quote health scan for completeness, matching quality, and price outliers.
+                    </p>
+                  </div>
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${scoreTone(yardHealth.score)}`}>
+                    Score {yardHealth.score}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="rounded-md bg-muted/40 px-3 py-2">
+                    <div className="text-muted-foreground">Coverage</div>
+                    <div className="text-sm font-semibold">{yardHealth.coveragePct}%</div>
+                  </div>
+                  <div className="rounded-md bg-muted/40 px-3 py-2">
+                    <div className="text-muted-foreground">Priced lines</div>
+                    <div className="text-sm font-semibold">{yardHealth.pricedLines}</div>
+                  </div>
+                  <div className="rounded-md bg-muted/40 px-3 py-2">
+                    <div className="text-muted-foreground">Unresolved</div>
+                    <div className="text-sm font-semibold">{yardHealth.unresolvedLines}</div>
+                  </div>
+                  <div className="rounded-md bg-muted/40 px-3 py-2">
+                    <div className="text-muted-foreground">Outliers</div>
+                    <div className="text-sm font-semibold">{yardHealth.outlierLines}</div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {yardHealth.issues.length > 0 ? (
+                  yardHealth.issues.slice(0, 3).map((issue) => (
+                    <div key={`${yardHealth.inviteId}-${issue.title}`} className={`rounded-md border px-3 py-2 text-xs ${issueTone(issue.severity)}`}>
+                      <p className="font-medium">{issue.title}</p>
+                      <p className="mt-0.5 text-muted-foreground">{issue.detail}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    No major comparison warnings detected for this quote.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : null}
 
       <TableCard>
         <ScrollArea className="w-full">

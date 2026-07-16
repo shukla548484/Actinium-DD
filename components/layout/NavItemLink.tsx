@@ -53,39 +53,39 @@ type TopNavSubmenuLinkProps = {
   label: string;
   icon: LucideIcon;
   active?: boolean;
-  description?: string;
-  onClick?: () => void;
+  /** Parent owns routing — this node unmounts when the dropdown closes. */
+  onNavigate: (href: string) => void;
   className?: string;
 };
 
-/** Top bar dropdown sub-menu item with icon. */
+/** Top bar dropdown item — single-line label; parent handles routing. */
 export function TopNavSubmenuLink({
   href,
   label,
   icon: Icon,
   active,
-  description,
-  onClick,
+  onNavigate,
   className,
 }: TopNavSubmenuLinkProps) {
   return (
-    <Link
+    <a
       href={href}
       role="menuitem"
-      onClick={onClick}
       className={cn(
-        "flex items-start gap-2.5 px-4 py-2.5 text-sm text-popover-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
+        "flex cursor-pointer items-center gap-2.5 px-4 py-2 text-sm text-popover-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
         active && "bg-accent/50 font-medium",
         className,
       )}
+      onClick={(e) => {
+        // Allow cmd/ctrl-click to open in a new tab via native <a> behavior.
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        e.preventDefault();
+        e.stopPropagation();
+        onNavigate(href);
+      }}
     >
-      <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
-      <span className="min-w-0">
-        <span className="block">{label}</span>
-        {description ? (
-          <span className="mt-0.5 block text-xs font-normal text-muted-foreground">{description}</span>
-        ) : null}
-      </span>
-    </Link>
+      <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+      <span className="truncate">{label}</span>
+    </a>
   );
 }

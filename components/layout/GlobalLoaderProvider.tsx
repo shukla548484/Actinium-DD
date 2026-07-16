@@ -25,6 +25,9 @@ type GlobalLoaderContextValue = {
 
 const GlobalLoaderContext = createContext<GlobalLoaderContextValue | null>(null);
 
+const BOOT_TIMEOUT_MS = 2500;
+const NAV_TIMEOUT_MS = 4000;
+
 function isInternalNavigationLink(anchor: HTMLAnchorElement, pathname: string): boolean {
   if (anchor.target && anchor.target !== "_self") return false;
   if (anchor.hasAttribute("download")) return false;
@@ -36,7 +39,8 @@ function isInternalNavigationLink(anchor: HTMLAnchorElement, pathname: string): 
   try {
     const url = new URL(href, window.location.href);
     if (url.origin !== window.location.origin) return false;
-    if (url.pathname === pathname && !url.search) return false;
+    // Same path (ignoring hash) — no transition overlay.
+    if (url.pathname === pathname && url.search === window.location.search) return false;
     return true;
   } catch {
     return false;
@@ -90,29 +94,34 @@ export function GlobalLoaderProvider({ children }: { children: ReactNode }) {
     [startLoading, stopLoading],
   );
 
-  /** First paint / hydration — hide once document is ready. */
+  /** First paint / hydration — always clear within a timeout so the UI cannot stick. */
   useEffect(() => {
+    const clear = () => setBootLoading(false);
     if (document.readyState === "complete") {
-      setBootLoading(false);
+      clear();
       return;
     }
-    const onReady = () => setBootLoading(false);
-    window.addEventListener("load", onReady);
-    document.addEventListener("readystatechange", onReady);
+    window.addEventListener("load", clear);
+    document.addEventListener("readystatechange", clear);
+    const timeout = window.setTimeout(clear, BOOT_TIMEOUT_MS);
     return () => {
-      window.removeEventListener("load", onReady);
-      document.removeEventListener("readystatechange", onReady);
+      window.removeEventListener("load", clear);
+      document.removeEventListener("readystatechange", clear);
+      window.clearTimeout(timeout);
     };
   }, []);
 
-  /** Route arrived — clear navigation overlay after content paints. */
+  /** Route arrived — clear navigation overlay. */
+  useEffect(() => {
+    setNavigating(false);
+  }, [pathname]);
+
+  /** Safety: never leave the nav overlay up if the route fails to change. */
   useEffect(() => {
     if (!navigating) return;
-    const frame = requestAnimationFrame(() => {
-      requestAnimationFrame(() => setNavigating(false));
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [pathname, navigating]);
+    const timeout = window.setTimeout(() => setNavigating(false), NAV_TIMEOUT_MS);
+    return () => window.clearTimeout(timeout);
+  }, [navigating]);
 
   /** Intercept in-app link clicks to show loader during transitions. */
   useEffect(() => {
@@ -132,10 +141,12 @@ export function GlobalLoaderProvider({ children }: { children: ReactNode }) {
 
     const onPopState = () => setNavigating(true);
 
-    document.addEventListener("click", onClick, true);
+    // Bubble phase — after Next.js Link handles the click — so we don't race the overlay
+    // over the top of the in-flight navigation gesture.
+    document.addEventListener("click", onClick);
     window.addEventListener("popstate", onPopState);
     return () => {
-      document.removeEventListener("click", onClick, true);
+      document.removeEventListener("click", onClick);
       window.removeEventListener("popstate", onPopState);
     };
   }, [pathname]);

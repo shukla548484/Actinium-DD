@@ -63,7 +63,6 @@ export function ShipAccessNav() {
           href={item.href}
           label={item.label}
           icon={item.icon}
-          title={item.description}
           active={isLinkActive(pathname, item.href)}
           size="xs"
           className="shrink-0 rounded-full px-3 py-1.5"

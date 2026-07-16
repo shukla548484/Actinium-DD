@@ -21,15 +21,15 @@ import {
 interface NavItem {
   href?: string;
   label: string;
-  children?: { href: string; label: string; description?: string }[];
+  children?: { href: string; label: string }[];
 }
 
 const navigation: NavItem[] = [
   {
     label: "Projects",
     children: [
-      { href: "/projects", label: "All Projects", description: "View & manage all tender projects" },
-      { href: "/projects/new", label: "New Project", description: "Create a new dry-dock tender" },
+      { href: "/projects", label: "All Projects" },
+      { href: "/projects/new", label: "New Project" },
     ],
   },
 ];
@@ -83,14 +83,11 @@ function DesktopDropdown({ item, pathname }: { item: NavItem; pathname: string }
             <DropdownMenuItem
               key={child.href}
               render={<Link href={child.href} />}
-              className="flex flex-col items-start gap-0.5 py-2.5"
+              className="py-2"
             >
               <span className={`text-sm font-medium ${active ? "text-foreground" : ""}`}>
                 {child.label}
               </span>
-              {child.description && (
-                <span className="text-xs text-muted-foreground">{child.description}</span>
-              )}
             </DropdownMenuItem>
           );
         })}
@@ -177,11 +174,6 @@ export function AppNav() {
                         render={<Link href={child.href} onClick={() => setMobileOpen(false)} />}
                       >
                         {child.label}
-                        {child.description && (
-                          <span className="ml-2 text-xs text-muted-foreground">
-                            {child.description}
-                          </span>
-                        )}
                       </Button>
                     );
                   })}

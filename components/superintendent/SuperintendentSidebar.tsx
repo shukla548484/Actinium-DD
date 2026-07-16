@@ -36,7 +36,6 @@ export function SuperintendentSidebar() {
                       href={item.href}
                       label={item.label}
                       icon={item.icon}
-                      title={item.description}
                       active={active === item.id}
                     />
                   </li>

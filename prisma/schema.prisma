@@ -138,6 +138,7 @@ model Company {
   projects  Project[]
   yardProfile YardProfile?
   yardInvites YardInvite[] @relation("YardInviteCompany")
+  purchaseVendors PurchaseVendor[]
 
   @@index([parentId])
   @@index([status])
@@ -172,6 +173,8 @@ model Vessel {
   vesselJobs        DdVesselJob[]
   vesselDefects     VesselDefect[]
   vesselRequisitions VesselRequisition[]
+  purchaseRequisitions PurchaseRequisition[]
+  purchaseOrders       PurchaseOrder[]
   technicalProfile  VesselTechnicalProfile?
   machineryAssets   VesselMachineryAsset[]
   machineryRunningHoursEntries VesselMachineryRunningHoursEntry[]
@@ -219,6 +222,11 @@ model Employee {
   vesselAssignments EmployeeVessel[]
   crewPageAccess    EmployeeCrewPageAccess[]
   assignedYardInvites YardInvite[] @relation("YardInviteEstimator")
+  purchaseRequisitionsCreated  PurchaseRequisition[] @relation("PurchaseRequisitionCreator")
+  purchaseRequisitionsApproved PurchaseRequisition[] @relation("PurchaseRequisitionApprover")
+  purchaseOrdersLevelOne       PurchaseOrder[]       @relation("PurchaseOrderLevelOne")
+  purchaseOrdersLevelTwo       PurchaseOrder[]       @relation("PurchaseOrderLevelTwo")
+  purchaseOrdersLevelThree     PurchaseOrder[]       @relation("PurchaseOrderLevelThree")
 
   @@index([companyId])
   @@index([status])
@@ -2664,4 +2672,357 @@ model JobCatalogListItem {
   @@index([listType, sortOrder])
   @@index([isActive])
   @@map("job_catalog_list_items")
+}
+
+// ─── Office Purchase Module (ported from app-pms-updated, Actinium-adapted) ───
+
+enum PurchaseReqType {
+  STR
+  SPR
+  GLY
+  PNT
+  REP
+  SER
+  CTM
+  PRO
+  BNK
+  LUB
+  FCL
+  OTR
+  CHE
+
+  @@map("purchase_req_type")
+}
+
+enum PurchaseReqGenerationStatus {
+  SAVED_AS_DRAFT
+  CREATED
+
+  @@map("purchase_req_generation_status")
+}
+
+enum PurchaseReqStatus {
+  NOT_READY
+  NEW_REQ
+  REQ_APPROVED
+  SENT_FOR_QUOTE
+  QUOTE_RECEIVED
+  PARTIAL_QUOTE_RECEIVED
+  QUOTE_APPROVED
+  QUOTE_CONFIRMED_PO_SENT
+  SPLIT
+  REQ_RECEIVED_DELIVERED
+  REQ_RETURNED
+  INVOICE_RECEIVED
+  CANCELLED
+
+  @@map("purchase_req_status")
+}
+
+enum PurchaseQuoteStatus {
+  PENDING
+  SENT
+  RECEIVED
+  APPROVED
+  REJECTED
+  EXPIRED
+  DECLINED
+
+  @@map("purchase_quote_status")
+}
+
+enum PurchasePoType {
+  GOODS
+  FREIGHT
+
+  @@map("purchase_po_type")
+}
+
+enum PurchasePoWorkflowStatus {
+  PO_CREATED
+  PO_LVL1_APPROVAL
+  PO_LVL2_APPROVAL
+  PO_LVL3_APPROVAL
+  PO_CONFIRMED
+  PO_SENT
+  CANCELLED
+
+  @@map("purchase_po_workflow_status")
+}
+
+enum PurchasePoCompletionStatus {
+  OPEN
+  PARTIALLY_CLOSED
+  CLOSED
+
+  @@map("purchase_po_completion_status")
+}
+
+enum PurchaseInvoiceStatus {
+  READY_FOR_APPROVAL
+  LEVEL_ONE_APPROVED
+  LEVEL_TWO_APPROVED
+  LEVEL_THREE_APPROVED
+  LEVEL_FOUR_APPROVED
+  READY_FOR_PAYMENT
+  RETURNED
+  PAID
+  CANCELLED
+
+  @@map("purchase_invoice_status")
+}
+
+enum PurchaseInvoiceApprovalLevel {
+  LEVEL_ONE
+  LEVEL_TWO
+  LEVEL_THREE
+  LEVEL_FOUR
+
+  @@map("purchase_invoice_approval_level")
+}
+
+/// Office purchase vendor (distinct from Company category external_vendor).
+model PurchaseVendor {
+  id                String   @id @default(cuid())
+  companyId         String?  @map("company_id")
+  vendorCode        String   @unique @map("vendor_code")
+  name              String
+  primaryEmail      String   @map("primary_email")
+  secondaryEmail    String?  @map("secondary_email")
+  phone             String?
+  address           String?  @db.Text
+  country           String
+  city              String?
+  contactPerson     String?  @map("contact_person")
+  serviceTypes      String[] @default([]) @map("service_types")
+  rating            Int?     @default(0)
+  isBlacklisted     Boolean  @default(false) @map("is_blacklisted")
+  blacklistReason   String?  @map("blacklist_reason") @db.Text
+  isActive          Boolean  @default(true) @map("is_active")
+  preferredCurrency String   @default("USD") @map("preferred_currency")
+  verificationStatus String  @default("PENDING") @map("verification_status")
+  deletedAt         DateTime? @map("deleted_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  company  Company?          @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  quotes   PurchaseQuote[]
+  invoices PurchaseInvoice[]
+
+  @@index([companyId])
+  @@index([isActive])
+  @@index([deletedAt])
+  @@map("purchase_vendors")
+}
+
+/// Office purchase requisition (PMS Requisition → Actinium naming).
+model PurchaseRequisition {
+  id                   String                      @id @default(cuid())
+  requisitionNumber    String                      @unique @map("requisition_number")
+  manualReqNumber      String?                     @map("manual_req_number")
+  heading              String
+  description          String?                     @db.Text
+  portOfSupply         String?                     @map("port_of_supply")
+  requisitionType      PurchaseReqType             @map("requisition_type")
+  generationStatus     PurchaseReqGenerationStatus @default(SAVED_AS_DRAFT) @map("generation_status")
+  status               PurchaseReqStatus           @default(NOT_READY)
+  priority             String                      @default("NORMAL")
+  reasonForRequisition String?                     @map("reason_for_requisition") @db.Text
+  requisitionPurpose   String?                     @default("ROUTINE_MAINTENANCE") @map("requisition_purpose")
+  isBudgeted           Boolean?                    @map("is_budgeted")
+  budgetCode           String?                     @map("budget_code")
+  glCode               String?                     @map("gl_code")
+  costCenter           String?                     @map("cost_center")
+  subCategoryCode      String?                     @map("sub_category_code")
+  vesselId             String                      @map("vessel_id")
+  createdById          String                      @map("created_by_id")
+  approvedById         String?                     @map("approved_by_id")
+  approvedAt           DateTime?                   @map("approved_at")
+  returnComments       String?                     @map("return_comments") @db.Text
+  parentRequisitionId  String?                     @map("parent_requisition_id")
+  splitIndex           Int?                        @map("split_index")
+  deletedAt            DateTime?                   @map("deleted_at")
+  createdAt            DateTime                    @default(now()) @map("created_at")
+  updatedAt            DateTime                    @updatedAt @map("updated_at")
+
+  vessel    Vessel               @relation(fields: [vesselId], references: [id], onDelete: Cascade)
+  createdBy Employee             @relation("PurchaseRequisitionCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  approvedBy Employee?           @relation("PurchaseRequisitionApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  parent    PurchaseRequisition? @relation("PurchaseRequisitionChildren", fields: [parentRequisitionId], references: [id], onDelete: SetNull)
+  children  PurchaseRequisition[] @relation("PurchaseRequisitionChildren")
+  items     PurchaseRequisitionItem[]
+  quotes    PurchaseQuote[]
+  purchaseOrders PurchaseOrder[]
+  invoices  PurchaseInvoice[]
+
+  @@index([vesselId, createdAt(sort: Desc)])
+  @@index([vesselId, status, createdAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
+  @@index([createdById])
+  @@index([deletedAt])
+  @@map("purchase_requisitions")
+}
+
+model PurchaseRequisitionItem {
+  id              String   @id @default(cuid())
+  requisitionId   String   @map("requisition_id")
+  itemName        String   @map("item_name")
+  description     String?  @db.Text
+  partNumber      String?  @map("part_number")
+  drawingNumber   String?  @map("drawing_number")
+  quantity        Float    @default(1)
+  unit            String   @default("pcs")
+  remarks         String?
+  sortOrder       Int      @default(0) @map("sort_order")
+  deletedAt       DateTime? @map("deleted_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  requisition PurchaseRequisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  quoteItems  PurchaseQuoteItem[]
+
+  @@index([requisitionId, sortOrder])
+  @@index([deletedAt])
+  @@map("purchase_requisition_items")
+}
+
+model PurchaseQuote {
+  id              String              @id @default(cuid())
+  requisitionId   String              @map("requisition_id")
+  vendorId        String              @map("vendor_id")
+  quoteNumber     String?             @map("quote_number")
+  totalAmount     Float?              @map("total_amount")
+  currency        String              @default("USD")
+  validUntil      DateTime?           @map("valid_until")
+  status          PurchaseQuoteStatus @default(PENDING)
+  notes           String?             @db.Text
+  deliveryCharges Float?              @map("delivery_charges")
+  packingCharges  Float?              @map("packing_charges")
+  additionalCharges Float?            @map("additional_charges")
+  deliveryTerms   String?             @map("delivery_terms")
+  paymentTerms    String?             @map("payment_terms")
+  sentAt          DateTime?           @map("sent_at")
+  receivedAt      DateTime?           @map("received_at")
+  deletedAt       DateTime?           @map("deleted_at")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  requisition    PurchaseRequisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  vendor         PurchaseVendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  items          PurchaseQuoteItem[]
+  purchaseOrders PurchaseOrder[]
+  invoices       PurchaseInvoice[]
+
+  @@unique([requisitionId, vendorId])
+  @@index([vendorId, status])
+  @@index([requisitionId, status, createdAt(sort: Desc)])
+  @@index([deletedAt])
+  @@map("purchase_quotes")
+}
+
+model PurchaseQuoteItem {
+  id                String   @id @default(cuid())
+  quoteId           String   @map("quote_id")
+  requisitionItemId String?  @map("requisition_item_id")
+  itemName          String   @map("item_name")
+  description       String?
+  quantity          Float    @default(1)
+  unit              String   @default("pcs")
+  unitPrice         Float?   @map("unit_price")
+  totalPrice        Float?   @map("total_price")
+  discountPercent   Float?   @map("discount_percent")
+  deliveryTime      String?  @map("delivery_time")
+  remarks           String?
+  sortOrder         Int      @default(0) @map("sort_order")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  quote           PurchaseQuote            @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  requisitionItem PurchaseRequisitionItem? @relation(fields: [requisitionItemId], references: [id], onDelete: SetNull)
+
+  @@index([quoteId])
+  @@index([requisitionItemId])
+  @@map("purchase_quote_items")
+}
+
+model PurchaseOrder {
+  id                    String                     @id @default(cuid())
+  poNumber              String                     @unique @map("po_number")
+  requisitionId         String                     @map("requisition_id")
+  quoteId               String                     @map("quote_id")
+  vesselId              String                     @map("vessel_id")
+  vesselName            String                     @map("vessel_name")
+  poType                PurchasePoType             @default(GOODS) @map("po_type")
+  status                PurchasePoWorkflowStatus   @default(PO_CREATED)
+  completionStatus      PurchasePoCompletionStatus @default(OPEN) @map("completion_status")
+  totalAmount           Float                      @default(0) @map("total_amount")
+  currency              String                     @default("USD")
+  dateOfIssue           DateTime                   @default(now()) @map("date_of_issue")
+  isBudgeted            Boolean?                   @map("is_budgeted")
+  budgetCode            String?                    @map("budget_code")
+  glCode                String?                    @map("gl_code")
+  costCenter            String?                    @map("cost_center")
+  levelOneApprovedAt    DateTime?                  @map("level_one_approved_at")
+  levelOneApprovedById  String?                    @map("level_one_approved_by_id")
+  levelTwoApprovedAt    DateTime?                  @map("level_two_approved_at")
+  levelTwoApprovedById  String?                    @map("level_two_approved_by_id")
+  levelThreeApprovedAt  DateTime?                  @map("level_three_approved_at")
+  levelThreeApprovedById String?                   @map("level_three_approved_by_id")
+  sentAt                DateTime?                  @map("sent_at")
+  notes                 String?                    @db.Text
+  deletedAt             DateTime?                  @map("deleted_at")
+  createdAt             DateTime                   @default(now()) @map("created_at")
+  updatedAt             DateTime                   @updatedAt @map("updated_at")
+
+  requisition      PurchaseRequisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  quote            PurchaseQuote       @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  vessel           Vessel              @relation(fields: [vesselId], references: [id], onDelete: Cascade)
+  levelOneApprover Employee?           @relation("PurchaseOrderLevelOne", fields: [levelOneApprovedById], references: [id], onDelete: SetNull)
+  levelTwoApprover Employee?           @relation("PurchaseOrderLevelTwo", fields: [levelTwoApprovedById], references: [id], onDelete: SetNull)
+  levelThreeApprover Employee?         @relation("PurchaseOrderLevelThree", fields: [levelThreeApprovedById], references: [id], onDelete: SetNull)
+  invoices         PurchaseInvoice[]
+
+  @@index([requisitionId, dateOfIssue(sort: Desc)])
+  @@index([vesselId, dateOfIssue(sort: Desc)])
+  @@index([status, dateOfIssue(sort: Desc)])
+  @@index([quoteId])
+  @@index([deletedAt])
+  @@map("purchase_orders")
+}
+
+model PurchaseInvoice {
+  id                   String                        @id @default(cuid())
+  invoiceNumber        String                        @unique @map("invoice_number")
+  requisitionId        String                        @map("requisition_id")
+  purchaseOrderId      String?                       @map("purchase_order_id")
+  quoteId              String                        @map("quote_id")
+  vendorId             String                        @map("vendor_id")
+  invoiceDate          DateTime                      @map("invoice_date")
+  invoiceAmount        Float                         @map("invoice_amount")
+  currency             String                        @default("USD")
+  quoteAmount          Float                         @default(0) @map("quote_amount")
+  differenceAmount     Float                         @default(0) @map("difference_amount")
+  status               PurchaseInvoiceStatus         @default(READY_FOR_APPROVAL)
+  currentApprovalLevel PurchaseInvoiceApprovalLevel? @map("current_approval_level")
+  isBudgeted           Boolean?                      @map("is_budgeted")
+  invoiceFileUrl       String?                       @map("invoice_file_url")
+  paidAt               DateTime?                     @map("paid_at")
+  paidAmount           Float?                        @map("paid_amount")
+  paymentReference     String?                       @map("payment_reference")
+  deletedAt            DateTime?                     @map("deleted_at")
+  createdAt            DateTime                      @default(now()) @map("created_at")
+  updatedAt            DateTime                      @updatedAt @map("updated_at")
+
+  requisition   PurchaseRequisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  purchaseOrder PurchaseOrder?      @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  quote         PurchaseQuote       @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  vendor        PurchaseVendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([requisitionId])
+  @@index([purchaseOrderId])
+  @@index([vendorId])
+  @@index([status])
+  @@index([invoiceDate])
+  @@index([deletedAt])
+  @@map("purchase_invoices")
 }

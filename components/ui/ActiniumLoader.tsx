@@ -146,10 +146,12 @@ export function ActiniumLoaderOverlay({
   return (
     <div
       className={cn(
-        "actinium-loader-overlay-enter fixed inset-0 z-[9999] flex items-center justify-center",
+        "actinium-loader-overlay-enter fixed inset-0 z-[9000] flex items-center justify-center",
         "bg-background/75 backdrop-blur-[2px]",
         className,
       )}
+      // Keep top-nav menus (z-9999) clickable if the overlay ever sticks briefly.
+      style={{ pointerEvents: "auto" }}
       aria-hidden={false}
     >
       <div className="rounded-2xl border border-border/60 bg-card/90 px-10 py-8 shadow-lg">

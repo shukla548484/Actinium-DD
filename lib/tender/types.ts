@@ -252,6 +252,30 @@ export interface BucketTotal {
   byYard: Record<string, number | null>;
 }
 
+export type QuoteHealthSeverity = "low" | "medium" | "high";
+
+export interface YardQuoteHealthIssue {
+  severity: QuoteHealthSeverity;
+  title: string;
+  detail: string;
+}
+
+export interface YardQuoteHealth {
+  inviteId: string;
+  yardName: string;
+  score: number;
+  coveragePct: number;
+  pricedLines: number;
+  includedLines: number;
+  naLines: number;
+  ownerSupplyLines: number;
+  unresolvedLines: number;
+  lowConfidenceLines: number;
+  outlierLines: number;
+  extraLines: number;
+  issues: YardQuoteHealthIssue[];
+}
+
 export interface HybridComparison {
   project: ProjectDetail;
   yards: { id: string; name: string; sourceType: QuoteSource; status: YardInviteStatus }[];
@@ -259,6 +283,7 @@ export interface HybridComparison {
   extraRows: ComparisonRow[];
   bucketTotals: BucketTotal[];
   grandTotals: Record<string, number | null>;
+  health: YardQuoteHealth[];
 }
 
 /** @deprecated Use project categories via categoryLabelFromList. */

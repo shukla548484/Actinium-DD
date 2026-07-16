@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { InactivityMonitor } from "@/components/auth/InactivityMonitor";
 import { GlobalLoaderProvider } from "@/components/layout/GlobalLoaderProvider";
 import { PortalShell } from "@/components/layout/PortalShell";
+import { PwaBootstrap } from "@/components/mobile/PwaBootstrap";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -37,6 +38,7 @@ export default function RootLayout({
     >
       <body className="dd-app-shell bg-background text-foreground antialiased">
         <GlobalLoaderProvider>
+          <PwaBootstrap />
           <InactivityMonitor />
           <PortalShell>{children}</PortalShell>
         </GlobalLoaderProvider>

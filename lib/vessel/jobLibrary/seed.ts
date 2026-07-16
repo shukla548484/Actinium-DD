@@ -1,6 +1,10 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { JOB_LIBRARY_CATALOG, type JobLibrarySeedNode } from "./catalog";
+import {
+  DRY_DOCK_SHIPYARD_TEMPLATE_CATALOG,
+  JOB_LIBRARY_CATALOG,
+  type JobLibrarySeedNode,
+} from "./catalog";
 
 let seedPromise: Promise<void> | null = null;
 
@@ -36,12 +40,84 @@ async function insertNode(
   }
 }
 
+async function upsertNode(
+  node: JobLibrarySeedNode,
+  parentId: string | null,
+  sortOrder: number,
+): Promise<string> {
+  const existing = await prisma.jobLibraryNode.findFirst({
+    where: { parentId, code: node.code, deletedAt: null },
+    select: { id: true },
+  });
+
+  const data = {
+    parentId,
+    nodeType: node.nodeType,
+    code: node.code,
+    name: node.name,
+    description: node.description ?? null,
+    department: node.department ?? null,
+    workshop: node.workshop ?? null,
+    sortOrder,
+    referenceCode: node.referenceCode ?? null,
+    defaultPriority: node.defaultPriority ?? null,
+    estimatedManhours: node.estimatedManhours ?? null,
+    inputTemplate: (node.inputTemplate ?? null) as Prisma.InputJsonValue,
+    mtilPhase: node.mtilPhase ?? null,
+    mtilJobCode: node.mtilJobCode ?? null,
+    dynamicTemplateKey: node.dynamicTemplateKey ?? null,
+    mtilMeta: (node.mtilMeta ?? null) as Prisma.InputJsonValue,
+    isActive: true,
+  };
+
+  const id = existing
+    ? (
+        await prisma.jobLibraryNode.update({
+          where: { id: existing.id },
+          data,
+          select: { id: true },
+        })
+      ).id
+    : (
+        await prisma.jobLibraryNode.create({
+          data,
+          select: { id: true },
+        })
+      ).id;
+
+  for (let i = 0; i < (node.children?.length ?? 0); i++) {
+    await upsertNode(node.children![i]!, id, i);
+  }
+
+  return id;
+}
+
+export async function ensureDryDockShipyardTemplatesSeeded(): Promise<void> {
+  const maxSort = await prisma.jobLibraryNode.aggregate({
+    where: { parentId: null, deletedAt: null },
+    _max: { sortOrder: true },
+  });
+  const existing = await prisma.jobLibraryNode.findFirst({
+    where: { parentId: null, code: DRY_DOCK_SHIPYARD_TEMPLATE_CATALOG.code, deletedAt: null },
+    select: { sortOrder: true },
+  });
+
+  await upsertNode(
+    DRY_DOCK_SHIPYARD_TEMPLATE_CATALOG,
+    null,
+    existing?.sortOrder ?? (maxSort._max.sortOrder ?? -1) + 1,
+  );
+}
+
 export async function ensureJobLibrarySeeded(): Promise<void> {
   if (seedPromise) return seedPromise;
 
   seedPromise = (async () => {
     const count = await prisma.jobLibraryNode.count({ where: { deletedAt: null } });
-    if (count > 0) return;
+    if (count > 0) {
+      await ensureDryDockShipyardTemplatesSeeded();
+      return;
+    }
 
     for (let i = 0; i < JOB_LIBRARY_CATALOG.length; i++) {
       await insertNode(JOB_LIBRARY_CATALOG[i]!, null, i);

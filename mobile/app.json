@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "Actinium DD Mobile",
+    "slug": "actinium-dd-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "actiniumddmobile",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.actinium.ddmobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-sqlite",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Allow Actinium DD Mobile to take ship, job, and machinery photos for offline reports.",
+          "microphonePermission": false
+        }
+      ]
+    ]
+  }
+}

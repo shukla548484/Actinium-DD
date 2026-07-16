@@ -126,12 +126,12 @@ export function resolveActiveNavIdForUserType(
   if (pathname.startsWith("/ship-access")) return "shipAccess";
   if (pathname.startsWith("/superintendent")) return "superintendent";
   if (pathname.startsWith("/shipyard")) return "shipyard";
+  if (pathname.startsWith("/purchase")) return "purchase";
   if (pathname.startsWith("/admin/companies") || pathname.startsWith("/admin/vessels")) {
     return "company";
   }
   if (pathname.startsWith("/admin")) return "admin";
   if (pathname === "/projects/new") return "jobs";
-  if (pathname.includes("yards") || pathname.includes("comparison")) return "purchase";
   if (pathname.startsWith("/projects")) return "jobs";
   return "company";
 }

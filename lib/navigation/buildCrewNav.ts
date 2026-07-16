@@ -72,7 +72,11 @@ export function buildShipAccessNavItems(assignedPageKeys: string[]): ShipAccessN
 }
 
 export function buildCrewNavChildren(assignedPageKeys: string[]): TopNavChild[] {
-  return buildShipAccessNavItems(assignedPageKeys);
+  return buildShipAccessNavItems(assignedPageKeys).map(({ href, label, icon }) => ({
+    href,
+    label,
+    icon,
+  }));
 }
 
 export function buildCrewTopNavItems(assignedPageKeys: string[]): TopNavItem[] {
