@@ -50,6 +50,16 @@ export async function POST(request: Request) {
     description: typeof b.description === "string" ? b.description : null,
     requisitionType: typeof b.requisitionType === "string" ? b.requisitionType : "SPR",
     portOfSupply: typeof b.portOfSupply === "string" ? b.portOfSupply : null,
+    portAgentDetails: typeof b.portAgentDetails === "string" ? b.portAgentDetails : null,
+    manualReqNumber: typeof b.manualReqNumber === "string" ? b.manualReqNumber : null,
+    requisitionPurpose: typeof b.requisitionPurpose === "string" ? b.requisitionPurpose : null,
+    priority: typeof b.priority === "string" ? b.priority : null,
+    subCategoryCode: typeof b.subCategoryCode === "string" ? b.subCategoryCode : null,
+    budgetCode: typeof b.budgetCode === "string" ? b.budgetCode : null,
+    storeLocationId: typeof b.storeLocationId === "string" ? b.storeLocationId : null,
+    machineryAssetId: typeof b.machineryAssetId === "string" ? b.machineryAssetId : null,
+    spareManualMachineryName:
+      typeof b.spareManualMachineryName === "string" ? b.spareManualMachineryName : null,
     asDraft: Boolean(b.asDraft),
     items: itemsRaw
       .filter((i): i is Record<string, unknown> => !!i && typeof i === "object")
@@ -59,6 +69,8 @@ export async function POST(request: Request) {
         unit: typeof i.unit === "string" ? i.unit : "pcs",
         description: typeof i.description === "string" ? i.description : null,
         partNumber: typeof i.partNumber === "string" ? i.partNumber : null,
+        remarks: typeof i.remarks === "string" ? i.remarks : null,
+        machineryAssetId: typeof i.machineryAssetId === "string" ? i.machineryAssetId : null,
       })),
   });
 

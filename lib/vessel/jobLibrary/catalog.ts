@@ -706,6 +706,150 @@ export const CO2_FIXED_FIRE_SYSTEM_SURVEY_TEMPLATE: JobInputFieldDef[] = [
   ...commonApprovalFields,
 ];
 
+export const LIFEBOAT_LAUNCH_RECOVERY_TEMPLATE: JobInputFieldDef[] = [
+  ...commonJobInfoFields,
+  { key: "lifeboatNo", label: "Lifeboat / rescue boat no.", type: "text", section: "condition" },
+  scopeChecklist(["Inspect boat", "Inspect engine/battery", "Inspect release gear", "Lower to water if required", "Run engine", "Recover boat", "Record defects"]),
+  { key: "inspectionReport", label: "Inspection report - hull, hooks, release gear, painter, engine, fuel, battery, bilge pump, equipment and davit interface", type: "textarea", section: "repair" },
+  { key: "launchRecoveryTest", label: "Launch/recovery test - brake operation, lowering/recovery, engine run, steering, communications and final result", type: "textarea", section: "approval" },
+  ...commonRiskFields,
+  ...commonApprovalFields,
+];
+
+export const FIRE_DETECTION_ALARM_TEST_TEMPLATE: JobInputFieldDef[] = [
+  ...commonJobInfoFields,
+  { key: "systemName", label: "Fire detection system", type: "text", section: "condition" },
+  scopeChecklist(["Inspect panel", "Test detectors", "Test manual call points", "Test sounders/beacons", "Check fault alarms", "Check battery backup", "Record test sheet"]),
+  { key: "testRecord", label: "Test record - detector/call point location, method, response, panel indication, sounder/beacon and reset", type: "textarea", section: "repair" },
+  { key: "defectsRectified", label: "Defects found, rectified items and remaining punch list", type: "textarea", section: "approval" },
+  ...commonRiskFields,
+  ...commonApprovalFields,
+];
+
+export const EMERGENCY_GENERATOR_TEST_TEMPLATE: JobInputFieldDef[] = [
+  ...commonJobInfoFields,
+  { key: "generatorNo", label: "Emergency generator no.", type: "text", section: "condition" },
+  { key: "makeModel", label: "Make / model", type: "text", section: "condition" },
+  scopeChecklist(["Inspect engine", "Check fuel/oil/cooling", "Check batteries/charger", "Start locally/remotely", "Load test", "Blackout simulation if required", "Record alarms"]),
+  { key: "inspectionReport", label: "Inspection report - engine, alternator, batteries, charger, fuel system, cooling, exhaust, switchboard and ventilation", type: "textarea", section: "repair" },
+  { key: "loadTest", label: "Load test - voltage, frequency, current, kW, temperature, oil pressure, alarms and auto start/changeover", type: "textarea", section: "approval" },
+  ...commonRiskFields,
+  ...commonApprovalFields,
+];
+
+export const EMERGENCY_AIR_COMPRESSOR_TEST_TEMPLATE: JobInputFieldDef[] = [
+  ...commonJobInfoFields,
+  { key: "compressorNo", label: "Emergency air compressor no.", type: "text", section: "condition" },
+  scopeChecklist(["Inspect compressor", "Check oil/cooling", "Check drive motor/engine", "Drain receiver", "Run compressor", "Check safety valve", "Record charging time"]),
+  { key: "inspectionReport", label: "Inspection report - compressor, drive, belts/coupling, valves, cooler, receiver, drains, gauges and safety valve", type: "textarea", section: "repair" },
+  { key: "runTest", label: "Run test - start method, charging time, final pressure, safety valve, temperature, vibration and leaks", type: "textarea", section: "approval" },
+  ...commonRiskFields,
+  ...commonApprovalFields,
+];
+
+export const ANCHOR_CHAIN_CABLE_SURVEY_TEMPLATE: JobInputFieldDef[] = [
+  ...commonJobInfoFields,
+  { key: "chainSide", label: "Port / starboard chain", type: "text", section: "condition" },
+  { key: "cableLength", label: "Cable length", type: "text", section: "condition" },
+  scopeChecklist(["Range cable", "Clean chain", "Measure links", "Inspect shackles/swivels", "Inspect bitter end", "Mark cable", "Record class readings"]),
+  { key: "measurementReport", label: "Measurement report - link diameter, wastage percent, shots measured, shackles, swivel and anchor condition", type: "textarea", section: "repair" },
+  { key: "repairRenewalRecord", label: "Repair/renewal record - links/shackles renewed, markings, certificates and class remarks", type: "textarea", section: "approval" },
+  ...commonRiskFields,
+  ...commonApprovalFields,
+];
+
+export const MOORING_ROPE_WINCH_INSPECTION_TEMPLATE: JobInputFieldDef[] = [
+  ...commonJobInfoFields,
+  { key: "station", label: "Mooring station", type: "text", section: "condition" },
+  scopeChecklist(["Inspect ropes/wires", "Inspect winch drums", "Inspect fairleads/rollers", "Check brakes/clutches", "Lubricate", "Brake/render test", "Record defects"]),
+  { key: "inspectionReport", label: "Inspection report - ropes/wires, drums, fairleads, rollers, brakes, clutches, guards, foundations and controls", type: "textarea", section: "repair" },
+  { key: "testReport", label: "Test report - brake holding/rendering, control operation, emergency stop and final result", type: "textarea", section: "approval" },
+  ...commonRiskFields,
+  ...commonApprovalFields,
+];
+
+export const ACCOMMODATION_HVAC_DUCT_CLEAN_TEMPLATE: JobInputFieldDef[] = [
+  ...commonJobInfoFields,
+  { key: "areaLocation", label: "Accommodation area / duct section", type: "text", section: "condition" },
+  scopeChecklist(["Inspect ducts and filters", "Clean grills/diffusers", "Clean duct section", "Check fire dampers", "Check airflow", "Replace filters", "Record hygiene findings"]),
+  { key: "inspectionReport", label: "Inspection report - duct cleanliness, filters, dampers, grills, insulation, corrosion and access panels", type: "textarea", section: "repair" },
+  { key: "completionRecord", label: "Completion record - areas cleaned, filters renewed, airflow remarks and photographs", type: "photos_note", section: "approval" },
+  ...commonRiskFields,
+  ...commonApprovalFields,
+];
+
+export const WASTE_INCINERATOR_SERVICE_TEMPLATE: JobInputFieldDef[] = [
+  ...commonJobInfoFields,
+  { key: "incineratorNo", label: "Incinerator no.", type: "text", section: "condition" },
+  { key: "makeModel", label: "Make / model", type: "text", section: "condition" },
+  scopeChecklist(["Inspect refractory", "Clean chamber/flue", "Inspect burners", "Check fans/dampers", "Check safeties", "Operational burn test", "Record alarms"]),
+  { key: "inspectionReport", label: "Inspection report - refractory, burner, atomizer, fans, dampers, door seals, flue, controls and safeties", type: "textarea", section: "repair" },
+  { key: "burnTest", label: "Burn test - ignition, flame, chamber temperature, smoke, trips/alarms and final result", type: "textarea", section: "approval" },
+  ...commonRiskFields,
+  ...commonApprovalFields,
+];
+
+export const SEWAGE_TREATMENT_PLANT_SERVICE_TEMPLATE: JobInputFieldDef[] = [
+  ...commonJobInfoFields,
+  { key: "stpNo", label: "STP no.", type: "text", section: "condition" },
+  { key: "makeModel", label: "Make / model", type: "text", section: "condition" },
+  scopeChecklist(["Clean tanks/screens", "Inspect blowers/pumps", "Check aeration", "Check chlorination/UV", "Inspect valves/pipework", "Operational test", "Record effluent checks"]),
+  { key: "inspectionReport", label: "Inspection report - tank condition, blowers, pumps, diffusers, screens, valves, dosing/UV and alarms", type: "textarea", section: "repair" },
+  { key: "testReport", label: "Test report - flow, aeration, pump operation, chlorine/UV, alarms, odor/leakage and effluent remarks", type: "textarea", section: "approval" },
+  ...commonRiskFields,
+  ...commonApprovalFields,
+];
+
+export const QUICK_CLOSING_VALVE_TEST_TEMPLATE: JobInputFieldDef[] = [
+  ...commonJobInfoFields,
+  { key: "valveGroup", label: "Quick closing valve group", type: "text", section: "condition" },
+  scopeChecklist(["Inspect valve list", "Check remote release", "Test individual valves", "Reset valves", "Rectify stiff/leaking valves", "Verify labels", "Record result"]),
+  { key: "testRecord", label: "Test record - valve tag, location, service, remote release response, local reset, leakage and remarks", type: "textarea", section: "repair" },
+  { key: "defectsRectified", label: "Defects found/rectified and final acceptance", type: "textarea", section: "approval" },
+  ...commonRiskFields,
+  ...commonApprovalFields,
+];
+
+export const REMOTE_VALVE_CONTROL_TEST_TEMPLATE: JobInputFieldDef[] = [
+  ...commonJobInfoFields,
+  { key: "systemName", label: "Remote valve control system", type: "text", section: "condition" },
+  scopeChecklist(["Inspect hydraulic/pneumatic power pack", "Check controls", "Operate valves remotely", "Check position feedback", "Inspect leaks", "Test emergency operation", "Record valve status"]),
+  { key: "testRecord", label: "Test record - valve tag, command, actual operation, feedback indication, time to operate, leakage and faults", type: "textarea", section: "repair" },
+  { key: "repairDetails", label: "Repair details and final operational result", type: "textarea", section: "approval" },
+  ...commonRiskFields,
+  ...commonApprovalFields,
+];
+
+export const TANK_LEVEL_GAUGE_SERVICE_TEMPLATE: JobInputFieldDef[] = [
+  ...commonJobInfoFields,
+  { key: "tankGaugeList", label: "Tank gauge list", type: "textarea", section: "condition" },
+  scopeChecklist(["Inspect sensors/transmitters", "Clean still pipes/floats", "Check local/remote readings", "Calibrate", "Test high/high-high alarms", "Record offsets", "Attach certificates"]),
+  { key: "calibrationRecord", label: "Calibration record - tank, sensor, actual reading, remote reading, adjustment, alarm setpoints and result", type: "textarea", section: "repair" },
+  { key: "certificateRefs", label: "Certificate/report references and attachments", type: "photos_note", section: "approval" },
+  ...commonRiskFields,
+  ...commonApprovalFields,
+];
+
+export const GAS_DETECTION_SYSTEM_TEST_TEMPLATE: JobInputFieldDef[] = [
+  ...commonJobInfoFields,
+  { key: "systemArea", label: "Gas detection area", type: "text", section: "condition" },
+  scopeChecklist(["Inspect detectors", "Check sample lines", "Apply test gas", "Check alarms/trips", "Calibrate sensors", "Check logger", "Attach calibration certificates"]),
+  { key: "testRecord", label: "Test record - detector tag, gas type, calibration gas, reading, alarm level, trip response and result", type: "textarea", section: "repair" },
+  { key: "certificateRefs", label: "Calibration certificate references and attachments", type: "photos_note", section: "approval" },
+  ...commonRiskFields,
+  ...commonApprovalFields,
+];
+
+export const LOAD_LINE_MARK_DRAFT_MARK_PAINT_TEMPLATE: JobInputFieldDef[] = [
+  ...commonJobInfoFields,
+  { key: "hullSide", label: "Hull side / location", type: "text", section: "condition" },
+  scopeChecklist(["Inspect existing marks", "Verify dimensions", "Prepare surface", "Paint draft marks", "Paint load line marks", "Photograph completed marks", "Surveyor verification"]),
+  { key: "measurementRecord", label: "Measurement/verification record - mark position, dimensions, side, color and surveyor comments", type: "textarea", section: "repair" },
+  { key: "photoRefs", label: "Final photographs / survey report attachments", type: "photos_note", section: "approval" },
+  ...commonRiskFields,
+  ...commonApprovalFields,
+];
+
 export const DRY_DOCK_SHIPYARD_TEMPLATE_CATALOG: JobLibrarySeedNode = {
   code: "dry_dock_shipyard_templates",
   name: "Dry Dock / Shipyard Templates",
@@ -851,6 +995,48 @@ export const DRY_DOCK_SHIPYARD_TEMPLATE_CATALOG: JobLibrarySeedNode = {
       ]),
       system("dd_co2_fixed_fire", "CO2 Fixed Fire System", "Safety", [
         stdJob("dd_tpl_co2_fixed_fire_system_survey", "CO2 fixed fire system survey template", { referenceCode: "DD-TPL-46", estimatedManhours: 6, defaultPriority: "high", inputTemplate: CO2_FIXED_FIRE_SYSTEM_SURVEY_TEMPLATE }),
+      ]),
+      system("dd_lifeboat_launch", "Lifeboat Launch / Recovery", "Safety", [
+        stdJob("dd_tpl_lifeboat_launch_recovery", "Lifeboat launch and recovery test template", { referenceCode: "DD-TPL-47", estimatedManhours: 8, defaultPriority: "high", inputTemplate: LIFEBOAT_LAUNCH_RECOVERY_TEMPLATE }),
+      ]),
+      system("dd_fire_detection", "Fire Detection", "Safety", [
+        stdJob("dd_tpl_fire_detection_alarm_test", "Fire detection alarm test template", { referenceCode: "DD-TPL-48", estimatedManhours: 8, defaultPriority: "high", inputTemplate: FIRE_DETECTION_ALARM_TEST_TEMPLATE }),
+      ]),
+      system("dd_emergency_generator", "Emergency Generator", "Electrical", [
+        stdJob("dd_tpl_emergency_generator_test", "Emergency generator test template", { referenceCode: "DD-TPL-49", estimatedManhours: 8, defaultPriority: "high", inputTemplate: EMERGENCY_GENERATOR_TEST_TEMPLATE }),
+      ]),
+      system("dd_emergency_air_compressor", "Emergency Air Compressor", "Machinery", [
+        stdJob("dd_tpl_emergency_air_compressor_test", "Emergency air compressor test template", { referenceCode: "DD-TPL-50", estimatedManhours: 6, defaultPriority: "high", inputTemplate: EMERGENCY_AIR_COMPRESSOR_TEST_TEMPLATE }),
+      ]),
+      system("dd_anchor_chain", "Anchor Chain / Cable", "Deck", [
+        stdJob("dd_tpl_anchor_chain_cable_survey", "Anchor chain and cable survey template", { referenceCode: "DD-TPL-51", estimatedManhours: 16, defaultPriority: "high", inputTemplate: ANCHOR_CHAIN_CABLE_SURVEY_TEMPLATE }),
+      ]),
+      system("dd_mooring_rope_winch", "Mooring Rope / Winch", "Deck", [
+        stdJob("dd_tpl_mooring_rope_winch_inspection", "Mooring rope and winch inspection template", { referenceCode: "DD-TPL-52", estimatedManhours: 8, inputTemplate: MOORING_ROPE_WINCH_INSPECTION_TEMPLATE }),
+      ]),
+      system("dd_accommodation_hvac_duct", "Accommodation HVAC Duct", "Accommodation", [
+        stdJob("dd_tpl_accommodation_hvac_duct_clean", "Accommodation HVAC duct cleaning template", { referenceCode: "DD-TPL-53", estimatedManhours: 16, inputTemplate: ACCOMMODATION_HVAC_DUCT_CLEAN_TEMPLATE }),
+      ]),
+      system("dd_waste_incinerator", "Waste Incinerator", "Machinery", [
+        stdJob("dd_tpl_waste_incinerator_service", "Waste incinerator service template", { referenceCode: "DD-TPL-54", estimatedManhours: 8, inputTemplate: WASTE_INCINERATOR_SERVICE_TEMPLATE }),
+      ]),
+      system("dd_sewage_treatment", "Sewage Treatment Plant", "Machinery", [
+        stdJob("dd_tpl_sewage_treatment_plant_service", "Sewage treatment plant service template", { referenceCode: "DD-TPL-55", estimatedManhours: 12, inputTemplate: SEWAGE_TREATMENT_PLANT_SERVICE_TEMPLATE }),
+      ]),
+      system("dd_quick_closing_valves", "Quick Closing Valves", "Safety", [
+        stdJob("dd_tpl_quick_closing_valve_test", "Quick closing valve test template", { referenceCode: "DD-TPL-56", estimatedManhours: 6, defaultPriority: "high", inputTemplate: QUICK_CLOSING_VALVE_TEST_TEMPLATE }),
+      ]),
+      system("dd_remote_valve_control", "Remote Valve Control", "Valves", [
+        stdJob("dd_tpl_remote_valve_control_test", "Remote valve control test template", { referenceCode: "DD-TPL-57", estimatedManhours: 8, defaultPriority: "high", inputTemplate: REMOTE_VALVE_CONTROL_TEST_TEMPLATE }),
+      ]),
+      system("dd_tank_level_gauge", "Tank Level Gauge", "Instrumentation", [
+        stdJob("dd_tpl_tank_level_gauge_service", "Tank level gauge service template", { referenceCode: "DD-TPL-58", estimatedManhours: 8, inputTemplate: TANK_LEVEL_GAUGE_SERVICE_TEMPLATE }),
+      ]),
+      system("dd_gas_detection", "Gas Detection", "Instrumentation", [
+        stdJob("dd_tpl_gas_detection_system_test", "Gas detection system test template", { referenceCode: "DD-TPL-59", estimatedManhours: 8, defaultPriority: "high", inputTemplate: GAS_DETECTION_SYSTEM_TEST_TEMPLATE }),
+      ]),
+      system("dd_load_line_draft_marks", "Load Line / Draft Marks", "Hull", [
+        stdJob("dd_tpl_load_line_mark_draft_mark_paint", "Load line and draft mark painting template", { referenceCode: "DD-TPL-60", estimatedManhours: 8, defaultPriority: "high", inputTemplate: LOAD_LINE_MARK_DRAFT_MARK_PAINT_TEMPLATE }),
       ]),
     ]),
   ],

@@ -264,6 +264,83 @@ async function main() {
   });
   console.log(`  ✓ Invoice ${invNumber}`);
 
+  const storeSeeds = [
+    { code: "ER-STORE", name: "Engine Room Store" },
+    { code: "DECK-STORE", name: "Deck Store" },
+    { code: "BOND", name: "Bonded Store" },
+  ];
+  for (const s of storeSeeds) {
+    await prisma.purchaseStoreLocation.upsert({
+      where: { vesselId_code: { vesselId: vessel.id, code: s.code } },
+      create: { vesselId: vessel.id, code: s.code, name: s.name, isActive: true },
+      update: { name: s.name, isActive: true, deletedAt: null },
+    });
+  }
+  console.log(`  ✓ ${storeSeeds.length} store locations`);
+
+  const impaSeeds = [
+    { impaCode: "170101", itemName: "Gloves, working, leather", unit: "prs", category: "stores" },
+    { impaCode: "330101", itemName: "Rags, cotton, cleaning", unit: "kg", category: "stores" },
+    { impaCode: "450101", itemName: "Paint brush, flat 50mm", unit: "pcs", category: "stores" },
+    { impaCode: "000201", itemName: "Coffee, instant", unit: "kg", category: "provision" },
+    { impaCode: "001101", itemName: "Rice, long grain", unit: "kg", category: "provision" },
+    { impaCode: "050101", itemName: "Milk, UHT", unit: "ltr", category: "provision" },
+    { impaCode: "550101", itemName: "Degreaser, heavy duty", unit: "ltr", category: "chemical" },
+    { impaCode: "551201", itemName: "Detergent, general purpose", unit: "ltr", category: "chemical" },
+    { impaCode: "552501", itemName: "Disinfectant, chlorine based", unit: "ltr", category: "chemical" },
+  ];
+  for (const row of impaSeeds) {
+    await prisma.purchaseImpaCode.upsert({
+      where: { impaCode: row.impaCode },
+      create: row,
+      update: {
+        itemName: row.itemName,
+        unit: row.unit,
+        category: row.category,
+        isActive: true,
+        deletedAt: null,
+      },
+    });
+  }
+  console.log(`  ✓ ${impaSeeds.length} IMPA catalogue codes`);
+
+  const machineryCount = await prisma.vesselMachineryAsset.count({
+    where: { vesselId: vessel.id, deletedAt: null },
+  });
+  if (machineryCount === 0) {
+    await prisma.vesselMachineryAsset.createMany({
+      data: [
+        {
+          vesselId: vessel.id,
+          department: "Engine",
+          name: "Main Engine",
+          maker: "MAN",
+          model: "6S50ME-C",
+          serialNumber: "ME-DEMO-001",
+        },
+        {
+          vesselId: vessel.id,
+          department: "Engine",
+          name: "Auxiliary Engine No.1",
+          maker: "Yanmar",
+          model: "6EY18ALW",
+          serialNumber: "AE-DEMO-001",
+        },
+        {
+          vesselId: vessel.id,
+          department: "Deck",
+          name: "Mooring Winch Fwd",
+          maker: "TTS",
+          model: "MW-40",
+          serialNumber: "DK-DEMO-001",
+        },
+      ],
+    });
+    console.log("  ✓ Sample machinery assets for SPR picker");
+  } else {
+    console.log(`  ✓ Vessel already has ${machineryCount} machinery asset(s)`);
+  }
+
   console.log("Purchase sample seed complete.");
 }
 

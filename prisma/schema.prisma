@@ -175,6 +175,7 @@ model Vessel {
   vesselRequisitions VesselRequisition[]
   purchaseRequisitions PurchaseRequisition[]
   purchaseOrders       PurchaseOrder[]
+  purchaseStoreLocations PurchaseStoreLocation[]
   technicalProfile  VesselTechnicalProfile?
   machineryAssets   VesselMachineryAsset[]
   machineryRunningHoursEntries VesselMachineryRunningHoursEntry[]
@@ -224,6 +225,7 @@ model Employee {
   assignedYardInvites YardInvite[] @relation("YardInviteEstimator")
   purchaseRequisitionsCreated  PurchaseRequisition[] @relation("PurchaseRequisitionCreator")
   purchaseRequisitionsApproved PurchaseRequisition[] @relation("PurchaseRequisitionApprover")
+  purchaseItemAttachments      PurchaseRequisitionItemAttachment[] @relation("PurchaseItemAttachmentUploader")
   purchaseOrdersLevelOne       PurchaseOrder[]       @relation("PurchaseOrderLevelOne")
   purchaseOrdersLevelTwo       PurchaseOrder[]       @relation("PurchaseOrderLevelTwo")
   purchaseOrdersLevelThree     PurchaseOrder[]       @relation("PurchaseOrderLevelThree")
@@ -1606,6 +1608,8 @@ model VesselMachineryAsset {
   runningHoursLogs  VesselMachineryRunningHoursEntry[]
   parameterLogs     VesselMachineryParameterEntry[]
   conditionReports  VesselMachineryConditionReport[]
+  purchaseRequisitions PurchaseRequisition[]
+  purchaseRequisitionItems PurchaseRequisitionItem[]
 
   @@index([vesselId, department])
   @@index([deletedAt])
@@ -2823,6 +2827,7 @@ model PurchaseRequisition {
   heading              String
   description          String?                     @db.Text
   portOfSupply         String?                     @map("port_of_supply")
+  portAgentDetails     String?                     @map("port_agent_details") @db.Text
   requisitionType      PurchaseReqType             @map("requisition_type")
   generationStatus     PurchaseReqGenerationStatus @default(SAVED_AS_DRAFT) @map("generation_status")
   status               PurchaseReqStatus           @default(NOT_READY)
@@ -2834,6 +2839,9 @@ model PurchaseRequisition {
   glCode               String?                     @map("gl_code")
   costCenter           String?                     @map("cost_center")
   subCategoryCode      String?                     @map("sub_category_code")
+  storeLocationId      String?                     @map("store_location_id")
+  machineryAssetId     String?                     @map("machinery_asset_id")
+  spareManualMachineryName String?                 @map("spare_manual_machinery_name")
   vesselId             String                      @map("vessel_id")
   createdById          String                      @map("created_by_id")
   approvedById         String?                     @map("approved_by_id")
@@ -2845,45 +2853,110 @@ model PurchaseRequisition {
   createdAt            DateTime                    @default(now()) @map("created_at")
   updatedAt            DateTime                    @updatedAt @map("updated_at")
 
-  vessel    Vessel               @relation(fields: [vesselId], references: [id], onDelete: Cascade)
-  createdBy Employee             @relation("PurchaseRequisitionCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  approvedBy Employee?           @relation("PurchaseRequisitionApprover", fields: [approvedById], references: [id], onDelete: SetNull)
-  parent    PurchaseRequisition? @relation("PurchaseRequisitionChildren", fields: [parentRequisitionId], references: [id], onDelete: SetNull)
-  children  PurchaseRequisition[] @relation("PurchaseRequisitionChildren")
-  items     PurchaseRequisitionItem[]
-  quotes    PurchaseQuote[]
+  vessel         Vessel                 @relation(fields: [vesselId], references: [id], onDelete: Cascade)
+  createdBy      Employee               @relation("PurchaseRequisitionCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  approvedBy     Employee?              @relation("PurchaseRequisitionApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  parent         PurchaseRequisition?   @relation("PurchaseRequisitionChildren", fields: [parentRequisitionId], references: [id], onDelete: SetNull)
+  children       PurchaseRequisition[]  @relation("PurchaseRequisitionChildren")
+  storeLocation  PurchaseStoreLocation? @relation(fields: [storeLocationId], references: [id], onDelete: SetNull)
+  machineryAsset VesselMachineryAsset?  @relation(fields: [machineryAssetId], references: [id], onDelete: SetNull)
+  items          PurchaseRequisitionItem[]
+  quotes         PurchaseQuote[]
   purchaseOrders PurchaseOrder[]
-  invoices  PurchaseInvoice[]
+  invoices       PurchaseInvoice[]
 
   @@index([vesselId, createdAt(sort: Desc)])
   @@index([vesselId, status, createdAt(sort: Desc)])
   @@index([status, createdAt(sort: Desc)])
   @@index([createdById])
+  @@index([storeLocationId])
+  @@index([machineryAssetId])
   @@index([deletedAt])
   @@map("purchase_requisitions")
 }
 
 model PurchaseRequisitionItem {
-  id              String   @id @default(cuid())
-  requisitionId   String   @map("requisition_id")
-  itemName        String   @map("item_name")
-  description     String?  @db.Text
-  partNumber      String?  @map("part_number")
-  drawingNumber   String?  @map("drawing_number")
-  quantity        Float    @default(1)
-  unit            String   @default("pcs")
-  remarks         String?
-  sortOrder       Int      @default(0) @map("sort_order")
-  deletedAt       DateTime? @map("deleted_at")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  id               String    @id @default(cuid())
+  requisitionId    String    @map("requisition_id")
+  itemName         String    @map("item_name")
+  description      String?   @db.Text
+  partNumber       String?   @map("part_number")
+  drawingNumber    String?   @map("drawing_number")
+  quantity         Float     @default(1)
+  unit             String    @default("pcs")
+  remarks          String?
+  machineryAssetId String?   @map("machinery_asset_id")
+  sortOrder        Int       @default(0) @map("sort_order")
+  deletedAt        DateTime? @map("deleted_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
 
-  requisition PurchaseRequisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
-  quoteItems  PurchaseQuoteItem[]
+  requisition    PurchaseRequisition                 @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  machineryAsset VesselMachineryAsset?               @relation(fields: [machineryAssetId], references: [id], onDelete: SetNull)
+  quoteItems     PurchaseQuoteItem[]
+  attachments    PurchaseRequisitionItemAttachment[]
 
   @@index([requisitionId, sortOrder])
+  @@index([machineryAssetId])
   @@index([deletedAt])
   @@map("purchase_requisition_items")
+}
+
+model PurchaseRequisitionItemAttachment {
+  id                String    @id @default(cuid())
+  requisitionItemId String    @map("requisition_item_id")
+  fileName          String    @map("file_name")
+  mimeType          String?   @map("mime_type")
+  fileSize          Int?      @map("file_size")
+  fileUrl           String    @map("file_url")
+  uploadedById      String?   @map("uploaded_by_id")
+  deletedAt         DateTime? @map("deleted_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  requisitionItem PurchaseRequisitionItem @relation(fields: [requisitionItemId], references: [id], onDelete: Cascade)
+  uploadedBy      Employee?               @relation("PurchaseItemAttachmentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([requisitionItemId])
+  @@index([deletedAt])
+  @@map("purchase_requisition_item_attachments")
+}
+
+/// Vessel store / inventory location for STR requisitions.
+model PurchaseStoreLocation {
+  id        String    @id @default(cuid())
+  vesselId  String    @map("vessel_id")
+  name      String
+  code      String
+  isActive  Boolean   @default(true) @map("is_active")
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  vessel       Vessel                @relation(fields: [vesselId], references: [id], onDelete: Cascade)
+  requisitions PurchaseRequisition[]
+
+  @@unique([vesselId, code])
+  @@index([vesselId, isActive])
+  @@index([deletedAt])
+  @@map("purchase_store_locations")
+}
+
+/// IMPA catalogue codes for store / provision / chemical item search.
+model PurchaseImpaCode {
+  id        String    @id @default(cuid())
+  impaCode  String    @unique @map("impa_code")
+  itemName  String    @map("item_name")
+  unit      String?
+  category  String?
+  isActive  Boolean   @default(true) @map("is_active")
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@index([itemName])
+  @@index([isActive])
+  @@index([deletedAt])
+  @@map("purchase_impa_codes")
 }
 
 model PurchaseQuote {

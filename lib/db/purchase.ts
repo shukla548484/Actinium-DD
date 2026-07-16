@@ -195,6 +195,15 @@ export type CreatePurchaseRequisitionInput = {
   description?: string | null;
   requisitionType: string;
   portOfSupply?: string | null;
+  portAgentDetails?: string | null;
+  manualReqNumber?: string | null;
+  requisitionPurpose?: string | null;
+  priority?: string | null;
+  subCategoryCode?: string | null;
+  budgetCode?: string | null;
+  storeLocationId?: string | null;
+  machineryAssetId?: string | null;
+  spareManualMachineryName?: string | null;
   asDraft?: boolean;
   items?: Array<{
     itemName: string;
@@ -202,11 +211,15 @@ export type CreatePurchaseRequisitionInput = {
     unit?: string;
     description?: string | null;
     partNumber?: string | null;
+    remarks?: string | null;
+    machineryAssetId?: string | null;
   }>;
 };
 
-async function nextRequisitionNumber(vesselCode: string): Promise<string> {
-  const prefix = `PR-${vesselCode.replace(/[^A-Za-z0-9]/g, "").slice(0, 8).toUpperCase() || "GEN"}`;
+async function nextRequisitionNumber(vesselCode: string, type: string): Promise<string> {
+  const code = vesselCode.replace(/[^A-Za-z0-9]/g, "").slice(0, 4).toUpperCase() || "GEN";
+  const yy = String(new Date().getFullYear()).slice(-2);
+  const prefix = `0.${code}.${type}.${yy}.`;
   const latest = await prisma.purchaseRequisition.findFirst({
     where: { requisitionNumber: { startsWith: prefix } },
     orderBy: { requisitionNumber: "desc" },
@@ -214,18 +227,18 @@ async function nextRequisitionNumber(vesselCode: string): Promise<string> {
   });
   let seq = 1;
   if (latest?.requisitionNumber) {
-    const tail = latest.requisitionNumber.split("-").pop();
+    const tail = latest.requisitionNumber.split(".").pop();
     const n = Number(tail);
     if (Number.isFinite(n)) seq = n + 1;
   }
-  return `${prefix}-${String(seq).padStart(4, "0")}`;
+  return `${prefix}${String(seq).padStart(4, "0")}`;
 }
 
 export async function createPurchaseRequisition(
   ctx: PurchaseAccessContext,
   input: CreatePurchaseRequisitionInput,
 ): Promise<
-  | { id: string; requisitionNumber: string }
+  | { id: string; requisitionNumber: string; items: Array<{ id: string; sortOrder: number }> }
   | { error: string; status: number }
 > {
   if (!ctx.employeeId) {
@@ -254,18 +267,64 @@ export async function createPurchaseRequisition(
 
   const asDraft = Boolean(input.asDraft);
   const items = (input.items ?? []).filter((i) => i.itemName?.trim());
+  if (!asDraft && items.length === 0) {
+    return { error: "At least one line item is required to submit.", status: 400 };
+  }
 
-  const requisitionNumber = await nextRequisitionNumber(vessel.code);
+  const priority = input.priority?.trim() || "NORMAL";
+  if (!["NORMAL", "URGENT", "CRITICAL"].includes(priority)) {
+    return { error: "Invalid urgency.", status: 400 };
+  }
+
+  let storeLocationId: string | null = null;
+  if (input.storeLocationId?.trim()) {
+    const store = await prisma.purchaseStoreLocation.findFirst({
+      where: {
+        id: input.storeLocationId.trim(),
+        vesselId: vessel.id,
+        isActive: true,
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+    if (!store) return { error: "Store location not found for this vessel.", status: 400 };
+    storeLocationId = store.id;
+  }
+
+  let machineryAssetId: string | null = null;
+  if (input.machineryAssetId?.trim()) {
+    const asset = await prisma.vesselMachineryAsset.findFirst({
+      where: {
+        id: input.machineryAssetId.trim(),
+        vesselId: vessel.id,
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+    if (!asset) return { error: "Machinery asset not found for this vessel.", status: 400 };
+    machineryAssetId = asset.id;
+  }
+
+  const requisitionNumber = await nextRequisitionNumber(vessel.code, input.requisitionType);
 
   const created = await prisma.purchaseRequisition.create({
     data: {
       requisitionNumber,
+      manualReqNumber: input.manualReqNumber?.trim() || null,
       heading,
       description: input.description?.trim() || null,
       portOfSupply: input.portOfSupply?.trim() || null,
+      portAgentDetails: input.portAgentDetails?.trim() || null,
       requisitionType: input.requisitionType as PurchaseReqType,
       generationStatus: asDraft ? "SAVED_AS_DRAFT" : "CREATED",
       status: asDraft ? "NOT_READY" : "NEW_REQ",
+      priority,
+      requisitionPurpose: input.requisitionPurpose?.trim() || "ROUTINE_MAINTENANCE",
+      subCategoryCode: input.subCategoryCode?.trim() || null,
+      budgetCode: input.budgetCode?.trim() || null,
+      storeLocationId,
+      machineryAssetId,
+      spareManualMachineryName: input.spareManualMachineryName?.trim() || null,
       vesselId: vessel.id,
       createdById: ctx.employeeId,
       items: items.length
@@ -276,15 +335,203 @@ export async function createPurchaseRequisition(
               unit: item.unit?.trim() || "pcs",
               description: item.description?.trim() || null,
               partNumber: item.partNumber?.trim() || null,
+              remarks: item.remarks?.trim() || null,
+              machineryAssetId: item.machineryAssetId?.trim() || machineryAssetId,
               sortOrder: index,
             })),
           }
         : undefined,
     },
-    select: { id: true, requisitionNumber: true },
+    select: {
+      id: true,
+      requisitionNumber: true,
+      items: { select: { id: true, sortOrder: true }, orderBy: { sortOrder: "asc" } },
+    },
   });
 
   return created;
+}
+
+export async function searchPurchaseImpaCodes(opts: {
+  q?: string | null;
+  limit?: number;
+  scope?: "provision" | "chemical" | null;
+}): Promise<Array<{ id: string; impaCode: string; itemName: string; unit: string | null }>> {
+  const q = opts.q?.trim() ?? "";
+  const limit = Math.min(Math.max(opts.limit ?? 20, 1), 50);
+  const scope = opts.scope ?? null;
+
+  if (!scope && q.length < 2) return [];
+  if (scope && q.length === 1) return [];
+
+  const rows = await prisma.purchaseImpaCode.findMany({
+    where: {
+      deletedAt: null,
+      isActive: true,
+      ...(q
+        ? {
+            OR: [
+              { impaCode: { contains: q, mode: "insensitive" } },
+              { itemName: { contains: q, mode: "insensitive" } },
+            ],
+          }
+        : {}),
+    },
+    orderBy: [{ impaCode: "asc" }],
+    take: limit * 3,
+    select: { id: true, impaCode: true, itemName: true, unit: true },
+  });
+
+  const filtered = rows.filter((row) => {
+    if (!scope) return true;
+    const digits = row.impaCode.replace(/\D/g, "");
+    const n = digits ? Number.parseInt(digits, 10) : NaN;
+    if (!Number.isFinite(n)) return false;
+    if (scope === "chemical") return n >= 550_000 && n <= 559_999;
+    // provision / welfare band (000101–101939)
+    return n >= 101 && n <= 101_939;
+  });
+
+  return filtered.slice(0, limit);
+}
+
+export async function listPurchaseStoreLocations(
+  ctx: PurchaseAccessContext,
+  vesselId: string,
+): Promise<
+  | Array<{ id: string; name: string; code: string }>
+  | { error: string; status: number }
+> {
+  const scope = vesselScopeWhere(ctx, vesselId);
+  if (scope === null) return { error: "Access denied to this vessel.", status: 403 };
+
+  return prisma.purchaseStoreLocation.findMany({
+    where: { vesselId, isActive: true, deletedAt: null },
+    orderBy: [{ code: "asc" }],
+    select: { id: true, name: true, code: true },
+  });
+}
+
+export async function listPurchaseMachineryForVessel(
+  ctx: PurchaseAccessContext,
+  vesselId: string,
+  limit = 1000,
+): Promise<
+  | Array<{
+      id: string;
+      name: string;
+      code: string | null;
+      make: string | null;
+      model: string | null;
+      serialNumber: string | null;
+      vesselName: string | null;
+      machineryType: string | null;
+    }>
+  | { error: string; status: number }
+> {
+  const scope = vesselScopeWhere(ctx, vesselId);
+  if (scope === null) return { error: "Access denied to this vessel.", status: 403 };
+
+  const vessel = await prisma.vessel.findFirst({
+    where: { id: vesselId, deletedAt: null },
+    select: { id: true, name: true },
+  });
+  if (!vessel) return { error: "Vessel not found.", status: 404 };
+
+  const assets = await prisma.vesselMachineryAsset.findMany({
+    where: { vesselId, deletedAt: null },
+    orderBy: [{ department: "asc" }, { name: "asc" }],
+    take: Math.min(limit, 1000),
+    select: {
+      id: true,
+      name: true,
+      maker: true,
+      model: true,
+      serialNumber: true,
+      department: true,
+    },
+  });
+
+  return assets.map((a) => ({
+    id: a.id,
+    name: a.name,
+    code: a.department || null,
+    make: a.maker,
+    model: a.model,
+    serialNumber: a.serialNumber,
+    vesselName: vessel.name,
+    machineryType: a.department,
+  }));
+}
+
+export async function uploadPurchaseItemAttachment(
+  ctx: PurchaseAccessContext,
+  input: {
+    requisitionId: string;
+    itemId: string;
+    file: File;
+  },
+): Promise<
+  | { id: string; fileName: string; mimeType: string | null; fileSize: number; fileUrl: string }
+  | { error: string; status: number }
+> {
+  const item = await prisma.purchaseRequisitionItem.findFirst({
+    where: {
+      id: input.itemId,
+      requisitionId: input.requisitionId,
+      deletedAt: null,
+      requisition: { deletedAt: null },
+    },
+    select: {
+      id: true,
+      requisition: { select: { id: true, vesselId: true } },
+    },
+  });
+  if (!item) return { error: "Requisition item not found.", status: 404 };
+
+  const scope = vesselScopeWhere(ctx, item.requisition.vesselId);
+  if (scope === null) return { error: "Access denied to this vessel.", status: 403 };
+
+  const allowed = new Set(["application/pdf", "image/jpeg", "image/jpg", "image/png"]);
+  const mime = input.file.type || "application/octet-stream";
+  if (!allowed.has(mime)) {
+    return { error: "Only PDF, JPEG, and PNG attachments are allowed.", status: 400 };
+  }
+  if (input.file.size > 10 * 1024 * 1024) {
+    return { error: "Attachment must be 10 MB or smaller.", status: 400 };
+  }
+
+  const { saveLocalUpload } = await import("@/lib/storage/localUpload");
+  const saved = await saveLocalUpload({
+    file: input.file,
+    segments: ["purchase", "requisitions", input.requisitionId, input.itemId],
+  });
+
+  const row = await prisma.purchaseRequisitionItemAttachment.create({
+    data: {
+      requisitionItemId: item.id,
+      fileName: saved.fileName,
+      mimeType: saved.mimeType,
+      fileSize: saved.fileSize,
+      fileUrl: saved.fileUrl,
+      uploadedById: ctx.employeeId,
+    },
+    select: {
+      id: true,
+      fileName: true,
+      mimeType: true,
+      fileSize: true,
+      fileUrl: true,
+    },
+  });
+
+  return {
+    id: row.id,
+    fileName: row.fileName,
+    mimeType: row.mimeType,
+    fileSize: row.fileSize ?? saved.fileSize,
+    fileUrl: row.fileUrl,
+  };
 }
 
 export async function listPurchaseVendors(opts: {
