@@ -42,12 +42,14 @@ export async function getUserPermissions(userId: string): Promise<Set<string>> {
         },
       },
       permissionOverrides: { include: { permission: true } },
+      employeeProfile: { select: { id: true } },
     },
   });
 
   if (!user) return new Set();
 
   const keys = new Set<string>();
+  const roleCodes = new Set(user.userRoles.map((ur) => ur.role.code));
 
   for (const ur of user.userRoles) {
     for (const rp of ur.role.rolePermissions) {
@@ -58,6 +60,23 @@ export async function getUserPermissions(userId: string): Promise<Set<string>> {
   for (const ov of user.permissionOverrides) {
     if (ov.granted) keys.add(ov.permission.key);
     else keys.delete(ov.permission.key);
+  }
+
+  // System admins keep full role catalog (module assignment not required).
+  if (keys.has("platform.tenant.manage") || roleCodes.has("SYS_ADMIN")) {
+    return keys;
+  }
+
+  // Employees and ship crew: page access only from assigned modules → pages.
+  if (user.employeeProfile?.id) {
+    const { getEffectiveEmployeePermissionKeys } = await import(
+      "@/lib/db/employeeModuleAccess"
+    );
+    const assigned = await getEffectiveEmployeePermissionKeys(user.employeeProfile.id);
+    for (const key of [...keys]) {
+      if (key.startsWith("page.")) keys.delete(key);
+    }
+    for (const key of assigned) keys.add(key);
   }
 
   return keys;

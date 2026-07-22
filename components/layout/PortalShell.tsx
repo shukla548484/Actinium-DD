@@ -9,6 +9,7 @@ import { TopNavBar } from "@/components/layout/TopNavBar";
 import { buildCrewTopNavItems } from "@/lib/navigation/buildCrewNav";
 import {
   buildTopNavForUserType,
+  filterTopNavByAssignments,
   portalHomeHrefForUserType,
   resolveActiveNavIdForUserType,
 } from "@/lib/navigation/buildPortalNav";
@@ -30,6 +31,8 @@ type SessionUser = {
   roleName: string | null;
   vessels: { id: string; code: string; name: string }[];
   assignedPageKeys: string[];
+  assignedModuleCodes?: string[];
+  moduleAccessUnrestricted?: boolean;
 };
 
 function SimpleScrollPage({
@@ -69,7 +72,14 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
           if (userType === "vessel") {
             setPortalNavItems(buildCrewTopNavItems(user.assignedPageKeys ?? []));
           } else {
-            setPortalNavItems(buildTopNavForUserType(userType));
+            const base = buildTopNavForUserType(userType);
+            setPortalNavItems(
+              filterTopNavByAssignments(base, {
+                unrestricted: user.moduleAccessUnrestricted === true,
+                assignedModuleCodes: user.assignedModuleCodes ?? [],
+                assignedPageKeys: user.assignedPageKeys ?? [],
+              }),
+            );
           }
         }
       })

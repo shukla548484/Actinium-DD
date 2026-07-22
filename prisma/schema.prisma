@@ -222,6 +222,8 @@ model Employee {
   user            User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
   vesselAssignments EmployeeVessel[]
   crewPageAccess    EmployeeCrewPageAccess[]
+  moduleAssignments EmployeeModuleAssignment[]
+  modulePages       EmployeeModulePage[]
   assignedYardInvites YardInvite[] @relation("YardInviteEstimator")
   purchaseRequisitionsCreated  PurchaseRequisition[] @relation("PurchaseRequisitionCreator")
   purchaseRequisitionsApproved PurchaseRequisition[] @relation("PurchaseRequisitionApprover")
@@ -249,6 +251,36 @@ model EmployeeCrewPageAccess {
   @@unique([employeeId, permissionKey])
   @@index([employeeId])
   @@map("employee_crew_page_access")
+}
+
+/// Modules assigned to an employee (Admin, Purchase, Ship Access, …). No module = no access.
+model EmployeeModuleAssignment {
+  id         String   @id @default(cuid())
+  employeeId String   @map("employee_id")
+  moduleCode String   @map("module_code")
+  assignedAt DateTime @default(now()) @map("assigned_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, moduleCode])
+  @@index([employeeId])
+  @@map("employee_module_assignments")
+}
+
+/// Pages within an assigned module. Same module may expose different pages per employee.
+model EmployeeModulePage {
+  id         String   @id @default(cuid())
+  employeeId String   @map("employee_id")
+  moduleCode String   @map("module_code")
+  pageKey    String   @map("page_key")
+  assignedAt DateTime @default(now()) @map("assigned_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, moduleCode, pageKey])
+  @@index([employeeId])
+  @@index([employeeId, moduleCode])
+  @@map("employee_module_pages")
 }
 
 model EmployeeVessel {

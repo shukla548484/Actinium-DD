@@ -95,6 +95,7 @@ export function OrganizationEmployeeListPanel({
                     viewHref={`/admin/employees/${employee.id}`}
                     editHref={`/admin/employees/${employee.id}/edit`}
                     assignVesselsHref={`/admin/employees/${employee.id}/assign-vessels`}
+                    assignModulesHref={`/admin/employees/${employee.id}/assign-modules`}
                     onChanged={() => void load()}
                   />
                 </TableCell>

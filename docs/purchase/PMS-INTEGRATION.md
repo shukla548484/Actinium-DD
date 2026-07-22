@@ -66,6 +66,17 @@ npx tsx scripts/seed-purchase-sample.ts
 
 Requires admin employee from `npm run db:seed` (`ACT.1001`). Seeds vendors, an approved requisition + draft, quote, PO, invoice, store locations, IMPA codes, and sample machinery (if the vessel has none).
 
+### Production / Vercel migration note
+
+Purchase tables lived only in `schema.prisma` (local `db push`) until migration `20260716220000_purchase_create_req_catalogs`, which now **creates the full purchase schema** (idempotent). If a Vercel deploy failed with `relation "purchase_requisitions" does not exist`:
+
+1. Push the fixed migration to `main`.
+2. Clear the failed migration on the **production** DB:
+   ```bash
+   DATABASE_URL="<prod url>" npx prisma migrate resolve --rolled-back 20260716220000_purchase_create_req_catalogs
+   ```
+3. Redeploy (build runs `prisma migrate deploy` again).
+
 ## Follow-up (next updates)
 
 1. Requisition detail / approve / RFQ send (from PMS `requisitions/[id]`)

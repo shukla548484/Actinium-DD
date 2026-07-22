@@ -196,6 +196,7 @@ export function EmployeeListPanel() {
                         viewHref={`/admin/employees/${e.id}`}
                         editHref={`/admin/employees/${e.id}/edit`}
                         assignVesselsHref={`/admin/employees/${e.id}/assign-vessels`}
+                        assignModulesHref={`/admin/employees/${e.id}/assign-modules`}
                         onChanged={() => void load()}
                       />
                     </TableCell>

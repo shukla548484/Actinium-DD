@@ -138,10 +138,14 @@ function LoginForm() {
               <Input
                 id="loginId"
                 value={loginId}
-                onChange={(e) => setLoginId(e.target.value)}
+                onChange={(e) =>
+                  setLoginId(e.target.value.toUpperCase().replace(/[^A-Z0-9.]/g, ""))
+                }
                 placeholder="e.g. ACT.1001"
+                autoCapitalize="characters"
+                pattern="[A-Z0-9.]+"
                 autoComplete="username"
-                className="h-11"
+                className="h-11 uppercase"
                 required
               />
             </div>

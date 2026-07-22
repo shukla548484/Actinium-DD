@@ -3,6 +3,11 @@ import { getCrewSessionContext } from "@/lib/shipAccess/crewContext";
 import { getUserById } from "@/lib/db/employeeAuth";
 import { getSessionPayload } from "@/lib/auth/session";
 import { portalHomeForUserType, rbacUserTypeLabel } from "@/lib/rbac/userTypes";
+import {
+  getEmployeeAssignedModuleCodes,
+  getEffectiveEmployeePageKeys,
+} from "@/lib/db/employeeModuleAccess";
+import { getUserPermissions } from "@/lib/db/rbac";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +29,9 @@ export async function GET() {
         rbacUserType: "office",
         rbacUserTypeLabel: rbacUserTypeLabel("office"),
         portalHome: portalHomeForUserType("office"),
+        assignedPageKeys: [],
+        assignedModuleCodes: [],
+        moduleAccessUnrestricted: false,
       },
     });
   }
@@ -32,13 +40,30 @@ export async function GET() {
     return NextResponse.json({ authenticated: true, user: null });
   }
 
-  const [user, crewContext] = await Promise.all([
+  const [user, crewContext, permissions] = await Promise.all([
     getUserById(payload.userId),
     getCrewSessionContext(),
+    getUserPermissions(payload.userId),
   ]);
 
   if (!user) {
     return NextResponse.json({ authenticated: false }, { status: 401 });
+  }
+
+  const unrestricted =
+    permissions.has("platform.tenant.manage") || user.roleCode === "SYS_ADMIN";
+
+  const employeeId = crewContext?.employeeId ?? user.employeeId;
+  let assignedPageKeys = crewContext?.assignedPageKeys ?? [];
+  let assignedModuleCodes: string[] = [];
+
+  if (employeeId && !unrestricted) {
+    const [modules, pages] = await Promise.all([
+      getEmployeeAssignedModuleCodes(employeeId),
+      getEffectiveEmployeePageKeys(employeeId),
+    ]);
+    assignedModuleCodes = modules;
+    if (pages.length > 0) assignedPageKeys = pages;
   }
 
   return NextResponse.json({
@@ -58,11 +83,13 @@ export async function GET() {
       portalHome: portalHomeForUserType(user.rbacUserType),
       roleCode: crewContext?.roleCode ?? user.roleCode,
       roleName: crewContext?.roleName ?? null,
-      employeeId: crewContext?.employeeId ?? user.employeeId,
+      employeeId,
       vessels: crewContext?.vessels ?? [],
       primaryVesselId: crewContext?.primaryVesselId ?? null,
       allowedJobCategories: crewContext?.allowedJobCategories ?? [],
-      assignedPageKeys: crewContext?.assignedPageKeys ?? [],
+      assignedPageKeys,
+      assignedModuleCodes,
+      moduleAccessUnrestricted: unrestricted,
     },
   });
 }

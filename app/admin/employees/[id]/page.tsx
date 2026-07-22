@@ -37,6 +37,9 @@ export default async function EmployeeDetailPage({ params }: Props) {
             <Button render={<Link href={`/admin/employees/${id}/assign-vessels`} />} nativeButton={false}>
               Assign vessels
             </Button>
+            <Button render={<Link href={`/admin/employees/${id}/assign-modules`} />} nativeButton={false}>
+              Assign Modules
+            </Button>
             <Button render={<Link href={`/admin/employees/${id}/edit`} />} nativeButton={false}>
               Edit
             </Button>
@@ -47,6 +50,7 @@ export default async function EmployeeDetailPage({ params }: Props) {
               viewHref={`/admin/employees/${id}`}
               editHref={`/admin/employees/${id}/edit`}
               assignVesselsHref={`/admin/employees/${id}/assign-vessels`}
+              assignModulesHref={`/admin/employees/${id}/assign-modules`}
             />
           </div>
         }

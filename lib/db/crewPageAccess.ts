@@ -88,6 +88,28 @@ export async function setCrewPageAccess(employeeId: string, pageKeys: string[]) 
       : []),
   ]);
 
+  // Keep unified module/page tables in sync when pages are edited from crew credentials.
+  await prisma.$transaction(async (tx) => {
+    await tx.employeeModulePage.deleteMany({
+      where: { employeeId, moduleCode: "shipAccess" },
+    });
+    await tx.employeeModuleAssignment.deleteMany({
+      where: { employeeId, moduleCode: "shipAccess" },
+    });
+    if (normalized.length > 0) {
+      await tx.employeeModuleAssignment.create({
+        data: { employeeId, moduleCode: "shipAccess" },
+      });
+      await tx.employeeModulePage.createMany({
+        data: normalized.map((pageKey) => ({
+          employeeId,
+          moduleCode: "shipAccess",
+          pageKey,
+        })),
+      });
+    }
+  });
+
   return getCrewPageAccessKeys(employeeId);
 }
 

@@ -30,6 +30,7 @@ type EntityActionsProps = {
   viewHref: string;
   editHref: string;
   assignVesselsHref?: string;
+  assignModulesHref?: string;
   listRedirectPath?: string;
   onChanged?: () => void;
 };
@@ -47,6 +48,7 @@ export function EntityActionsMenu({
   viewHref,
   editHref,
   assignVesselsHref,
+  assignModulesHref,
   listRedirectPath,
   onChanged,
 }: EntityActionsProps) {
@@ -100,6 +102,11 @@ export function EntityActionsMenu({
           {assignVesselsHref ? (
             <DropdownMenuItem render={<Link href={assignVesselsHref} />}>
               Assign vessels
+            </DropdownMenuItem>
+          ) : null}
+          {assignModulesHref ? (
+            <DropdownMenuItem render={<Link href={assignModulesHref} />}>
+              Assign Modules
             </DropdownMenuItem>
           ) : null}
           <DropdownMenuSeparator />

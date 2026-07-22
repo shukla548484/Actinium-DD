@@ -1,9 +1,11 @@
 import type { RbacUserType } from "@prisma/client";
 import { Anchor, Building2, Compass, LayoutDashboard, Settings, Ship } from "lucide-react";
-import type { TopNavItem } from "@/lib/navigation/topNavItems";
+import type { TopNavChild, TopNavItem } from "@/lib/navigation/topNavItems";
 import { topNavItems } from "@/lib/navigation/topNavItems";
 import { shipyardNavChildren } from "@/lib/navigation/shipyardNavItems";
 import { externalNavChildren } from "@/lib/navigation/externalNavItems";
+import { ACCESS_MODULES } from "@/lib/rbac/accessModules";
+import { pagePermissionForPath } from "@/lib/rbac/rolePermissions";
 
 const OFFICE_NAV_IDS = new Set<TopNavItem["id"]>([
   "admin",
@@ -57,6 +59,67 @@ export function buildTopNavForUserType(userType: RbacUserType): TopNavItem[] {
     default:
       return topNavItems.filter((item) => OFFICE_NAV_IDS.has(item.id));
   }
+}
+
+/**
+ * Filter portal nav by assigned modules and pages.
+ * SYS_ADMIN / unrestricted callers should pass `unrestricted: true`.
+ */
+export function filterTopNavByAssignments(
+  items: TopNavItem[],
+  options: {
+    unrestricted?: boolean;
+    assignedModuleCodes?: string[];
+    assignedPageKeys?: string[];
+  },
+): TopNavItem[] {
+  if (options.unrestricted) return items;
+
+  const modules = new Set(options.assignedModuleCodes ?? []);
+  const pages = new Set(options.assignedPageKeys ?? []);
+
+  // No modules assigned → hide all portal modules.
+  if (modules.size === 0) return [];
+
+  const navIdToModule = new Map<string, string>();
+  for (const mod of ACCESS_MODULES) {
+    if (mod.navId) navIdToModule.set(mod.navId, mod.code);
+  }
+
+  return items
+    .map((item) => {
+      const moduleCode = navIdToModule.get(item.id);
+      if (moduleCode && !modules.has(moduleCode)) return null;
+
+      const filterChild = (child: TopNavChild) => {
+        if (pages.size === 0) return false;
+        const permission = pagePermissionForPath(child.href);
+        if (!permission) return modules.has(moduleCode ?? "");
+        return pages.has(permission);
+      };
+
+      const children = item.children?.filter(filterChild);
+      const sections = item.sections
+        ?.map((section) => ({
+          ...section,
+          items: section.items.filter(filterChild),
+        }))
+        .filter((section) => section.items.length > 0);
+
+      const hasChildren = (children?.length ?? 0) > 0 || (sections?.length ?? 0) > 0;
+      if (item.children || item.sections) {
+        if (!hasChildren) return null;
+        return { ...item, children, sections };
+      }
+
+      if (item.href) {
+        const permission = pagePermissionForPath(item.href);
+        if (permission && !pages.has(permission)) return null;
+      }
+
+      return item;
+    })
+    .filter((item): item is TopNavItem => item != null);
 }
 
 export function portalHomeHrefForUserType(userType: RbacUserType): string {
