@@ -54,6 +54,17 @@ function pagesFromPermissionPrefix(
   return merged.sort((a, b) => a.label.localeCompare(b.label));
 }
 
+function uniquePages(pages: AccessModulePage[]): AccessModulePage[] {
+  const seen = new Set<string>();
+  const out: AccessModulePage[] = [];
+  for (const page of pages) {
+    if (seen.has(page.key)) continue;
+    seen.add(page.key);
+    out.push(page);
+  }
+  return out.sort((a, b) => a.label.localeCompare(b.label));
+}
+
 const CREW_PAGES: AccessModulePage[] = CREW_ASSIGNABLE_PAGES.map((p) => ({
   key: p.key,
   label: p.label,
@@ -91,9 +102,11 @@ export const ACCESS_MODULES: AccessModuleDefinition[] = [
     description: "Dry-dock tender projects and specifications",
     navId: "jobs",
     userTypes: ["system", "office"],
-    pages: pagesFromPermissionPrefix("page.office.project").concat(
-      pagesFromPermissionPrefix("page.office.projects"),
-    ),
+    // "page.office.project" already matches page.office.projects* — dedupe after merge.
+    pages: uniquePages([
+      ...pagesFromPermissionPrefix("page.office.project"),
+      ...pagesFromPermissionPrefix("page.office.projects"),
+    ]),
   },
   {
     code: "purchase",
@@ -116,11 +129,11 @@ export const ACCESS_MODULES: AccessModuleDefinition[] = [
     label: "Office departments",
     description: "Executive, fleet, HSEQ, crewing, accounts",
     userTypes: ["system", "office"],
-    pages: [
+    pages: uniquePages([
       ...pagesFromPermissionPrefix("page.office.department"),
       ...pagesFromPermissionPrefix("page.office.procurement"),
       ...pagesFromPermissionPrefix("page.office.accounts"),
-    ],
+    ]),
   },
   {
     code: "shipyard",
@@ -128,9 +141,10 @@ export const ACCESS_MODULES: AccessModuleDefinition[] = [
     description: "Workshop execution, planning, and commercial",
     navId: "shipyard",
     userTypes: ["system", "office", "shipyard"],
-    pages: pagesFromPermissionPrefix("page.shipyard").concat(
-      pagesFromPermissionPrefix("page.yard"),
-    ),
+    pages: uniquePages([
+      ...pagesFromPermissionPrefix("page.shipyard"),
+      ...pagesFromPermissionPrefix("page.yard"),
+    ]),
   },
   {
     code: "shipAccess",

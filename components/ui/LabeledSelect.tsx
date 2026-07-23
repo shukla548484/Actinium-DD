@@ -16,6 +16,7 @@ type LabeledSelectProps = {
   placeholder?: string;
   className?: string;
   id?: string;
+  disabled?: boolean;
 };
 
 /** Base UI Select wrapper — always shows human-readable labels, never raw values. */
@@ -26,14 +27,16 @@ export function LabeledSelect({
   placeholder,
   className,
   id,
+  disabled,
 }: LabeledSelectProps) {
   return (
     <Select
       items={[...items]}
       value={value || null}
       onValueChange={(v) => onValueChange(v ?? "")}
+      disabled={disabled}
     >
-      <SelectTrigger className={className} id={id}>
+      <SelectTrigger className={className} id={id} disabled={disabled}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>

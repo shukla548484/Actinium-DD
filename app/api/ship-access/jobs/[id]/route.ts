@@ -40,9 +40,13 @@ export async function PATCH(request: Request, context: RouteContext) {
   const access = await assertShipVesselInScope(existing.vesselId);
   if (!access.ok) return access.response;
 
-  if (existing.status !== "draft") {
+  if (existing.archivedAt) {
+    return NextResponse.json({ error: "Archived jobs cannot be updated" }, { status: 400 });
+  }
+
+  if (existing.status === "integrated" || existing.status === "rejected") {
     return NextResponse.json(
-      { error: "Only draft jobs can be updated onboard" },
+      { error: "Only draft or submitted jobs can be updated onboard" },
       { status: 400 },
     );
   }

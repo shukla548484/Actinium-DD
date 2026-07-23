@@ -5,6 +5,12 @@ import { headers } from "next/headers";
 
 export default async function ShipyardLayout({ children }: { children: React.ReactNode }) {
   const pathname = (await headers()).get("x-pathname") ?? "/shipyard";
+  const isTokenPortal = /^\/shipyard\/quotations\/t\//.test(pathname);
+
+  if (isTokenPortal) {
+    return <>{children}</>;
+  }
+
   await enforceOfficePageAccess(pathname);
 
   return (

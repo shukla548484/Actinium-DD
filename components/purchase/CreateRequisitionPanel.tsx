@@ -23,7 +23,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  budgetLabelForType,
+  listL2BudgetSelectOptions,
+  type BudgetScope,
+} from "@/lib/purchase/budgetCodes";
+import {
+  budgetCodeForType,
+  budgetLabelForCode,
   PURCHASE_REQ_PURPOSE_LABELS,
   PURCHASE_REQ_TYPE_LABELS,
   PURCHASE_REQ_TYPES,
@@ -106,6 +111,7 @@ export function CreateRequisitionPanel() {
   const [description, setDescription] = useState("");
   const [portAgentDetails, setPortAgentDetails] = useState("");
   const [items, setItems] = useState<LineItem[]>([newLineItem()]);
+  const [budgetCodeOverride, setBudgetCodeOverride] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -123,9 +129,19 @@ export function CreateRequisitionPanel() {
   const selectedVessel = vessels.find((v) => v.id === vesselId);
   const setupReady = Boolean(vesselId && requisitionType);
   const subOptions = PURCHASE_SUB_CATEGORIES[requisitionType] ?? [];
+  const budgetScope: BudgetScope = requisitionPurpose === "DRY_DOCK" ? "DRY_DOCK" : "NORMAL";
+  const autoBudgetCode = useMemo(
+    () => budgetCodeForType(requisitionType, subCategoryCode, requisitionPurpose),
+    [requisitionType, subCategoryCode, requisitionPurpose],
+  );
+  const resolvedBudgetCode = budgetCodeOverride || autoBudgetCode;
   const budgetLabel = useMemo(
-    () => budgetLabelForType(requisitionType, subCategoryCode),
-    [requisitionType, subCategoryCode],
+    () => budgetLabelForCode(resolvedBudgetCode),
+    [resolvedBudgetCode],
+  );
+  const budgetSelectOptions = useMemo(
+    () => listL2BudgetSelectOptions(budgetScope),
+    [budgetScope],
   );
   const reqPreview = previewReqNumber(selectedVessel?.code, requisitionType);
   const isSpr = requisitionType === "SPR";
@@ -136,7 +152,12 @@ export function CreateRequisitionPanel() {
     setStoreLocationId("");
     setMachineryId("");
     setSpareManualMachineryName("");
+    setBudgetCodeOverride("");
   }, [requisitionType]);
+
+  useEffect(() => {
+    setBudgetCodeOverride("");
+  }, [requisitionPurpose]);
 
   useEffect(() => {
     if (!vesselId || !isStr) {
@@ -260,7 +281,7 @@ export function CreateRequisitionPanel() {
           requisitionPurpose,
           priority,
           subCategoryCode: subCategoryCode || null,
-          budgetCode: budgetLabel || null,
+          budgetCode: resolvedBudgetCode || null,
           storeLocationId: isStr ? storeLocationId || null : null,
           machineryAssetId: isSpr ? machineryId || null : null,
           spareManualMachineryName: isSpr ? spareManualMachineryName.trim() || null : null,
@@ -311,15 +332,13 @@ export function CreateRequisitionPanel() {
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
       <Card>
-        <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2 text-lg">
+        <Tabs defaultValue="setup" className="gap-0">
+          <CardHeader className="flex flex-nowrap items-center gap-3 overflow-x-auto max-[480px]:flex-wrap">
+            <CardTitle className="flex shrink-0 items-center gap-2 text-lg whitespace-nowrap">
               <Ship className="size-4 text-muted-foreground" />
               Requisition Information
             </CardTitle>
-          </div>
-          <div className="flex flex-col items-stretch gap-2 sm:items-end">
-            <div className="flex items-center gap-2 rounded-md bg-muted/50 px-2.5 py-1.5 text-xs">
+            <div className="flex shrink-0 items-center gap-2 rounded-md bg-muted/50 px-2.5 py-1.5 text-xs whitespace-nowrap">
               <span className="text-muted-foreground">Req. Number</span>
               {reqPreview ? (
                 <span className="flex items-center gap-1 font-mono font-semibold text-foreground">
@@ -331,36 +350,40 @@ export function CreateRequisitionPanel() {
               )}
             </div>
             {setupReady ? (
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => void handleDownloadTemplate()}>
+              <div className="flex shrink-0 items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="whitespace-nowrap"
+                  onClick={() => void handleDownloadTemplate()}
+                >
                   Download Excel Template
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
+                  className="whitespace-nowrap"
                   onClick={() => void handleDownloadBudgetTemplate()}
                 >
                   Sub-categories & budgets (Excel)
                 </Button>
               </div>
             ) : null}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="setup">
-            <TabsList>
-              <TabsTrigger value="setup">
+            <TabsList className="ml-auto h-8 w-fit shrink-0">
+              <TabsTrigger value="setup" className="gap-1.5 whitespace-nowrap">
                 <Ship className="size-3.5" />
                 Requisition Setup
               </TabsTrigger>
-              <TabsTrigger value="agent">
+              <TabsTrigger value="agent" className="gap-1.5 whitespace-nowrap">
                 <User className="size-3.5" />
                 Port Agent Details
               </TabsTrigger>
             </TabsList>
-
-            <TabsContent value="setup" className="mt-3">
+          </CardHeader>
+          <CardContent>
+            <TabsContent value="setup" className="mt-0">
               <div className="grid gap-3 lg:grid-cols-3">
                 <div className="rounded-md border bg-muted/10 p-3">
                   <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -398,17 +421,20 @@ export function CreateRequisitionPanel() {
                         disabled={!vesselId}
                       />
                     </div>
-                    {requisitionType && subOptions.length > 0 && requisitionType !== "CTM" && requisitionType !== "LUB" ? (
+                    {requisitionType && subOptions.length > 0 && requisitionType !== "CTM" ? (
                       <div className="space-y-1">
                         <Label>Sub category</Label>
                         <SearchableSelect
                           items={subOptions.map((s) => ({
                             value: s.code,
                             label: `${s.code} — ${s.name}`,
-                            searchText: `${s.code} ${s.name}`,
+                            searchText: `${s.code} ${s.name} ${s.budgetCode}`,
                           }))}
                           value={subCategoryCode}
-                          onValueChange={setSubCategoryCode}
+                          onValueChange={(v) => {
+                            setSubCategoryCode(v);
+                            setBudgetCodeOverride("");
+                          }}
                           placeholder="Select sub category"
                         />
                       </div>
@@ -538,15 +564,48 @@ export function CreateRequisitionPanel() {
                       <Label>Budget Code (auto)</Label>
                       <div className="min-h-9 truncate rounded-md border bg-muted/40 px-3 py-2 text-sm">
                         {budgetLabel ? (
-                          budgetLabel
+                          <>
+                            <span className="font-mono text-xs text-muted-foreground">
+                              {resolvedBudgetCode}
+                            </span>
+                            <span className="mx-1.5 text-muted-foreground">·</span>
+                            <span>{budgetLabel}</span>
+                          </>
                         ) : requisitionType ? (
                           <span className="text-muted-foreground">
-                            No automatic mapping for this type yet
+                            No automatic mapping for this type yet — pick a code below
                           </span>
                         ) : (
                           <span className="text-muted-foreground">Select requisition type</span>
                         )}
                       </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Budget Code (manual override)</Label>
+                      <SearchableSelect
+                        items={[
+                          {
+                            value: "",
+                            label: autoBudgetCode
+                              ? `Use auto (${autoBudgetCode})`
+                              : "Use auto mapping",
+                            searchText: "auto default",
+                          },
+                          ...budgetSelectOptions,
+                        ]}
+                        value={budgetCodeOverride}
+                        onValueChange={setBudgetCodeOverride}
+                        placeholder={
+                          budgetScope === "DRY_DOCK"
+                            ? "Optional dry-dock L2 override"
+                            : "Optional L2 budget override"
+                        }
+                        disabled={!requisitionType}
+                      />
+                      <p className="text-[11px] text-muted-foreground">
+                        Master catalog: {budgetScope === "DRY_DOCK" ? "Dry Dock" : "Purchase (NORMAL)"}{" "}
+                        Level 2 codes from all-budget-codes.xlsx
+                      </p>
                     </div>
                     <div className="space-y-1">
                       <Label htmlFor="port">Supply Port</Label>
@@ -572,7 +631,7 @@ export function CreateRequisitionPanel() {
               </div>
             </TabsContent>
 
-            <TabsContent value="agent" className="mt-3">
+            <TabsContent value="agent" className="mt-0">
               <div className="space-y-2">
                 <Label htmlFor="port-agent">Port Agent Details</Label>
                 <Textarea
@@ -584,8 +643,8 @@ export function CreateRequisitionPanel() {
                 />
               </div>
             </TabsContent>
-          </Tabs>
-        </CardContent>
+          </CardContent>
+        </Tabs>
       </Card>
 
       {setupReady ? (

@@ -28,7 +28,7 @@ export default function VesselPortalJobsPage() {
     <PageShell size="wide">
       <PageHeader
         title="Propose dry dock jobs"
-        description="Select from the master job library and complete the dynamic scope form."
+        description="Select the library path and complete the dynamic scope form on one page."
         actions={
           <Button
             variant="outline"

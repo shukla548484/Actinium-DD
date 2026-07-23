@@ -1,4 +1,9 @@
 import * as XLSX from "xlsx";
+import {
+  BUDGET_CODES_CATALOG,
+  formatBudgetCodeLabel,
+} from "@/lib/purchase/budgetCodes";
+import { PURCHASE_SUB_CATEGORIES } from "@/lib/purchase/requisitionLabels";
 
 export function buildRequisitionQuoteTemplateBuffer(input: {
   vesselName: string;
@@ -37,28 +42,72 @@ export function buildRequisitionQuoteTemplateBuffer(input: {
 }
 
 export function buildSubCategoryBudgetTemplateBuffer(): Buffer {
-  const rows = [
-    ["Code", "Name", "Requisition Type", "Default Budget Label"],
-    ["STR-CONS", "Consumables", "STR", "3000 Stores & Consumables → 3200 General Stores"],
-    ["STR-TOOLS", "Tools & Hardware", "STR", "3000 Stores & Consumables → 3210 Tools"],
-    ["STR-SAFETY", "Safety Stores", "STR", "3000 Stores & Consumables → 3220 Safety"],
-    ["STR-CHE", "Chemicals", "STR", "3000 Stores → 3300 Chemicals"],
-    ["SPR-ME", "Main Engine", "SPR", "4000 Spares → 4100 Main Engine"],
-    ["SPR-AE", "Auxiliary Engine", "SPR", "4000 Spares → 4200 Auxiliary"],
-    ["SPR-DECK", "Deck Machinery", "SPR", "4000 Spares → 4300 Deck"],
-    ["PRO-FOOD", "Provisions / Food", "PRO", "5000 Provisions → 5100 Food"],
-    ["PRO-BOND", "Bonded Stores", "PRO", "5000 Provisions → 5200 Bond"],
-    ["CHE-DECK", "Deck Chemicals", "CHE", "3000 Stores → 3300 Chemicals"],
-    ["CHE-ER", "Engine Room Chemicals", "CHE", "3000 Stores → 3310 ER Chemicals"],
-    ["PNT-HULL", "Hull Coatings", "PNT", "3000 Stores → 3400 Paint"],
-    ["GLY-GEN", "Galley Supplies", "GLY", "5000 Provisions → 5300 Galley"],
-    ["LUB-GEN", "Lubricants", "LUB", "6000 Lubricants → 6100 Lube Oil"],
-    ["BNK-FUEL", "Bunker Fuel", "BNK", "7000 Bunkers → 7100 Fuel"],
+  const mappingRows: Array<Array<string | number>> = [
+    ["Code", "Name", "Requisition Type", "L2 Budget Code", "Budget Label (from master)"],
   ];
+  for (const [type, list] of Object.entries(PURCHASE_SUB_CATEGORIES)) {
+    for (const row of list) {
+      mappingRows.push([
+        row.code,
+        row.name,
+        type,
+        row.budgetCode,
+        formatBudgetCodeLabel(row.budgetCode),
+      ]);
+    }
+  }
+
+  const masterRows: Array<Array<string | number>> = [
+    [
+      "Budget Scope",
+      "Level",
+      "Code",
+      "Name",
+      "Parent Code",
+      "Parent Name",
+      "Fund Type",
+      "Display Order",
+      "Active",
+    ],
+  ];
+  for (const row of BUDGET_CODES_CATALOG) {
+    masterRows.push([
+      row.scope,
+      row.level,
+      row.code,
+      row.name,
+      row.parentCode ?? "",
+      row.parentName ?? "",
+      row.fundType ?? "",
+      row.displayOrder,
+      row.active ? "Y" : "N",
+    ]);
+  }
 
   const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws["!cols"] = [{ wch: 14 }, { wch: 28 }, { wch: 16 }, { wch: 48 }];
-  XLSX.utils.book_append_sheet(wb, ws, "Sub-categories");
+  const mapSheet = XLSX.utils.aoa_to_sheet(mappingRows);
+  mapSheet["!cols"] = [
+    { wch: 14 },
+    { wch: 32 },
+    { wch: 16 },
+    { wch: 14 },
+    { wch: 56 },
+  ];
+  XLSX.utils.book_append_sheet(wb, mapSheet, "Sub-categories");
+
+  const masterSheet = XLSX.utils.aoa_to_sheet(masterRows);
+  masterSheet["!cols"] = [
+    { wch: 12 },
+    { wch: 8 },
+    { wch: 12 },
+    { wch: 32 },
+    { wch: 12 },
+    { wch: 28 },
+    { wch: 10 },
+    { wch: 12 },
+    { wch: 8 },
+  ];
+  XLSX.utils.book_append_sheet(wb, masterSheet, "Budget master");
+
   return Buffer.from(XLSX.write(wb, { type: "buffer", bookType: "xlsx" }));
 }

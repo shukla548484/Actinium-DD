@@ -36,8 +36,8 @@ function ShipAccessEditJobContent() {
   return (
     <PageShell size="wide">
       <PageHeader
-        title="Update draft job"
-        description="Edit a draft job before submitting it to the superintendent job bank."
+        title="Update job"
+        description="Revise job details and resubmit to the superintendent job bank when ready."
       />
       <VesselJobSubmitForm
         jobId={params.id}

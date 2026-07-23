@@ -237,3 +237,12 @@ body {
 .actinium-loader-overlay-enter {
   animation: actinium-loader-fade-in 0.2s ease-out forwards;
 }
+
+@keyframes app-notify-shrink {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}

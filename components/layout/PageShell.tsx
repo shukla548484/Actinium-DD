@@ -5,7 +5,10 @@ export { PageHeader } from "@/components/layout/PageHeader";
 type PageShellProps = {
   children: React.ReactNode;
   className?: string;
-  /** default = max-w-6xl, wide = tender matrix width, full = edge-to-edge padding only */
+  /**
+   * default/wide = 95% of the main content pane (beside sidebar when present).
+   * full = edge-to-edge padding only.
+   */
   size?: "default" | "wide" | "full";
 };
 
@@ -14,10 +17,8 @@ export function PageShell({ children, className, size = "default" }: PageShellPr
   return (
     <div
       className={cn(
-        "mx-auto w-full space-y-6 p-4 pb-10 md:p-6 md:pb-12",
-        size === "default" && "max-w-6xl",
-        size === "wide" && "max-w-[100rem]",
-        size === "full" && "max-w-none",
+        "space-y-6 p-4 pb-10 md:p-6 md:pb-12",
+        size === "full" ? "mx-auto w-full max-w-none" : "dd-content-width",
         className,
       )}
     >

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requirePurchaseApiAccess } from "@/lib/auth/purchaseAccess";
 import { createPurchaseRequisition, listPurchaseRequisitions } from "@/lib/db/purchase";
+import { resolveWritableBudgetCode } from "@/lib/purchase/budgetCodes";
 
 export const runtime = "nodejs";
 
@@ -43,19 +44,34 @@ export async function POST(request: Request) {
 
   const b = body as Record<string, unknown>;
   const itemsRaw = Array.isArray(b.items) ? b.items : [];
+  const requisitionType = typeof b.requisitionType === "string" ? b.requisitionType : "SPR";
+  const subCategoryCode = typeof b.subCategoryCode === "string" ? b.subCategoryCode : null;
+  const requisitionPurpose =
+    typeof b.requisitionPurpose === "string" ? b.requisitionPurpose : null;
+  const explicitBudget = typeof b.budgetCode === "string" ? b.budgetCode : null;
+
+  const resolved = resolveWritableBudgetCode({
+    budgetCode: explicitBudget,
+    subCategoryCode,
+    requisitionType,
+    requisitionPurpose,
+  });
+  if (resolved.error) {
+    return NextResponse.json({ error: resolved.error }, { status: 400 });
+  }
 
   const result = await createPurchaseRequisition(access.ctx, {
     vesselId: typeof b.vesselId === "string" ? b.vesselId : "",
     heading: typeof b.heading === "string" ? b.heading : "",
     description: typeof b.description === "string" ? b.description : null,
-    requisitionType: typeof b.requisitionType === "string" ? b.requisitionType : "SPR",
+    requisitionType,
     portOfSupply: typeof b.portOfSupply === "string" ? b.portOfSupply : null,
     portAgentDetails: typeof b.portAgentDetails === "string" ? b.portAgentDetails : null,
     manualReqNumber: typeof b.manualReqNumber === "string" ? b.manualReqNumber : null,
-    requisitionPurpose: typeof b.requisitionPurpose === "string" ? b.requisitionPurpose : null,
+    requisitionPurpose,
     priority: typeof b.priority === "string" ? b.priority : null,
-    subCategoryCode: typeof b.subCategoryCode === "string" ? b.subCategoryCode : null,
-    budgetCode: typeof b.budgetCode === "string" ? b.budgetCode : null,
+    subCategoryCode,
+    budgetCode: resolved.budgetCode,
     storeLocationId: typeof b.storeLocationId === "string" ? b.storeLocationId : null,
     machineryAssetId: typeof b.machineryAssetId === "string" ? b.machineryAssetId : null,
     spareManualMachineryName:

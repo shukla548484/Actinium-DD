@@ -4,6 +4,7 @@ import { InactivityMonitor } from "@/components/auth/InactivityMonitor";
 import { GlobalLoaderProvider } from "@/components/layout/GlobalLoaderProvider";
 import { PortalShell } from "@/components/layout/PortalShell";
 import { PwaBootstrap } from "@/components/mobile/PwaBootstrap";
+import { AppNotifyProvider } from "@/components/ui/AppNotifyProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -38,9 +39,11 @@ export default function RootLayout({
     >
       <body className="dd-app-shell bg-background text-foreground antialiased">
         <GlobalLoaderProvider>
-          <PwaBootstrap />
-          <InactivityMonitor />
-          <PortalShell>{children}</PortalShell>
+          <AppNotifyProvider>
+            <PwaBootstrap />
+            <InactivityMonitor />
+            <PortalShell>{children}</PortalShell>
+          </AppNotifyProvider>
         </GlobalLoaderProvider>
       </body>
     </html>

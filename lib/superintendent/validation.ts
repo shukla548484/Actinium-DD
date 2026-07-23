@@ -516,12 +516,30 @@ export const ddVesselJobCreateSchema = z.object({
   runningHoursAtSurvey: z.number().int().nullable().optional(),
   linkedDefectId: z.string().nullable().optional(),
   linkedPmsReference: z.string().nullable().optional(),
+  collaborationPackageId: z.string().nullable().optional(),
   formData: z.record(z.string(), z.unknown()).nullable().optional(),
   photoCount: z.number().int().optional(),
   createdByName: z.string().nullable().optional(),
   createdByRole: ddInputResponsibleRoleSchema.optional(),
   submit: z.boolean().optional(),
 });
+
+/** Optional per-member machinery/component context when collaborating across branches. */
+export const ddVesselJobCollaborateMemberScopeSchema = z.object({
+  standardJobLibraryId: z.string().min(1),
+  machineryKey: z.string().nullable().optional(),
+  componentKey: z.string().nullable().optional(),
+});
+
+/** Create multiple vessel jobs linked by one collaboration package id. */
+export const ddVesselJobCollaborateSchema = ddVesselJobCreateSchema
+  .omit({ title: true, standardJobLibraryId: true })
+  .extend({
+    standardJobLibraryIds: z
+      .array(z.string().min(1))
+      .min(2, "Select at least two standard jobs to collaborate"),
+    memberScopes: z.array(ddVesselJobCollaborateMemberScopeSchema).optional(),
+  });
 
 export const ddVesselJobCeReviewSchema = z.object({
   action: vesselJobReviewActionSchema,

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 import type { EmployeeModuleAccessDto } from "@/lib/db/employeeModuleAccess";
+import { notify } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -23,29 +23,49 @@ export function AssignModulesPanel({ employeeId }: Props) {
   const [activeModule, setActiveModule] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    setError(null);
-    const res = await fetch(`/api/admin/employees/${employeeId}/assign-modules`);
-    const data = (await res.json()) as EmployeeModuleAccessDto & { error?: string };
-    setLoading(false);
-    if (!res.ok) {
-      setError(data.error ?? "Failed to load module assignments");
-      return;
+    try {
+      const res = await fetch(`/api/admin/employees/${employeeId}/assign-modules`);
+      const text = await res.text();
+      let data: EmployeeModuleAccessDto & { error?: string };
+      try {
+        data = text ? (JSON.parse(text) as EmployeeModuleAccessDto & { error?: string }) : {};
+      } catch {
+        setLoading(false);
+        notify.error("Failed to load module assignments", {
+          description: res.ok
+            ? "Server returned an invalid response."
+            : `HTTP ${res.status}`,
+        });
+        return;
+      }
+      setLoading(false);
+      if (!res.ok) {
+        notify.error(data.error ?? `Failed to load module assignments (HTTP ${res.status}).`);
+        return;
+      }
+      if (!data.employee || !data.availableModules) {
+        notify.error("Module assignment data was incomplete.");
+        return;
+      }
+      setDetail(data);
+      setSelectedModules(new Set(data.assignedModuleCodes ?? []));
+      const pages = new Map<string, Set<string>>();
+      for (const row of data.assignedPages ?? []) {
+        const set = pages.get(row.moduleCode) ?? new Set();
+        set.add(row.pageKey);
+        pages.set(row.moduleCode, set);
+      }
+      setSelectedPages(pages);
+      setActiveModule(
+        data.assignedModuleCodes?.[0] ?? data.availableModules[0]?.code ?? null,
+      );
+    } catch (e) {
+      setLoading(false);
+      notify.error(e instanceof Error ? e.message : "Failed to load module assignments");
     }
-    setDetail(data);
-    setSelectedModules(new Set(data.assignedModuleCodes));
-    const pages = new Map<string, Set<string>>();
-    for (const row of data.assignedPages) {
-      const set = pages.get(row.moduleCode) ?? new Set();
-      set.add(row.pageKey);
-      pages.set(row.moduleCode, set);
-    }
-    setSelectedPages(pages);
-    setActiveModule(data.assignedModuleCodes[0] ?? data.availableModules[0]?.code ?? null);
   }, [employeeId]);
 
   useEffect(() => {
@@ -57,11 +77,118 @@ export function AssignModulesPanel({ employeeId }: Props) {
     [activeModule, detail],
   );
 
+  function togglePage(moduleCode: string, pageKey: string, checked: boolean) {
+    setSelectedPages((prev) => {
+      const next = new Map(prev);
+      const set = new Set(next.get(moduleCode) ?? []);
+      if (checked) set.add(pageKey);
+      else set.delete(pageKey);
+      next.set(moduleCode, set);
+      return next;
+    });
+  }
+
+  function selectAllPages(moduleCode: string, pageKeys: string[]) {
+    setSelectedPages((prev) => {
+      const next = new Map(prev);
+      next.set(moduleCode, new Set(pageKeys));
+      return next;
+    });
+  }
+
+  function clearPages(moduleCode: string) {
+    setSelectedPages((prev) => {
+      const next = new Map(prev);
+      next.set(moduleCode, new Set());
+      return next;
+    });
+  }
+
+  async function handleSave() {
+    if (!detail) return;
+    setSaving(true);
+
+    try {
+      const assignments = [...selectedModules].map((moduleCode) => ({
+        moduleCode,
+        pageKeys: [...(selectedPages.get(moduleCode) ?? [])],
+      }));
+
+      if (assignments.length === 0) {
+        notify.warning("Select at least one module and one or more pages inside it.");
+        return;
+      }
+
+      const missingPages = assignments.filter((a) => a.pageKeys.length === 0);
+      if (missingPages.length > 0) {
+        const labels = missingPages.map((m) => {
+          const mod = detail.availableModules.find((x) => x.code === m.moduleCode);
+          return mod?.label ?? m.moduleCode;
+        });
+        notify.alert(`Select at least one page for: ${labels.join(", ")}`);
+        return;
+      }
+
+      const res = await fetch(`/api/admin/employees/${employeeId}/assign-modules`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assignments }),
+      });
+      const text = await res.text();
+      let data: {
+        error?: string;
+        message?: string;
+        detail?: EmployeeModuleAccessDto;
+      };
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        notify.failure(`Failed to save assignments (HTTP ${res.status}).`);
+        return;
+      }
+      if (!res.ok) {
+        notify.error(data.error ?? "Failed to save assignments");
+        return;
+      }
+      if (data.detail) {
+        setDetail(data.detail);
+        setSelectedModules(new Set(data.detail.assignedModuleCodes));
+        const pages = new Map<string, Set<string>>();
+        for (const row of data.detail.assignedPages) {
+          const set = pages.get(row.moduleCode) ?? new Set();
+          set.add(row.pageKey);
+          pages.set(row.moduleCode, set);
+        }
+        setSelectedPages(pages);
+      }
+      notify.success("Module assignments saved", {
+        description:
+          data.message ??
+          "This user can open only the assigned modules and pages on next load.",
+      });
+    } catch (e) {
+      notify.error(e instanceof Error ? e.message : "Failed to save assignments");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function toggleModule(code: string, checked: boolean) {
     setSelectedModules((prev) => {
       const next = new Set(prev);
-      if (checked) next.add(code);
-      else {
+      if (checked) {
+        next.add(code);
+        const mod = detail?.availableModules.find((m) => m.code === code);
+        if (mod && mod.pages.length > 0) {
+          setSelectedPages((pages) => {
+            const copy = new Map(pages);
+            if (!copy.get(code)?.size) {
+              copy.set(code, new Set(mod.pages.map((p) => p.key)));
+            }
+            return copy;
+          });
+        }
+      } else {
         next.delete(code);
         setSelectedPages((pages) => {
           const copy = new Map(pages);
@@ -72,104 +199,22 @@ export function AssignModulesPanel({ employeeId }: Props) {
       return next;
     });
     if (checked) setActiveModule(code);
-    setMessage(null);
-  }
-
-  function togglePage(moduleCode: string, pageKey: string, checked: boolean) {
-    setSelectedPages((prev) => {
-      const next = new Map(prev);
-      const set = new Set(next.get(moduleCode) ?? []);
-      if (checked) set.add(pageKey);
-      else set.delete(pageKey);
-      next.set(moduleCode, set);
-      return next;
-    });
-    setMessage(null);
-  }
-
-  function selectAllPages(moduleCode: string, pageKeys: string[]) {
-    setSelectedPages((prev) => {
-      const next = new Map(prev);
-      next.set(moduleCode, new Set(pageKeys));
-      return next;
-    });
-    setMessage(null);
-  }
-
-  function clearPages(moduleCode: string) {
-    setSelectedPages((prev) => {
-      const next = new Map(prev);
-      next.set(moduleCode, new Set());
-      return next;
-    });
-    setMessage(null);
-  }
-
-  async function handleSave() {
-    if (!detail) return;
-    setSaving(true);
-    setError(null);
-    setMessage(null);
-
-    const assignments = [...selectedModules].map((moduleCode) => ({
-      moduleCode,
-      pageKeys: [...(selectedPages.get(moduleCode) ?? [])],
-    }));
-
-    const missingPages = assignments.filter((a) => a.pageKeys.length === 0);
-    if (missingPages.length > 0) {
-      setSaving(false);
-      setError(
-        `Select at least one page for: ${missingPages.map((m) => m.moduleCode).join(", ")}`,
-      );
-      return;
-    }
-
-    const res = await fetch(`/api/admin/employees/${employeeId}/assign-modules`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ assignments }),
-    });
-    const data = (await res.json()) as {
-      error?: string;
-      message?: string;
-      detail?: EmployeeModuleAccessDto;
-    };
-    setSaving(false);
-    if (!res.ok) {
-      setError(data.error ?? "Failed to save assignments");
-      return;
-    }
-    if (data.detail) {
-      setDetail(data.detail);
-      setSelectedModules(new Set(data.detail.assignedModuleCodes));
-      const pages = new Map<string, Set<string>>();
-      for (const row of data.detail.assignedPages) {
-        const set = pages.get(row.moduleCode) ?? new Set();
-        set.add(row.pageKey);
-        pages.set(row.moduleCode, set);
-      }
-      setSelectedPages(pages);
-    }
-    setMessage(
-      data.message ??
-        "Saved. This user can open only the assigned modules and pages on next load.",
-    );
   }
 
   if (loading) {
     return <ActiniumLoadingState label="Loading module assignments…" size="sm" />;
   }
 
-  if (error && !detail) {
+  if (!detail) {
     return (
-      <Alert variant="destructive">
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
+      <div className="space-y-3">
+        <p className="text-sm text-muted-foreground">Could not load module assignments.</p>
+        <Button type="button" variant="outline" onClick={() => void load()}>
+          Retry
+        </Button>
+      </div>
     );
   }
-
-  if (!detail) return null;
 
   return (
     <div className="space-y-4">
@@ -200,17 +245,6 @@ export function AssignModulesPanel({ employeeId }: Props) {
           </div>
         </CardContent>
       </Card>
-
-      {error ? (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      ) : null}
-      {message ? (
-        <Alert>
-          <AlertDescription>{message}</AlertDescription>
-        </Alert>
-      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
         <Card>
@@ -316,7 +350,7 @@ export function AssignModulesPanel({ employeeId }: Props) {
                   const checked = selectedPages.get(activeModuleDef.code)?.has(page.key) ?? false;
                   return (
                     <li
-                      key={page.key}
+                      key={`${activeModuleDef.code}:${page.key}`}
                       className="flex items-start gap-3 rounded-md border px-3 py-2"
                     >
                       <Checkbox
@@ -349,12 +383,25 @@ export function AssignModulesPanel({ employeeId }: Props) {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" onClick={() => void handleSave()} disabled={saving}>
+        <Button
+          type="button"
+          disabled={saving}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            void handleSave();
+          }}
+        >
           {saving ? "Saving…" : "Save assignments"}
         </Button>
         <Button type="button" variant="outline" render={<Link href="/admin/employees" />} nativeButton={false}>
           Back to employees
         </Button>
+        {!saving && selectedModules.size > 0 ? (
+          <p className="text-xs text-muted-foreground">
+            {selectedModules.size} module{selectedModules.size === 1 ? "" : "s"} ready to save
+          </p>
+        ) : null}
       </div>
     </div>
   );

@@ -33,8 +33,9 @@ export async function GET(request: Request) {
     ...buildChildEntityWhere(dryDockProjectId, guard.projectFilter),
   };
 
-  const [total, checklistItems] = await Promise.all([
+  const [total, completedCount, checklistItems] = await Promise.all([
     prisma.ddChecklistItem.count({ where }),
+    prisma.ddChecklistItem.count({ where: { ...where, isCompleted: true } }),
     prisma.ddChecklistItem.findMany({
       where,
       skip,
@@ -43,7 +44,10 @@ export async function GET(request: Request) {
     }),
   ]);
 
-  return NextResponse.json(paginatedResult(checklistItems, total, page, limit));
+  return NextResponse.json({
+    ...paginatedResult(checklistItems, total, page, limit),
+    completedCount,
+  });
 }
 
 export async function POST(request: Request) {

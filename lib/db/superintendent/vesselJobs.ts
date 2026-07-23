@@ -1,6 +1,8 @@
+import { randomUUID } from "node:crypto";
 import type {
   DdInputResponsibleRole,
   DdJobPriority,
+  DdVesselJobAssignedParty,
   DdVesselJobSource,
   DdVesselJobStatus,
   Prisma,
@@ -14,7 +16,14 @@ import type { DdVesselJobDto, ListQuery } from "@/lib/superintendent/types";
 const INTEGRATABLE_STATUSES: DdVesselJobStatus[] = ["submitted", "approved", "carry_forward"];
 
 type VesselJobRow = Prisma.DdVesselJobGetPayload<{
-  include: { vessel: { select: { name: true; code: true } } };
+  include: {
+    vessel: {
+      select: {
+        name: true;
+        code: true;
+      };
+    };
+  };
 }>;
 
 function mapVesselJob(row: VesselJobRow): DdVesselJobDto {
@@ -34,6 +43,8 @@ function mapVesselJob(row: VesselJobRow): DdVesselJobDto {
     priority: row.priority,
     source: row.source,
     status: row.status,
+    assignedParty: row.assignedParty ?? null,
+    assignedAt: row.assignedAt?.toISOString() ?? null,
     createdByName: row.createdByName,
     createdByRole: row.createdByRole,
     submittedAt: row.submittedAt?.toISOString() ?? null,
@@ -76,19 +87,26 @@ function mapVesselJob(row: VesselJobRow): DdVesselJobDto {
     masterReviewedBy: row.masterReviewedBy,
     linkedDefectId: row.linkedDefectId,
     linkedPmsReference: row.linkedPmsReference,
+    collaborationPackageId: row.collaborationPackageId,
     formData: row.formData as Record<string, unknown> | null,
     attachmentMeta: Array.isArray(row.attachmentMeta)
       ? (row.attachmentMeta as import("@/lib/db/vesselJobAttachments").VesselJobAttachmentMeta[])
       : null,
     photoCount: row.photoCount,
+    exportAssignedAt: row.exportAssignedAt?.toISOString() ?? null,
+    archivedAt: row.archivedAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
 }
 
-async function buildWhere(query: ListQuery & { bankOnly?: boolean }): Promise<Prisma.DdVesselJobWhereInput> {
+async function buildWhere(query: ListQuery & { bankOnly?: boolean; includeArchived?: boolean }): Promise<Prisma.DdVesselJobWhereInput> {
   const vesselIds = await getScopedVesselIds();
   const where: Prisma.DdVesselJobWhereInput = { ...notDeleted };
+
+  if (!query.includeArchived) {
+    where.archivedAt = null;
+  }
 
   if (vesselIds !== undefined) {
     if (vesselIds.length === 0) {
@@ -121,6 +139,10 @@ async function buildWhere(query: ListQuery & { bankOnly?: boolean }): Promise<Pr
 
   if (query.status && query.status !== "all") {
     where.status = query.status as DdVesselJobStatus;
+  }
+
+  if (query.assignedParty && query.assignedParty !== "all") {
+    where.assignedParty = query.assignedParty as DdVesselJobAssignedParty;
   }
 
   if (query.search) {
@@ -202,6 +224,7 @@ export async function createDdVesselJob(input: {
   runningHoursAtSurvey?: number | null;
   linkedDefectId?: string | null;
   linkedPmsReference?: string | null;
+  collaborationPackageId?: string | null;
   formData?: import("@prisma/client").Prisma.InputJsonValue;
   photoCount?: number;
   createdByName?: string | null;
@@ -244,6 +267,7 @@ export async function createDdVesselJob(input: {
         runningHoursAtSurvey: input.runningHoursAtSurvey ?? null,
         linkedDefectId: input.linkedDefectId ?? null,
         linkedPmsReference: input.linkedPmsReference?.trim() || null,
+        collaborationPackageId: input.collaborationPackageId?.trim() || null,
         formData: input.formData ?? undefined,
         photoCount: input.photoCount ?? 0,
         createdByName: input.createdByName?.trim() || null,
@@ -268,6 +292,177 @@ export async function createDdVesselJob(input: {
     return created;
   });
   return mapVesselJob(row);
+}
+
+/**
+ * Create multiple vessel jobs for the same machinery context, linked by one collaborationPackageId.
+ * Each member keeps its own standardJobLibraryId / title / estimatedManhours so templates are not lost.
+ */
+export async function createCollaboratedDdVesselJobs(input: {
+  vesselId: string;
+  standardJobLibraryIds: string[];
+  memberScopes?: Array<{
+    standardJobLibraryId: string;
+    machineryKey?: string | null;
+    componentKey?: string | null;
+  }>;
+  targetDryDockProjectId?: string | null;
+  category: string;
+  department?: string | null;
+  systemKey?: string | null;
+  machineryKey?: string | null;
+  componentKey?: string | null;
+  workshop?: string | null;
+  description?: string | null;
+  priority?: DdJobPriority;
+  source?: DdVesselJobSource;
+  status?: DdVesselJobStatus;
+  conditionRating?: import("@prisma/client").VesselConditionRating | null;
+  conditionDescription?: string | null;
+  observedDefect?: string | null;
+  measurements?: import("@prisma/client").Prisma.InputJsonValue;
+  repairRecommendation?: string | null;
+  replacementParts?: string | null;
+  consumables?: string | null;
+  estimatedCost?: number | null;
+  classAttendance?: boolean;
+  makerAttendance?: boolean;
+  operationalRisk?: string | null;
+  safetyRisk?: string | null;
+  environmentalRisk?: string | null;
+  criticality?: string | null;
+  lastOverhaulDate?: Date | null;
+  runningHoursAtSurvey?: number | null;
+  linkedDefectId?: string | null;
+  linkedPmsReference?: string | null;
+  formData?: Record<string, unknown> | null;
+  createdByName?: string | null;
+  createdByRole?: DdInputResponsibleRole | null;
+}) {
+  const uniqueIds = [...new Set(input.standardJobLibraryIds.map((id) => id.trim()).filter(Boolean))];
+  if (uniqueIds.length < 2) {
+    throw new Error("Select at least two standard jobs to collaborate");
+  }
+
+  const libraryNodes = await prisma.jobLibraryNode.findMany({
+    where: {
+      id: { in: uniqueIds },
+      nodeType: "standard_job",
+      ...notDeleted,
+    },
+    select: {
+      id: true,
+      name: true,
+      estimatedManhours: true,
+      defaultPriority: true,
+      inputTemplate: true,
+    },
+  });
+
+  if (libraryNodes.length !== uniqueIds.length) {
+    throw new Error("One or more selected standard jobs were not found in the job library");
+  }
+
+  const nodeById = new Map(libraryNodes.map((node) => [node.id, node]));
+  const orderedNodes = uniqueIds.map((id) => nodeById.get(id)!);
+  const collaborationPackageId = randomUUID();
+  const memberTitles = orderedNodes.map((node) => node.name);
+  const status = input.status ?? "draft";
+  const submittedAt = status === "submitted" ? new Date() : null;
+  const baseFormData = { ...(input.formData ?? {}) };
+  const scopeByJobId = new Map(
+    (input.memberScopes ?? []).map((scope) => [scope.standardJobLibraryId, scope]),
+  );
+
+  const rows = await prisma.$transaction(async (tx) => {
+    const created = [];
+    for (let index = 0; index < orderedNodes.length; index++) {
+      const node = orderedNodes[index]!;
+      const memberScope = scopeByJobId.get(node.id);
+      const machineryKey =
+        memberScope?.machineryKey?.trim() || input.machineryKey?.trim() || null;
+      const componentKey =
+        memberScope?.componentKey?.trim() || input.componentKey?.trim() || null;
+      const formData: Prisma.InputJsonValue = {
+        ...baseFormData,
+        collaborationPackageId,
+        collaborationMemberCount: orderedNodes.length,
+        collaborationMemberTitles: memberTitles,
+        collaborationMemberIndex: index + 1,
+        standardJobLibraryId: node.id,
+        standardJobName: node.name,
+        machineryKey,
+        componentKey,
+        inputTemplate: node.inputTemplate ?? null,
+      };
+
+      const row = await tx.ddVesselJob.create({
+        data: {
+          vesselId: input.vesselId,
+          targetDryDockProjectId: input.targetDryDockProjectId?.trim() || null,
+          standardJobLibraryId: node.id,
+          title: node.name,
+          category: input.category.trim(),
+          department: input.department?.trim() || null,
+          systemKey: input.systemKey?.trim() || null,
+          machineryKey,
+          componentKey,
+          workshop: input.workshop?.trim() || null,
+          description: input.description?.trim() || null,
+          priority: input.priority ?? node.defaultPriority ?? "medium",
+          source: input.source ?? "vessel",
+          status,
+          conditionRating: input.conditionRating ?? null,
+          conditionDescription: input.conditionDescription?.trim() || null,
+          observedDefect: input.observedDefect?.trim() || null,
+          measurements: input.measurements ?? undefined,
+          repairRecommendation: input.repairRecommendation?.trim() || null,
+          replacementParts: input.replacementParts?.trim() || null,
+          consumables: input.consumables?.trim() || null,
+          estimatedManhours: node.estimatedManhours ?? null,
+          estimatedCost: input.estimatedCost ?? null,
+          classAttendance: input.classAttendance ?? false,
+          makerAttendance: input.makerAttendance ?? false,
+          operationalRisk: input.operationalRisk?.trim() || null,
+          safetyRisk: input.safetyRisk?.trim() || null,
+          environmentalRisk: input.environmentalRisk?.trim() || null,
+          criticality: input.criticality?.trim() || null,
+          lastOverhaulDate: input.lastOverhaulDate ?? null,
+          runningHoursAtSurvey: input.runningHoursAtSurvey ?? null,
+          // Defect is 1:1 — attach only to the first package member.
+          linkedDefectId: index === 0 ? (input.linkedDefectId ?? null) : null,
+          linkedPmsReference: input.linkedPmsReference?.trim() || null,
+          collaborationPackageId,
+          formData,
+          photoCount: 0,
+          createdByName: input.createdByName?.trim() || null,
+          createdByRole: input.createdByRole ?? null,
+          submittedAt,
+        },
+        include: { vessel: { select: { name: true, code: true } } },
+      });
+      created.push(row);
+    }
+
+    if (input.linkedDefectId && created[0]) {
+      await tx.vesselDefect.updateMany({
+        where: {
+          id: input.linkedDefectId,
+          vesselId: input.vesselId,
+          ...notDeleted,
+          linkedVesselJobId: null,
+        },
+        data: { linkedVesselJobId: created[0].id },
+      });
+    }
+
+    return created;
+  });
+
+  return {
+    collaborationPackageId,
+    vesselJobs: rows.map(mapVesselJob),
+  };
 }
 
 export async function updateDdVesselJob(
@@ -747,6 +942,348 @@ export async function softDeleteDdVesselJob(id: string) {
     where: { id },
     data: { deletedAt: new Date() },
   });
+}
+
+/** Hide job from active ship submissions lists. */
+export async function archiveDdVesselJob(id: string) {
+  const row = await prisma.ddVesselJob.findFirst({
+    where: { id, ...notDeleted },
+    include: { vessel: { select: { name: true, code: true } } },
+  });
+  if (!row) return null;
+  if (row.archivedAt) return mapVesselJob(row);
+
+  const updated = await prisma.ddVesselJob.update({
+    where: { id },
+    data: { archivedAt: new Date() },
+    include: { vessel: { select: { name: true, code: true } } },
+  });
+  return mapVesselJob(updated);
+}
+
+async function nextJobAssignmentNumber(vesselId: string, vesselCode: string): Promise<string> {
+  const year = new Date().getFullYear();
+  const prefix = `${vesselCode}-JA-${year}-`;
+  const existing = await prisma.ddVesselJob.findMany({
+    where: {
+      vesselId,
+      jobCode: { startsWith: prefix },
+    },
+    select: { jobCode: true },
+  });
+
+  let maxSeq = 0;
+  for (const row of existing) {
+    const code = row.jobCode ?? "";
+    const seqPart = code.slice(prefix.length);
+    const seq = Number.parseInt(seqPart, 10);
+    if (Number.isFinite(seq) && seq > maxSeq) maxSeq = seq;
+  }
+
+  return `${prefix}${String(maxSeq + 1).padStart(3, "0")}`;
+}
+
+/** Assign Job Assignment Number and mark ready for shipyard export. */
+export async function assignDdVesselJobForExport(id: string) {
+  const row = await prisma.ddVesselJob.findFirst({
+    where: { id, ...notDeleted, archivedAt: null },
+    include: { vessel: { select: { name: true, code: true } } },
+  });
+  if (!row) return null;
+
+  const jobCode =
+    row.jobCode?.trim() ||
+    (await nextJobAssignmentNumber(row.vesselId, row.vessel.code));
+
+  const updated = await prisma.ddVesselJob.update({
+    where: { id },
+    data: {
+      jobCode,
+      exportAssignedAt: row.exportAssignedAt ?? new Date(),
+    },
+    include: { vessel: { select: { name: true, code: true } } },
+  });
+  return mapVesselJob(updated);
+}
+
+/** Assign (or clear) the execution / attendance party for a vessel job. */
+export async function assignDdVesselJobParty(
+  id: string,
+  assignedParty: DdVesselJobAssignedParty | null,
+) {
+  const row = await prisma.ddVesselJob.findFirst({
+    where: { id, ...notDeleted, archivedAt: null },
+    include: { vessel: { select: { name: true, code: true } } },
+  });
+  if (!row) return null;
+
+  const updated = await prisma.ddVesselJob.update({
+    where: { id },
+    data: {
+      assignedParty,
+      assignedAt: assignedParty ? new Date() : null,
+      // Keep attendance flags aligned with maker / class assignment.
+      ...(assignedParty === "makers_service_engineer" ? { makerAttendance: true } : {}),
+      ...(assignedParty === "class" ? { classAttendance: true } : {}),
+    },
+    include: { vessel: { select: { name: true, code: true } } },
+  });
+  return mapVesselJob(updated);
+}
+
+/**
+ * Move vessel bank jobs to another vessel (same user scope).
+ * Clears vessel-specific export/assignment numbers and target project links.
+ */
+export async function reassignDdVesselJobsToVessel(
+  jobIds: string[],
+  targetVesselId: string,
+): Promise<
+  | { ok: true; moved: number; vesselJobs: DdVesselJobDto[]; skipped: { id: string; reason: string }[] }
+  | { ok: false; error: string; status: number }
+> {
+  const uniqueIds = [...new Set(jobIds.map((id) => id.trim()).filter(Boolean))];
+  if (uniqueIds.length === 0) {
+    return { ok: false, error: "Select at least one job", status: 400 };
+  }
+
+  const targetVessel = await prisma.vessel.findFirst({
+    where: { id: targetVesselId, ...notDeleted },
+    select: { id: true, name: true, code: true },
+  });
+  if (!targetVessel) {
+    return { ok: false, error: "Target vessel not found", status: 404 };
+  }
+
+  const rows = await prisma.ddVesselJob.findMany({
+    where: { id: { in: uniqueIds }, ...notDeleted },
+    select: {
+      id: true,
+      vesselId: true,
+      status: true,
+      archivedAt: true,
+      integratedDryDockProjectId: true,
+      title: true,
+    },
+  });
+
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  const skipped: { id: string; reason: string }[] = [];
+  const movableIds: string[] = [];
+
+  for (const id of uniqueIds) {
+    const row = byId.get(id);
+    if (!row) {
+      skipped.push({ id, reason: "Job not found" });
+      continue;
+    }
+    if (row.archivedAt) {
+      skipped.push({ id, reason: "Archived" });
+      continue;
+    }
+    if (row.status === "integrated" || row.integratedDryDockProjectId) {
+      skipped.push({ id, reason: "Already integrated" });
+      continue;
+    }
+    if (row.status === "rejected") {
+      skipped.push({ id, reason: "Rejected" });
+      continue;
+    }
+    if (row.vesselId === targetVesselId) {
+      skipped.push({ id, reason: "Already on target vessel" });
+      continue;
+    }
+    movableIds.push(id);
+  }
+
+  if (movableIds.length === 0) {
+    return {
+      ok: true,
+      moved: 0,
+      vesselJobs: [],
+      skipped,
+    };
+  }
+
+  await prisma.ddVesselJob.updateMany({
+    where: { id: { in: movableIds } },
+    data: {
+      vesselId: targetVesselId,
+      targetDryDockProjectId: null,
+      jobCode: null,
+      exportAssignedAt: null,
+    },
+  });
+
+  const updated = await prisma.ddVesselJob.findMany({
+    where: { id: { in: movableIds } },
+    include: { vessel: { select: { name: true, code: true } } },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  return {
+    ok: true,
+    moved: updated.length,
+    vesselJobs: updated.map(mapVesselJob),
+    skipped,
+  };
+}
+
+/** Reopen a submitted (non-integrated) job so crew can revise it. */
+export async function reopenDdVesselJobForUpdate(id: string) {
+  const row = await prisma.ddVesselJob.findFirst({
+    where: { id, ...notDeleted, archivedAt: null },
+    include: { vessel: { select: { name: true, code: true } } },
+  });
+  if (!row) return { ok: false as const, error: "Job not found", status: 404 as const };
+  if (row.status === "integrated") {
+    return {
+      ok: false as const,
+      error: "Integrated jobs cannot be updated onboard",
+      status: 400 as const,
+    };
+  }
+  if (row.status === "rejected") {
+    return {
+      ok: false as const,
+      error: "Rejected jobs cannot be updated onboard",
+      status: 400 as const,
+    };
+  }
+  if (row.status === "draft") {
+    return { ok: true as const, vesselJob: mapVesselJob(row) };
+  }
+
+  const updated = await prisma.ddVesselJob.update({
+    where: { id },
+    data: {
+      status: "draft",
+      submittedAt: null,
+    },
+    include: { vessel: { select: { name: true, code: true } } },
+  });
+  return { ok: true as const, vesselJob: mapVesselJob(updated) };
+}
+
+export type VesselJobPrintBundle = {
+  vesselJob: DdVesselJobDto;
+  vessel: {
+    id: string;
+    name: string;
+    code: string;
+    imoNumber: string | null;
+    flag: string | null;
+    vesselType: string | null;
+    callSign: string | null;
+    grossTonnage: number | null;
+    yearBuilt: number | null;
+    classSociety: string | null;
+  };
+  company: {
+    id: string;
+    code: string;
+    name: string;
+    address: string | null;
+    contactPerson: string | null;
+    contactEmail: string | null;
+    contactPhone: string | null;
+  } | null;
+  dryDockProject: {
+    id: string;
+    name: string;
+    referenceCode: string | null;
+    status: string;
+    selectedYard: string | null;
+    portLocation: string | null;
+    plannedStart: string | null;
+  } | null;
+};
+
+/** Load job + vessel + project context for shipyard PDF / print. Ensures assignment number. */
+export async function getDdVesselJobPrintBundle(id: string): Promise<VesselJobPrintBundle | null> {
+  const assigned = await assignDdVesselJobForExport(id);
+  if (!assigned) return null;
+
+  const row = await prisma.ddVesselJob.findFirst({
+    where: { id, ...notDeleted },
+    include: {
+      vessel: {
+        select: {
+          id: true,
+          name: true,
+          code: true,
+          imoNumber: true,
+          flag: true,
+          vesselType: true,
+          callSign: true,
+          grossTonnage: true,
+          yearBuilt: true,
+          classSociety: true,
+          company: {
+            select: {
+              id: true,
+              code: true,
+              name: true,
+              address: true,
+              contactPerson: true,
+              contactEmail: true,
+              contactPhone: true,
+            },
+          },
+        },
+      },
+      targetDryDockProject: {
+        select: {
+          id: true,
+          name: true,
+          referenceCode: true,
+          status: true,
+          selectedYard: true,
+          portLocation: true,
+          plannedStart: true,
+        },
+      },
+    },
+  });
+  if (!row) return null;
+
+  return {
+    vesselJob: assigned,
+    vessel: {
+      id: row.vessel.id,
+      name: row.vessel.name,
+      code: row.vessel.code,
+      imoNumber: row.vessel.imoNumber,
+      flag: row.vessel.flag,
+      vesselType: row.vessel.vesselType,
+      callSign: row.vessel.callSign,
+      grossTonnage: row.vessel.grossTonnage,
+      yearBuilt: row.vessel.yearBuilt,
+      classSociety: row.vessel.classSociety,
+    },
+    company: row.vessel.company
+      ? {
+          id: row.vessel.company.id,
+          code: row.vessel.company.code,
+          name: row.vessel.company.name,
+          address: row.vessel.company.address,
+          contactPerson: row.vessel.company.contactPerson,
+          contactEmail: row.vessel.company.contactEmail,
+          contactPhone: row.vessel.company.contactPhone,
+        }
+      : null,
+    dryDockProject: row.targetDryDockProject
+      ? {
+          id: row.targetDryDockProject.id,
+          name: row.targetDryDockProject.name,
+          referenceCode: row.targetDryDockProject.referenceCode,
+          status: row.targetDryDockProject.status,
+          selectedYard: row.targetDryDockProject.selectedYard,
+          portLocation: row.targetDryDockProject.portLocation,
+          plannedStart: row.targetDryDockProject.plannedStart?.toISOString() ?? null,
+        }
+      : null,
+  };
 }
 
 export async function resolveVesselIdFromProject(dryDockProjectId: string) {

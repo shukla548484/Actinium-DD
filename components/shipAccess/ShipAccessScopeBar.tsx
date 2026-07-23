@@ -41,6 +41,9 @@ export function ShipAccessScopeBar() {
       body: JSON.stringify({ vesselId }),
     });
     await load();
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("ship-access-vessel-changed", { detail: { vesselId } }));
+    }
   }
 
   if (loading || !state) return null;
@@ -114,6 +117,14 @@ export function useShipAccessContext() {
 
   useEffect(() => {
     void reload();
+  }, [reload]);
+
+  useEffect(() => {
+    function onVesselChanged() {
+      void reload();
+    }
+    window.addEventListener("ship-access-vessel-changed", onVesselChanged);
+    return () => window.removeEventListener("ship-access-vessel-changed", onVesselChanged);
   }, [reload]);
 
   return { ...state, loading, error, reload };

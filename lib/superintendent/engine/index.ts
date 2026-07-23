@@ -29,6 +29,8 @@ export {
 
 export {
   PROJECT_TEMPLATES,
+  STANDARD_PRE_DOCK_CHECKLIST,
+  STANDARD_PRE_DOCK_DOCUMENTS,
   TEMPLATE_ENGINE_VERSION,
   getEnabledModules,
   getProjectTemplate,
@@ -44,6 +46,7 @@ export type {
 } from "./projectTemplates";
 
 export { provisionDryDockProjectWorkspace } from "./provisionWorkspace";
+export { ensureProjectChecklistFromTemplate } from "./ensureChecklist";
 export { getProjectWorkspaceSummary } from "./workspaceSummary";
 export type { ProjectWorkspaceSummary, WorkspaceModuleCard, WorkspaceWorkshop } from "./workspaceSummary";
 export { projectScopedHref, projectPlanningHref, projectMonitoringHref, projectBudgetHref } from "./workspaceLinks";

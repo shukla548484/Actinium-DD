@@ -7,6 +7,7 @@ import type {
   DdRiskLevel,
   DdSparesStatus,
   DdSurveyStatus,
+  DdVesselJobAssignedParty,
   DdVesselJobSource,
   DdVesselJobStatus,
   VesselConditionRating,
@@ -27,6 +28,7 @@ export interface ListQuery {
   employeeId?: string;
   vesselIds?: string[];
   category?: string;
+  assignedParty?: string | "all";
 }
 
 export type PaginatedResult<TItemsKey extends string, TItem> = Record<TItemsKey, TItem[]> & {
@@ -134,6 +136,8 @@ export type DdVesselJobDto = {
   priority: DdJobPriority;
   source: DdVesselJobSource;
   status: DdVesselJobStatus;
+  assignedParty: DdVesselJobAssignedParty | null;
+  assignedAt: string | null;
   createdByName: string | null;
   createdByRole: DdInputResponsibleRole | null;
   submittedAt: string | null;
@@ -176,9 +180,12 @@ export type DdVesselJobDto = {
   masterReviewedBy: string | null;
   linkedDefectId: string | null;
   linkedPmsReference: string | null;
+  collaborationPackageId: string | null;
   formData: Record<string, unknown> | null;
   attachmentMeta: VesselJobAttachmentMeta[] | null;
   photoCount: number;
+  exportAssignedAt: string | null;
+  archivedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };

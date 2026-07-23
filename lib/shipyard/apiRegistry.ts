@@ -22,6 +22,7 @@ export const SHIPYARD_PAGE_API_REGISTRY: ShipyardPageApiMap[] = [
       { method: "PATCH", path: "/api/shipyard/rfq/[inviteId]", purpose: "Advance workflow stage, assign estimator", status: "live" },
       { method: "GET", path: "/api/shipyard/estimators", purpose: "List shipyard estimators for assignment", status: "live" },
       { method: "GET", path: "/api/projects/[id]/yards", purpose: "Office: issue RFQ invite (creates queue entry)", status: "live" },
+      { method: "GET", path: "/api/shipyard/quotations", purpose: "List vessel-job quotation requests", status: "live" },
     ],
   },
   {
@@ -38,6 +39,12 @@ export const SHIPYARD_PAGE_API_REGISTRY: ShipyardPageApiMap[] = [
   {
     module: SHIPYARD_MODULES.find((m) => m.id === "quote_builder")!,
     routes: [
+      { method: "GET", path: "/api/shipyard/quotations/[id]", purpose: "Quotation workspace detail", status: "live" },
+      { method: "PATCH", path: "/api/shipyard/quotations/[id]", purpose: "Save lines/terms/tariff or submit", status: "live" },
+      { method: "GET", path: "/api/shipyard/quotations/by-token/[token]", purpose: "Token portal quotation read", status: "live" },
+      { method: "PATCH", path: "/api/shipyard/quotations/by-token/[token]", purpose: "Token portal quotation write/submit", status: "live" },
+      { method: "GET", path: "/api/shipyard/tariffs", purpose: "Yard tariff catalog", status: "live" },
+      { method: "PATCH", path: "/api/shipyard/tariffs", purpose: "Update yard tariff rates", status: "live" },
       { method: "GET", path: "/api/quote/[token]", purpose: "Token portal quote read", status: "live" },
       { method: "POST", path: "/api/quote/[token]", purpose: "Token portal quote submit", status: "live" },
       { method: "POST", path: "/api/shipyard/quotation/[inviteId]/submit", purpose: "Authenticated yard quote submit", status: "planned" },

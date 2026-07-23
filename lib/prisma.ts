@@ -41,8 +41,19 @@ function isStalePrismaClient(client: PrismaClient | undefined): boolean {
 
   if (!modelHasField("Company", "category")) return true;
   if (!modelHasField("DryDockProject", "projectType")) return true;
+  if (!modelHasField("EmployeeModuleAssignment", "moduleCode")) return true;
+  if (!modelHasField("EmployeeModulePage", "pageKey")) return true;
 
-  return typeof (client as PrismaClient & { company?: { count?: unknown } }).company?.count !== "function";
+  const extended = client as PrismaClient & {
+    company?: { count?: unknown };
+    employeeModuleAssignment?: { findMany?: unknown };
+    employeeModulePage?: { findMany?: unknown };
+  };
+  if (typeof extended.company?.count !== "function") return true;
+  if (typeof extended.employeeModuleAssignment?.findMany !== "function") return true;
+  if (typeof extended.employeeModulePage?.findMany !== "function") return true;
+
+  return false;
 }
 
 /** Dev hot-reload can keep a PrismaClient from before schema changes — recreate if models are missing. */

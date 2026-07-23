@@ -32,6 +32,12 @@ function isPublicRoute(pathname: string): boolean {
   if (isStaticAsset(pathname)) return true;
   if (isLoginPath(pathname)) return true;
   if (isPublicAuthApi(pathname)) return true;
+  // Shipyard quotation invite token portal (mailto deep link)
+  if (pathname.startsWith("/shipyard/quotations/t/")) return true;
+  if (pathname.startsWith("/api/shipyard/quotations/by-token/")) return true;
+  // Classic tender quote token portal
+  if (pathname.startsWith("/quote/")) return true;
+  if (pathname.startsWith("/api/quote/")) return true;
   return false;
 }
 
@@ -51,7 +57,9 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (isPublicRoute(pathname)) {
-    return NextResponse.next();
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-pathname", pathname);
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
   if (!isAuthEnabled()) {

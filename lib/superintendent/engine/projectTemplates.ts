@@ -2,7 +2,7 @@ import type { DryDockProjectType } from "@prisma/client";
 import type { DdProjectModuleId } from "./projectModules";
 import { CORE_MODULES, modulesForProjectType } from "./projectModules";
 
-export const TEMPLATE_ENGINE_VERSION = "1.1";
+export const TEMPLATE_ENGINE_VERSION = "1.2";
 
 export type TemplateJob = {
   title: string;
@@ -46,6 +46,53 @@ export type TemplateDocument = {
 export type TemplateRfqStep = {
   title: string;
 };
+
+/**
+ * Industry-standard maritime pre-dock readiness checklist (class survey dry docks).
+ * Seeded into special / intermediate survey workspaces; also used to backfill missing items.
+ */
+export const STANDARD_PRE_DOCK_CHECKLIST: TemplateChecklistItem[] = [
+  // Planning
+  { title: "Pre-dock class documentation", category: "Planning" },
+  { title: "Survey status & outstanding recommendations reviewed", category: "Planning" },
+  { title: "Previous bottom survey records reviewed", category: "Planning" },
+  { title: "Docking plan approved", category: "Planning" },
+  { title: "Dry-dock specification / repair list frozen", category: "Planning" },
+  { title: "Arrival draft, trim & stability planned", category: "Planning" },
+  { title: "Owner / technical superintendent attendance plan", category: "Planning" },
+  // Permits & safety
+  { title: "Hot work permit", category: "Permits" },
+  { title: "Confined space entry permit", category: "Permits" },
+  { title: "Gas-free certificates", category: "Permits" },
+  { title: "Energy isolation / LOTO plan agreed", category: "Permits" },
+  { title: "Fire watch & fire main readiness confirmed", category: "Permits" },
+  // Procurement
+  { title: "Critical spares on board", category: "Procurement" },
+  { title: "Long-lead materials & maker attendance confirmed", category: "Procurement" },
+  { title: "Special tools & gauging gear verified on board", category: "Procurement" },
+  // Inspections / survey
+  { title: "Owner attendance — hull", category: "Inspections" },
+  { title: "Class attendance — survey", category: "Inspections" },
+  { title: "NDT inspection schedule", category: "Inspections" },
+  { title: "Thickness measurement company appointed", category: "Inspections" },
+  { title: "Tank cleaning / gas-freeing programme agreed", category: "Inspections" },
+  // Sea trial
+  { title: "Sea trial programme approved", category: "Sea Trial" },
+  { title: "Post-dock sea trial attendance confirmed", category: "Sea Trial" },
+  // Close-out
+  { title: "Completion Checklist", category: "Close-out" },
+  { title: "Class / flag certificates readiness pack", category: "Close-out" },
+];
+
+export const STANDARD_PRE_DOCK_DOCUMENTS: TemplateDocument[] = [
+  { title: "Class status survey report" },
+  { title: "Previous thickness records" },
+  { title: "Approved docking plan" },
+  { title: "Certificate of class" },
+  { title: "Specification of work" },
+  { title: "General arrangement & piping drawings pack" },
+  { title: "Previous repair / dry-dock specification" },
+];
 
 export type ProjectTemplate = {
   version: string;
@@ -134,19 +181,7 @@ export const PROJECT_TEMPLATES: Record<DryDockProjectType, ProjectTemplate> = {
       { title: "Painting Scope", category: "painting", workshop: "Painting" },
       { title: "Sea Trial", category: "miscellaneous", workshop: "QA/QC", priority: "high" },
     ],
-    checklist: [
-      { title: "Pre-dock class documentation", category: "Planning" },
-      { title: "Docking plan approved", category: "Planning" },
-      { title: "Hot work permit", category: "Permits" },
-      { title: "Confined space entry permit", category: "Permits" },
-      { title: "Gas-free certificates", category: "Permits" },
-      { title: "Critical spares on board", category: "Procurement" },
-      { title: "Owner attendance — hull", category: "Inspections" },
-      { title: "Class attendance — survey", category: "Inspections" },
-      { title: "NDT inspection schedule", category: "Inspections" },
-      { title: "Sea trial programme approved", category: "Sea Trial" },
-      { title: "Completion Checklist", category: "Close-out" },
-    ],
+    checklist: [...STANDARD_PRE_DOCK_CHECKLIST],
     milestones: [
       { title: "Arrival at yard", offsetDaysFromStart: 0 },
       { title: "Docking", offsetDaysFromStart: 2, dependsOnIndex: 0 },
@@ -176,13 +211,7 @@ export const PROJECT_TEMPLATES: Record<DryDockProjectType, ProjectTemplate> = {
       { title: "Yard nomination", approvalType: "other", description: "Fleet Manager" },
       { title: "Variation approval threshold", approvalType: "variation", description: "Company Admin" },
     ],
-    documents: [
-      { title: "Class status survey report" },
-      { title: "Previous thickness records" },
-      { title: "Approved docking plan" },
-      { title: "Certificate of class" },
-      { title: "Specification of work" },
-    ],
+    documents: [...STANDARD_PRE_DOCK_DOCUMENTS],
     rfqSteps: [
       { title: "Issue RFQ to shortlisted yards" },
       { title: "Receive yard quotations" },
@@ -205,7 +234,11 @@ export const PROJECT_TEMPLATES: Record<DryDockProjectType, ProjectTemplate> = {
     ],
     checklist: [
       { title: "Intermediate survey scope agreed", category: "Planning" },
-      { title: "Previous survey records reviewed", category: "Planning" },
+      ...STANDARD_PRE_DOCK_CHECKLIST.filter(
+        (item) =>
+          item.title !== "Pre-dock class documentation" &&
+          item.title !== "Previous bottom survey records reviewed",
+      ),
     ],
     milestones: [
       { title: "Arrival at yard", offsetDaysFromStart: 0 },
@@ -220,6 +253,14 @@ export const PROJECT_TEMPLATES: Record<DryDockProjectType, ProjectTemplate> = {
       { category: "docking", description: "Docking" },
       { category: "hull", description: "Hull works" },
       { category: "ME", description: "Machinery survey" },
+    ],
+    documents: [...STANDARD_PRE_DOCK_DOCUMENTS],
+    rfqSteps: [
+      { title: "Issue RFQ to shortlisted yards" },
+      { title: "Receive yard quotations" },
+      { title: "Technical evaluation" },
+      { title: "Commercial evaluation" },
+      { title: "Yard nomination recommendation" },
     ],
   }),
 

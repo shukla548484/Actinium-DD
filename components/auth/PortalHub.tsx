@@ -13,7 +13,7 @@ import { RBAC_USER_TYPE_DESCRIPTIONS } from "@/lib/rbac/userTypes";
 export function PortalHub() {
   return (
     <main className="dd-content-scroll bg-background">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-10 md:px-6">
+      <div className="dd-content-width flex flex-col gap-8 px-4 py-10 md:px-6">
         <div className="space-y-2">
           <h1 className="text-2xl font-bold tracking-tight">Actinium-DD</h1>
           <p className="max-w-2xl text-sm text-muted-foreground">

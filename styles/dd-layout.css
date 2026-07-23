@@ -3,6 +3,16 @@
 :root {
   --dd-nav-height: 3rem;
   --dd-sidebar-width: 18rem;
+  /* Fraction of the main content pane (beside sidebar when present) */
+  --dd-content-width: 95%;
+}
+
+/** Centered page content — 95% of available main-pane width */
+.dd-content-width {
+  box-sizing: border-box;
+  width: var(--dd-content-width);
+  max-width: var(--dd-content-width);
+  margin-inline: auto;
 }
 
 .dd-app-shell {
@@ -123,8 +133,8 @@
   box-sizing: border-box;
   margin-left: auto;
   margin-right: auto;
-  width: 100%;
-  max-width: 72rem;
+  width: var(--dd-content-width);
+  max-width: var(--dd-content-width);
   padding: 1rem;
   display: flex;
   flex-direction: column;
@@ -167,5 +177,44 @@
 @media (min-width: 768px) {
   .dd-sub-bar {
     padding: 1rem 1.5rem;
+  }
+}
+
+/**
+ * Print / Save-as-PDF: unlock viewport-locked scroll shells so multi-page
+ * documents (e.g. shipyard job sheets) are not clipped to one screenful.
+ */
+@media print {
+  html,
+  body {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: white !important;
+  }
+
+  .dd-app-shell,
+  .dd-portal-root,
+  .dd-app-body,
+  .dd-module-layout,
+  .dd-module-row,
+  .dd-module-sidebar,
+  .dd-module-sidebar-scroll,
+  .dd-main,
+  .dd-main-scroll,
+  .dd-content-scroll {
+    display: block !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    flex: none !important;
+  }
+
+  .dd-module-sidebar,
+  .dd-sub-bar,
+  .ship-access-scope-bar,
+  .print\:hidden {
+    display: none !important;
   }
 }

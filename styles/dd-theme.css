@@ -91,6 +91,105 @@
   background: linear-gradient(135deg, var(--dd-card) 0%, #f4f4f5 100%);
 }
 
+/* Dry-dock job create wizard: section cards in a 3-column grid (≈3 rows) */
+.dd-job-wizard-sections {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 1rem;
+}
+
+.dd-job-wizard-sections > * {
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* Actions spans full width on the last row */
+.dd-job-wizard-sections > *:last-child {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 1100px) {
+  .dd-job-wizard-sections {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .dd-job-wizard-sections {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.dd-create-job-board {
+  column-count: 3;
+  column-gap: 0.75rem;
+}
+
+.dd-create-card {
+  display: inline-block !important;
+  vertical-align: top;
+  width: 100%;
+  min-width: 0;
+  margin: 0 0 0.75rem;
+  break-inside: avoid;
+  page-break-inside: avoid;
+  border-color: #dbe3ef !important;
+  background: #ffffff !important;
+  border-radius: 0.75rem;
+}
+
+.dd-create-card-tall {
+  break-inside: avoid;
+}
+
+.dd-create-card-wide {
+  break-inside: avoid;
+}
+
+.dd-create-picker {
+  border-color: #dbe3ef !important;
+  background: #ffffff !important;
+}
+
+@media (max-width: 1180px) {
+  .dd-create-job-board {
+    column-count: 2;
+  }
+}
+
+@media (max-width: 760px) {
+  .dd-create-job-board {
+    column-count: 1;
+  }
+}
+
+/* Machinery / Components / Standard-job option cards: ONE horizontal row */
+.dd-job-wizard-option-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0.5rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dd-job-wizard-option-card {
+  display: flex;
+  flex: 1 0 9rem;
+  width: auto;
+  max-width: none;
+  min-width: 9rem;
+  box-sizing: border-box;
+}
+
+.dd-job-wizard-option-card--wide {
+  flex: 2 0 12rem;
+  min-width: 12rem;
+}
+
 .dd-tab-active-rose {
   background: var(--dd-rose-muted);
   color: var(--dd-rose);

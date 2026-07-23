@@ -126,3 +126,28 @@ export const VESSEL_JOB_STATUS_ITEMS = enumSelectItems([
   "rejected",
   "carry_forward",
 ] as const);
+
+/** Parties a vessel job can be assigned to (ship-access jobs index). */
+export const VESSEL_JOB_ASSIGNED_PARTY_VALUES = [
+  "vessel_crew",
+  "shipyard",
+  "third_party_workshop",
+  "makers_service_engineer",
+  "class",
+] as const;
+
+export const VESSEL_JOB_ASSIGNED_PARTY_LABELS: Record<
+  (typeof VESSEL_JOB_ASSIGNED_PARTY_VALUES)[number],
+  string
+> = {
+  vessel_crew: "Vessel Crew",
+  shipyard: "Shipyard",
+  third_party_workshop: "3rd Party Workshop",
+  makers_service_engineer: "Makers Service Engineer",
+  class: "Class",
+};
+
+export const VESSEL_JOB_ASSIGNED_PARTY_ITEMS = VESSEL_JOB_ASSIGNED_PARTY_VALUES.map((value) => ({
+  value,
+  label: VESSEL_JOB_ASSIGNED_PARTY_LABELS[value],
+}));

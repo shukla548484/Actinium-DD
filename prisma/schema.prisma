@@ -139,6 +139,8 @@ model Company {
   yardProfile YardProfile?
   yardInvites YardInvite[] @relation("YardInviteCompany")
   purchaseVendors PurchaseVendor[]
+  shipyardQuotationInvites ShipyardQuotationInvite[]
+  shipyardTariffSchedules  ShipyardTariffSchedule[]
 
   @@index([parentId])
   @@index([status])
@@ -181,6 +183,7 @@ model Vessel {
   machineryRunningHoursEntries VesselMachineryRunningHoursEntry[]
   machineryParameterEntries    VesselMachineryParameterEntry[]
   machineryConditionReports    VesselMachineryConditionReport[]
+  shipyardQuotationRequests    ShipyardQuotationRequest[]
 
   nextDryDockDue    DateTime?        @map("next_dry_dock_due")
   lastDryDockDate   DateTime?        @map("last_dry_dock_date")
@@ -1480,6 +1483,7 @@ model DryDockProject {
   vesselJobsIntegrated DdVesselJob[] @relation("VesselJobIntegrated")
   vesselRequisitionsTarget     VesselRequisition[] @relation("VesselRequisitionTarget")
   vesselRequisitionsIntegrated VesselRequisition[] @relation("VesselRequisitionIntegrated")
+  shipyardQuotationRequests    ShipyardQuotationRequest[]
 
   @@index([vesselId])
   @@index([status])
@@ -1548,6 +1552,15 @@ enum DdVesselJobSource {
   class
   superintendent
   defect_report
+}
+
+/// Who the vessel job is assigned to execute / attend.
+enum DdVesselJobAssignedParty {
+  vessel_crew
+  shipyard
+  third_party_workshop
+  makers_service_engineer
+  class
 }
 
 enum JobLibraryNodeType {
@@ -1878,6 +1891,9 @@ model DdVesselJob {
   priority                   DdJobPriority         @default(medium)
   source                     DdVesselJobSource     @default(vessel)
   status                     DdVesselJobStatus     @default(draft)
+  /// Execution / attendance party for this vessel job.
+  assignedParty              DdVesselJobAssignedParty? @map("assigned_party")
+  assignedAt                 DateTime?             @map("assigned_at")
   createdByName              String?               @map("created_by_name")
   createdByRole              DdInputResponsibleRole? @map("created_by_role")
   submittedAt                DateTime?             @map("submitted_at")
@@ -1920,9 +1936,15 @@ model DdVesselJob {
   masterReviewedBy           String?               @map("master_reviewed_by")
   linkedDefectId             String?               @map("linked_defect_id")
   linkedPmsReference         String?               @map("linked_pms_reference")
+  /// Shared id when multiple same-machinery standard jobs are created together as one collaboration package.
+  collaborationPackageId     String?               @map("collaboration_package_id")
   formData                   Json?                 @map("form_data")
   attachmentMeta             Json?                 @map("attachment_meta")
   photoCount                 Int                   @default(0) @map("photo_count")
+  /// Marked ready to send to shipyard / export packs.
+  exportAssignedAt           DateTime?             @map("export_assigned_at")
+  /// Soft-archive (hidden from active ship submissions lists).
+  archivedAt                 DateTime?             @map("archived_at")
   deletedAt                  DateTime?             @map("deleted_at")
   createdAt                  DateTime              @default(now()) @map("created_at")
   updatedAt                  DateTime              @updatedAt @map("updated_at")
@@ -1933,11 +1955,14 @@ model DdVesselJob {
   integratedDdJob          DdJob?          @relation(fields: [integratedDdJobId], references: [id], onDelete: SetNull)
   standardJobLibrary       JobLibraryNode? @relation(fields: [standardJobLibraryId], references: [id], onDelete: SetNull)
   linkedDefects            VesselDefect[]  @relation("DefectLinkedJob")
+  quotationRequestJobs     ShipyardQuotationRequestJob[]
 
   @@index([vesselId, status])
+  @@index([vesselId, assignedParty])
   @@index([targetDryDockProjectId])
   @@index([integratedDryDockProjectId])
   @@index([standardJobLibraryId])
+  @@index([collaborationPackageId])
   @@index([deletedAt])
   @@map("dd_vessel_jobs")
 }
@@ -3130,4 +3155,219 @@ model PurchaseInvoice {
   @@index([invoiceDate])
   @@index([deletedAt])
   @@map("purchase_invoices")
+}
+
+// ─── Shipyard quotation requests (vessel-job RFQ packages) ───────────────────
+
+enum ShipyardQuotationRequestStatus {
+  draft
+  sent
+  in_progress
+  submitted
+  withdrawn
+}
+
+enum ShipyardQuotationInviteStatus {
+  invited
+  opened
+  in_progress
+  submitted
+  declined
+}
+
+enum ShipyardDockCycle {
+  first_special
+  second_special
+  third_special
+  intermediate
+  other
+}
+
+enum ShipyardQuoteJobCategory {
+  deck
+  machinery
+  hull_walls_overboard
+  painting
+  other
+}
+
+enum ShipyardTariffGroup {
+  steel_renewal
+  pipeline_renewal
+  pipeline_replacement
+  pipeline_fabrication
+  walls_overhauling
+  paint_hull
+  paint_cargo_holds
+  paint_ballast_tanks
+  paint_chain_anchor
+  paint_other
+  seam_renewal_welding
+  other
+}
+
+model ShipyardQuotationRequest {
+  id                 String                         @id @default(cuid())
+  referenceCode      String                         @unique @map("reference_code")
+  vesselId           String                         @map("vessel_id")
+  dryDockProjectId   String?                        @map("dry_dock_project_id")
+  status             ShipyardQuotationRequestStatus @default(draft)
+  dockCycle          ShipyardDockCycle              @default(other) @map("dock_cycle")
+  plannedStart       DateTime?                      @map("planned_start")
+  plannedEnd         DateTime?                      @map("planned_end")
+  dryDockDays        Int?                           @map("dry_dock_days")
+  shipyardDays       Int?                           @map("shipyard_days")
+  cprDays            Int?                           @map("cpr_days")
+  dueAt              DateTime?                      @map("due_at")
+  sentAt             DateTime?                      @map("sent_at")
+  submittedAt        DateTime?                      @map("submitted_at")
+  notes              String?                        @db.Text
+  requestedByName    String?                        @map("requested_by_name")
+  currency           String                         @default("USD")
+  deletedAt          DateTime?                      @map("deleted_at")
+  createdAt          DateTime                       @default(now()) @map("created_at")
+  updatedAt          DateTime                       @updatedAt @map("updated_at")
+
+  vessel           Vessel                        @relation(fields: [vesselId], references: [id], onDelete: Cascade)
+  dryDockProject   DryDockProject?               @relation(fields: [dryDockProjectId], references: [id], onDelete: SetNull)
+  jobs             ShipyardQuotationRequestJob[]
+  invites          ShipyardQuotationInvite[]
+  terms            ShipyardQuotationTerms?
+  tariffSnapshot   ShipyardQuotationTariffSnapshot?
+
+  @@index([vesselId])
+  @@index([dryDockProjectId])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("shipyard_quotation_requests")
+}
+
+model ShipyardQuotationRequestJob {
+  id               String                   @id @default(cuid())
+  requestId        String                   @map("request_id")
+  ddVesselJobId    String?                  @map("dd_vessel_job_id")
+  quoteCategory    ShipyardQuoteJobCategory @map("quote_category")
+  sortOrder        Int                      @default(0) @map("sort_order")
+  jobCode          String?                  @map("job_code")
+  title            String
+  category         String
+  workshop         String?
+  description      String?                  @db.Text
+  priority         String                   @default("medium")
+  createdAt        DateTime                 @default(now()) @map("created_at")
+  updatedAt        DateTime                 @updatedAt @map("updated_at")
+
+  request     ShipyardQuotationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  ddVesselJob DdVesselJob?             @relation(fields: [ddVesselJobId], references: [id], onDelete: SetNull)
+  quoteLine   ShipyardQuotationLine?
+
+  @@index([requestId, quoteCategory, sortOrder])
+  @@index([ddVesselJobId])
+  @@map("shipyard_quotation_request_jobs")
+}
+
+model ShipyardQuotationInvite {
+  id           String                         @id @default(cuid())
+  requestId    String                         @map("request_id")
+  yardCompanyId String                        @map("yard_company_id")
+  token        String                         @unique
+  status       ShipyardQuotationInviteStatus  @default(invited)
+  contactEmail String?                        @map("contact_email")
+  contactName  String?                        @map("contact_name")
+  openedAt     DateTime?                      @map("opened_at")
+  submittedAt  DateTime?                      @map("submitted_at")
+  deletedAt    DateTime?                      @map("deleted_at")
+  createdAt    DateTime                       @default(now()) @map("created_at")
+  updatedAt    DateTime                       @updatedAt @map("updated_at")
+
+  request     ShipyardQuotationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  yardCompany Company                  @relation(fields: [yardCompanyId], references: [id], onDelete: Cascade)
+
+  @@unique([requestId, yardCompanyId])
+  @@index([yardCompanyId, status])
+  @@index([token])
+  @@index([deletedAt])
+  @@map("shipyard_quotation_invites")
+}
+
+model ShipyardQuotationLine {
+  id            String   @id @default(cuid())
+  requestJobId  String   @unique @map("request_job_id")
+  quantity      Float    @default(1)
+  unit          String   @default("ls")
+  unitRate      Float?   @map("unit_rate")
+  amount        Float?
+  currency      String   @default("USD")
+  notes         String?  @db.Text
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  requestJob ShipyardQuotationRequestJob @relation(fields: [requestJobId], references: [id], onDelete: Cascade)
+
+  @@map("shipyard_quotation_lines")
+}
+
+model ShipyardQuotationTerms {
+  id        String   @id @default(cuid())
+  requestId String   @unique @map("request_id")
+  body      String   @default("") @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  request ShipyardQuotationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@map("shipyard_quotation_terms")
+}
+
+model ShipyardTariffSchedule {
+  id            String   @id @default(cuid())
+  yardCompanyId String   @map("yard_company_id")
+  name          String
+  currency      String   @default("USD")
+  isDefault     Boolean  @default(false) @map("is_default")
+  deletedAt     DateTime? @map("deleted_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  yardCompany Company               @relation(fields: [yardCompanyId], references: [id], onDelete: Cascade)
+  rates       ShipyardTariffRate[]
+  snapshots   ShipyardQuotationTariffSnapshot[]
+
+  @@index([yardCompanyId])
+  @@index([deletedAt])
+  @@map("shipyard_tariff_schedules")
+}
+
+model ShipyardTariffRate {
+  id         String               @id @default(cuid())
+  scheduleId String               @map("schedule_id")
+  groupKey   ShipyardTariffGroup  @map("group_key")
+  label      String
+  unit       String               @default("m2")
+  unitRate   Float                @default(0) @map("unit_rate")
+  notes      String?
+  sortOrder  Int                  @default(0) @map("sort_order")
+  createdAt  DateTime             @default(now()) @map("created_at")
+  updatedAt  DateTime             @updatedAt @map("updated_at")
+
+  schedule ShipyardTariffSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@index([scheduleId, groupKey, sortOrder])
+  @@map("shipyard_tariff_rates")
+}
+
+/// Frozen copy of tariff rates applied to a quotation submission.
+model ShipyardQuotationTariffSnapshot {
+  id         String   @id @default(cuid())
+  requestId  String   @unique @map("request_id")
+  scheduleId String?  @map("schedule_id")
+  currency   String   @default("USD")
+  ratesJson  Json     @default("[]") @map("rates_json")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  request  ShipyardQuotationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  schedule ShipyardTariffSchedule?  @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+
+  @@map("shipyard_quotation_tariff_snapshots")
 }

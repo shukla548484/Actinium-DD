@@ -19,6 +19,7 @@ export function usePaginatedApi<T>(
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [completedCount, setCompletedCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const paramKey = JSON.stringify(params);
@@ -37,10 +38,13 @@ export function usePaginatedApi<T>(
         setError("Failed to load data");
         return;
       }
-      const data = (await res.json()) as PaginatedResponse<T>;
+      const data = (await res.json()) as PaginatedResponse<T> & {
+        completedCount?: number;
+      };
       setItems(data.items ?? []);
       setTotalPages(data.totalPages ?? 1);
       setTotal(data.total ?? 0);
+      setCompletedCount(data.completedCount ?? 0);
     } catch {
       setError("Network error");
       setItems([]);
@@ -53,7 +57,17 @@ export function usePaginatedApi<T>(
     void reload();
   }, [reload]);
 
-  return { items, loading, page, setPage, totalPages, total, error, reload };
+  return {
+    items,
+    loading,
+    page,
+    setPage,
+    totalPages,
+    total,
+    completedCount,
+    error,
+    reload,
+  };
 }
 
 export async function deleteResource(apiPath: string): Promise<boolean> {

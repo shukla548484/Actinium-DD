@@ -1,10 +1,20 @@
 import type { RbacUserType } from "@prisma/client";
-import { Anchor, Building2, Compass, LayoutDashboard, Settings, Ship } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import {
+  Anchor,
+  Building2,
+  Compass,
+  FileText,
+  LayoutDashboard,
+  List,
+  Settings,
+  Ship,
+} from "lucide-react";
 import type { TopNavChild, TopNavItem } from "@/lib/navigation/topNavItems";
 import { topNavItems } from "@/lib/navigation/topNavItems";
 import { shipyardNavChildren } from "@/lib/navigation/shipyardNavItems";
 import { externalNavChildren } from "@/lib/navigation/externalNavItems";
-import { ACCESS_MODULES } from "@/lib/rbac/accessModules";
+import { ACCESS_MODULES, getAccessModule } from "@/lib/rbac/accessModules";
 import { pagePermissionForPath } from "@/lib/rbac/rolePermissions";
 
 const OFFICE_NAV_IDS = new Set<TopNavItem["id"]>([
@@ -14,6 +24,98 @@ const OFFICE_NAV_IDS = new Set<TopNavItem["id"]>([
   "company",
   "superintendent",
 ]);
+
+/** Turn a catalog resource path into a top-nav href. */
+export function resolveNavHrefFromRoute(route?: string | null): string | null {
+  if (!route) return null;
+  // Dynamic project tabs: /projects/[id]#overview → /projects
+  if (route.includes("[")) {
+    const base = route.slice(0, route.indexOf("[")).replace(/\/$/, "");
+    return base || null;
+  }
+  if (route.includes("#")) {
+    return route.split("#")[0] || null;
+  }
+  return route;
+}
+
+function iconForModule(moduleCode: string): LucideIcon {
+  switch (moduleCode) {
+    case "jobs":
+      return Ship;
+    case "purchase":
+      return LayoutDashboard;
+    case "admin":
+    case "company":
+      return Settings;
+    case "superintendent":
+      return FileText;
+    case "shipyard":
+      return Anchor;
+    case "shipAccess":
+      return Compass;
+    default:
+      return List;
+  }
+}
+
+/**
+ * Build dropdown entries from assigned module pages so every assigned page
+ * can appear in the module menu (not only a few hard-coded children).
+ */
+export function buildAssignedModuleNavChildren(
+  moduleCode: string,
+  assignedPageKeys: Iterable<string>,
+  existingChildren?: TopNavChild[],
+): TopNavChild[] {
+  const pages = new Set(assignedPageKeys);
+  const mod = getAccessModule(moduleCode);
+  if (!mod || pages.size === 0) return [];
+
+  const ordered: TopNavChild[] = [];
+  const coveredKeys = new Set<string>();
+  const seen = new Set<string>();
+
+  const pushUnique = (child: TopNavChild, pageKey?: string) => {
+    const dedupe = `${child.href}::${child.label}`;
+    if (seen.has(dedupe)) return;
+    seen.add(dedupe);
+    ordered.push(child);
+    if (pageKey) coveredKeys.add(pageKey);
+  };
+
+  // 1) Keep rich static module menus (Purchase, Superintendent, …) when assigned.
+  for (const child of existingChildren ?? []) {
+    const permission = pagePermissionForPath(child.href);
+    if (!permission || !pages.has(permission)) continue;
+    pushUnique(child, permission);
+  }
+
+  // 2) Add any assigned catalog pages not already represented (e.g. Job Creations tabs).
+  const fallbackIcon = iconForModule(moduleCode);
+  for (const page of mod.pages) {
+    if (!pages.has(page.key) || coveredKeys.has(page.key)) continue;
+    const rawRoute = page.route;
+    const href = resolveNavHrefFromRoute(rawRoute);
+    if (!href) continue;
+    const isProjectScoped = Boolean(
+      rawRoute && (rawRoute.includes("[") || rawRoute.includes("#")),
+    );
+    pushUnique(
+      {
+        href,
+        label: page.label.replace(/\s+tab$/i, ""),
+        description:
+          page.description ??
+          (isProjectScoped ? "Available inside an open project" : undefined),
+        icon: fallbackIcon,
+      },
+      page.key,
+    );
+  }
+
+  return ordered;
+}
 
 /** Top navigation filtered by RBAC user type. */
 export function buildTopNavForUserType(userType: RbacUserType): TopNavItem[] {
@@ -63,7 +165,8 @@ export function buildTopNavForUserType(userType: RbacUserType): TopNavItem[] {
 
 /**
  * Filter portal nav by assigned modules and pages.
- * SYS_ADMIN / unrestricted callers should pass `unrestricted: true`.
+ * Dropdown children are rebuilt from the access-module catalog so every
+ * assigned page appears in the module menu.
  */
 export function filterTopNavByAssignments(
   items: TopNavItem[],
@@ -78,7 +181,6 @@ export function filterTopNavByAssignments(
   const modules = new Set(options.assignedModuleCodes ?? []);
   const pages = new Set(options.assignedPageKeys ?? []);
 
-  // No modules assigned → hide all portal modules.
   if (modules.size === 0) return [];
 
   const navIdToModule = new Map<string, string>();
@@ -98,18 +200,31 @@ export function filterTopNavByAssignments(
         return pages.has(permission);
       };
 
-      const children = item.children?.filter(filterChild);
-      const sections = item.sections
+      let children = item.children?.filter(filterChild);
+      let sections = item.sections
         ?.map((section) => ({
           ...section,
           items: section.items.filter(filterChild),
         }))
         .filter((section) => section.items.length > 0);
 
+      if (moduleCode) {
+        const catalogChildren = buildAssignedModuleNavChildren(
+          moduleCode,
+          pages,
+          item.children,
+        );
+        if (catalogChildren.length > 0) {
+          children = catalogChildren;
+          sections = undefined;
+        }
+      }
+
       const hasChildren = (children?.length ?? 0) > 0 || (sections?.length ?? 0) > 0;
-      if (item.children || item.sections) {
+      if (item.children || item.sections || moduleCode) {
         if (!hasChildren) return null;
-        return { ...item, children, sections };
+        const primaryHref = children?.[0]?.href ?? item.href;
+        return { ...item, href: primaryHref, children, sections };
       }
 
       if (item.href) {

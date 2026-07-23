@@ -29,6 +29,7 @@ export type SuperintendentNavId =
   | "risks"
   | "jobs"
   | "vesselJobBank"
+  | "shipyardQuotations"
   | "budget"
   | "variations"
   | "rfq"
@@ -127,6 +128,14 @@ export const superintendentNavItems: SuperintendentNavItem[] = [
     description: "Ship-proposed jobs awaiting superintendent curation",
     group: "Jobs",
     icon: Inbox,
+  },
+  {
+    id: "shipyardQuotations",
+    label: "Shipyard quotations",
+    href: "/superintendent/quotations",
+    description: "Review vessel-job quotes submitted by yards",
+    group: "Jobs",
+    icon: FileText,
   },
   {
     id: "budget",
@@ -238,6 +247,7 @@ export function resolveSuperintendentNavId(pathname: string): SuperintendentNavI
   if (pathname.startsWith("/superintendent/planning/milestones")) return "milestones";
   if (pathname.startsWith("/superintendent/planning/risks")) return "risks";
   if (pathname.startsWith("/superintendent/vessel-jobs")) return "vesselJobBank";
+  if (pathname.startsWith("/superintendent/quotations")) return "shipyardQuotations";
   if (pathname.startsWith("/superintendent/jobs")) return "jobs";
   if (pathname.startsWith("/superintendent/budget/variations")) return "variations";
   if (pathname.startsWith("/superintendent/budget")) return "budget";

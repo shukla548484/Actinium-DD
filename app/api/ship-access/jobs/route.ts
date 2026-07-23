@@ -26,8 +26,10 @@ export async function GET(request: Request) {
   const dryDockProjectId = searchParams.get("dryDockProjectId") ?? undefined;
   const status = searchParams.get("status") ?? undefined;
   const search = searchParams.get("search") ?? undefined;
+  const assignedParty = searchParams.get("assignedParty") ?? undefined;
   const bankOnly = searchParams.get("bankOnly") === "true";
 
+  // Always resolve to a single vessel — never list across vessels on ship-access.
   const vesselId = (searchParams.get("vesselId") ?? (await getSelectedShipVesselId())) ?? undefined;
   if (!vesselId) {
     return NextResponse.json({ vesselJobs: [], total: 0, page, limit, totalPages: 0 });
@@ -43,10 +45,14 @@ export async function GET(request: Request) {
     dryDockProjectId,
     status,
     search,
+    assignedParty,
     bankOnly,
   });
 
-  return NextResponse.json(result);
+  // Defense in depth: drop any row that is not for the selected vessel.
+  const vesselJobs = (result.vesselJobs ?? []).filter((job) => job.vesselId === vesselId);
+
+  return NextResponse.json({ ...result, vesselJobs });
 }
 
 export async function POST(request: Request) {

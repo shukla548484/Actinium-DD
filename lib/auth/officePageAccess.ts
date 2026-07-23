@@ -34,6 +34,7 @@ const SUPERINTENDENT_API_PERMISSIONS: { pattern: RegExp; permission: string }[] 
   { pattern: /^\/api\/superintendent\/approvals/, permission: "page.superintendent.approvals" },
   { pattern: /^\/api\/superintendent\/spares/, permission: "page.superintendent.spares" },
   { pattern: /^\/api\/superintendent\/vessel-jobs/, permission: "page.superintendent.vesselJobs" },
+  { pattern: /^\/api\/superintendent\/quotations/, permission: "page.superintendent.vesselJobs" },
   { pattern: /^\/api\/superintendent\/projects/, permission: "page.superintendent.projectWorkspace" },
   { pattern: /^\/api\/superintendent\/vessels/, permission: "page.superintendent.vessels" },
   { pattern: /^\/api\/superintendent\/jobs/, permission: "page.superintendent.jobs" },

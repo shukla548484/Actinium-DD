@@ -29,7 +29,7 @@ export default function DryDockNewJobPageClient() {
 
   useEffect(() => {
     if (!defectId || !ctx.vesselId) {
-      setDefectPrefill(null);
+      queueMicrotask(() => setDefectPrefill(null));
       return;
     }
     void fetch(`/api/ship-access/defects/${defectId}`)
@@ -51,15 +51,20 @@ export default function DryDockNewJobPageClient() {
   }, [defectId, ctx.vesselId]);
 
   return (
-    <PageShell size="wide">
+    <PageShell size="full" className="bg-slate-50">
       <PageHeader
-        title="Add dry dock job"
-        description="Select from the master job library — department, system, machinery, component, and standard job."
+        title="Create New Dry Dock Job"
+        description="Define job details, requirements, attachments, and scope for dry dock planning and execution."
+        showBack={false}
       />
       {ctx.vesselId ? (
         <DynamicScopeJobWizard
           vesselId={ctx.vesselId}
+          vesselName={ctx.vessel?.name}
+          vesselCode={ctx.vessel?.code}
           dryDockProjectId={ctx.dryDockProject?.id}
+          dryDockProjectName={ctx.dryDockProject?.name}
+          dryDockProjectReference={ctx.dryDockProject?.referenceCode}
           linkedDefectId={defectPrefill?.id ?? defectId}
           defectPrefill={defectPrefill}
           createdByName={createdByName}

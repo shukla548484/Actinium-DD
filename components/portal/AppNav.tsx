@@ -105,7 +105,7 @@ export function AppNav() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-dd-border bg-dd-card/95 backdrop-blur">
-      <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-2.5 sm:px-6">
+      <div className="dd-content-width flex items-center justify-between gap-4 px-4 py-2.5 sm:px-6">
         <Link href="/projects" className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-dd-rose text-xs font-bold text-white">
             DD
