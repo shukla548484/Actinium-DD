@@ -3,6 +3,7 @@ import { requireSuperintendentApiAccess } from "@/lib/auth/superintendentAccess"
 import {
   getQuotationRequestById,
   listQuotationRequestsForOffice,
+  sanitizeQuotationForOffice,
 } from "@/lib/db/shipyardQuotation";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
   if (id) {
     const detail = await getQuotationRequestById(id);
     if (!detail) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    return NextResponse.json({ request: detail });
+    return NextResponse.json({ request: sanitizeQuotationForOffice(detail) });
   }
 
   const vesselId = url.searchParams.get("vesselId") ?? undefined;

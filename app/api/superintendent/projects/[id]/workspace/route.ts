@@ -15,10 +15,14 @@ export async function GET(_request: Request, ctx: RouteCtx) {
   const access = await assertDryDockProjectInScope(id);
   if (!access.ok) return access.response;
 
-  const workspace = await getProjectWorkspaceSummary(id);
-  if (!workspace) {
-    return NextResponse.json({ error: "Project not found" }, { status: 404 });
+  try {
+    const workspace = await getProjectWorkspaceSummary(id);
+    if (!workspace) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+    return NextResponse.json({ workspace });
+  } catch (error) {
+    console.error("[workspace] failed to load summary", error);
+    return NextResponse.json({ error: "Failed to load project workspace" }, { status: 500 });
   }
-
-  return NextResponse.json({ workspace });
 }

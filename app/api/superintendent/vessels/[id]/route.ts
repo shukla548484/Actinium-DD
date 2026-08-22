@@ -4,6 +4,10 @@ import { findVessel, notDeleted } from "@/lib/superintendent/helpers";
 import { parseBody, vesselSuperintendentPatchSchema } from "@/lib/superintendent/validation";
 import { assertVesselInScope } from "@/lib/superintendent/scope";
 import { prisma } from "@/lib/prisma";
+import {
+  deriveNextDryDockDue,
+  parseOptionalDateInput,
+} from "@/lib/vessels/surveyWindows";
 
 export const dynamic = "force-dynamic";
 
@@ -58,10 +62,27 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
 
   const { technicalProfile, ...vesselFields } = parsed.data;
 
+  const data: Record<string, unknown> = { ...vesselFields };
+  if ("lastDryDockDate" in vesselFields) {
+    data.lastDryDockDate = parseOptionalDateInput(vesselFields.lastDryDockDate as string | null);
+  }
+  if ("lastIntermediateSurveyDate" in vesselFields) {
+    data.lastIntermediateSurveyDate = parseOptionalDateInput(
+      vesselFields.lastIntermediateSurveyDate as string | null,
+    );
+  }
+  if ("nextDryDockDue" in vesselFields) {
+    data.nextDryDockDue = parseOptionalDateInput(vesselFields.nextDryDockDue as string | null);
+  } else if ("lastDryDockDate" in vesselFields) {
+    data.nextDryDockDue = deriveNextDryDockDue(
+      parseOptionalDateInput(vesselFields.lastDryDockDate as string | null),
+    );
+  }
+
   const vessel = await prisma.$transaction(async (tx) => {
     const updated = await tx.vessel.update({
       where: { id },
-      data: vesselFields,
+      data,
       include: {
         company: { select: { id: true, name: true, code: true } },
         technicalProfile: true,

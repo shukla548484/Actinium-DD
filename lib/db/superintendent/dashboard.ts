@@ -31,6 +31,7 @@ export async function getDashboardStats(query: ListQuery = {}): Promise<Dashboar
 
   const projectWhere = {
     ...notDeleted,
+    archivedAt: null,
     ...(vesselIds?.length ? { vesselId: { in: vesselIds } } : {}),
   };
 

@@ -38,7 +38,11 @@ const ALL_SECTIONS: InputSectionDef[] = [
 
 const byKey = new Map(ALL_SECTIONS.map((s) => [s.key, s]));
 
+/** Retired special-survey vessel sections — never list in catalog or readiness. */
+const RETIRED_SECTION_KEYS = new Set(["machinery_readings", "vessel_documents"]);
+
 export function getInputSectionDef(sectionKey: string): InputSectionDef | undefined {
+  if (RETIRED_SECTION_KEYS.has(sectionKey)) return undefined;
   return byKey.get(sectionKey);
 }
 
@@ -48,7 +52,9 @@ export function getSectionsForProjectType(
 ): InputSectionCatalogEntry[] {
   return ALL_SECTIONS.filter(
     (s) =>
-      s.projectTypes.includes(projectType) && (pageKey == null || s.pageKey === pageKey),
+      !RETIRED_SECTION_KEYS.has(s.key) &&
+      s.projectTypes.includes(projectType) &&
+      (pageKey == null || s.pageKey === pageKey),
   );
 }
 

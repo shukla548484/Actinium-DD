@@ -1,6 +1,23 @@
 import { z } from "zod";
 
-const optionalDate = z.union([z.string(), z.coerce.date()]).nullable().optional();
+/** Empty strings → null; yyyy-MM-dd → ISO midnight UTC for Prisma DateTime. */
+function normalizeOptionalDateInput(val: unknown): unknown {
+  if (val === "" || val === null || val === undefined) return null;
+  if (typeof val === "string") {
+    const trimmed = val.trim();
+    if (!trimmed) return null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      return `${trimmed}T00:00:00.000Z`;
+    }
+    return trimmed;
+  }
+  return val;
+}
+
+const optionalDate = z.preprocess(
+  normalizeOptionalDateInput,
+  z.union([z.coerce.date(), z.string()]).nullable().optional(),
+);
 const requiredDate = z.union([z.string(), z.coerce.date()]);
 
 export const dryDockProjectStatusSchema = z.enum([
@@ -106,6 +123,7 @@ export const vesselSuperintendentPatchSchema = z
     yearBuilt: z.number().int().min(1900).max(2100).nullable().optional(),
     nextDryDockDue: optionalDate,
     lastDryDockDate: optionalDate,
+    lastIntermediateSurveyDate: optionalDate,
     classSociety: z.string().nullable().optional(),
     readinessScore: z.number().int().min(0).max(100).nullable().optional(),
     technicalProfile: vesselTechnicalProfileSchema.optional(),
@@ -441,6 +459,13 @@ export const ddInputUpsertSchema = z.object({
   enteredByRole: ddInputResponsibleRoleSchema,
   enteredByName: z.string().nullable().optional(),
   status: ddInputSubmissionStatusSchema.optional(),
+});
+
+export const ddProjectDefectCreateSchema = z.object({
+  department: z.string().trim().min(1, "Department is required"),
+  defectDetails: z.string().trim().min(1, "Defect details are required"),
+  machineryAssociated: z.string().trim().nullable().optional(),
+  requisitionNumber: z.string().trim().nullable().optional(),
 });
 
 export const ddInputReviewSchema = z.object({

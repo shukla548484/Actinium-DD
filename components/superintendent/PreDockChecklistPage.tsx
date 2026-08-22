@@ -11,6 +11,16 @@ import {
   usePaginatedApi,
 } from "@/components/superintendent/usePaginatedApi";
 import { TableCard } from "@/components/layout/TableCard";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
@@ -57,6 +67,8 @@ function PreDockChecklistInner() {
   const [projectId, setProjectId] = useState(() => scopedProjectId || "all");
   const [preparing, setPreparing] = useState(false);
   const [prepareMessage, setPrepareMessage] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<ChecklistRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const params: Record<string, string | undefined> = {
     dryDockProjectId: projectId,
@@ -64,15 +76,21 @@ function PreDockChecklistInner() {
   const { items, loading, page, setPage, totalPages, total, completedCount, reload } =
     usePaginatedApi<ChecklistRow>("/api/superintendent/checklist", params);
 
-  async function handleDelete(id: string) {
-    if (!confirm("Delete this record?")) return;
-    const ok = await deleteResource(`/api/superintendent/checklist/${id}`);
-    if (ok) void reload();
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    try {
+      const ok = await deleteResource(`/api/superintendent/checklist/${pendingDelete.id}`);
+      if (ok) void reload();
+    } finally {
+      setDeleting(false);
+      setPendingDelete(null);
+    }
   }
 
   async function handlePrepare() {
     if (!projectId || projectId === "all") {
-      setPrepareMessage("Select a dry dock project to prepare its checklist.");
+      setPrepareMessage("Select a dry dock project to prepare class status / readiness items.");
       return;
     }
     setPreparing(true);
@@ -92,7 +110,7 @@ function PreDockChecklistInner() {
       setPrepareMessage(
         added > 0
           ? `Added ${added} missing readiness item${added === 1 ? "" : "s"} from the project template.`
-          : "Checklist already includes all template readiness items.",
+          : "Project already includes all template readiness items.",
       );
       void reload();
     } catch {
@@ -124,11 +142,11 @@ function PreDockChecklistInner() {
               onClick={() => void handlePrepare()}
               title={
                 projectId === "all"
-                  ? "Select a project to prepare its checklist"
-                  : "Add any missing template pre-dock items"
+                  ? "Select a project to prepare readiness items"
+                  : "Add any missing template readiness items"
               }
             >
-              {preparing ? "Preparing…" : "Prepare checklist"}
+              {preparing ? "Preparing…" : "Prepare items"}
             </Button>
             <Button
               size="sm"
@@ -144,7 +162,7 @@ function PreDockChecklistInner() {
         ) : null}
       </Card>
 
-      <TableCard title="Checklist items">
+      <TableCard title="Class status & readiness items">
         {loading ? (
           <ActiniumLoadingState size="md" minHeight={100} />
         ) : (
@@ -163,13 +181,16 @@ function PreDockChecklistInner() {
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground">
                     {projectId === "all"
-                      ? "No checklist items found. Select a project and use Prepare checklist."
-                      : "No checklist items for this project. Use Prepare checklist to seed readiness tasks."}
+                      ? "No items found. Select a project and use Prepare items."
+                      : "No items for this project. Use Prepare items to seed Class status upload and readiness tasks."}
                   </TableCell>
                 </TableRow>
               ) : (
                 items.map((row) => {
                   const href = checklistEditHref(row, projectId);
+                  const isClass =
+                    row.title.toLowerCase().includes("class status") ||
+                    row.title.toLowerCase().includes("class documentation");
                   return (
                     <TableRow key={row.id} className="group">
                       <TableCell>
@@ -179,6 +200,11 @@ function PreDockChecklistInner() {
                         >
                           {row.title}
                         </Link>
+                        {isClass ? (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            Class status upload
+                          </span>
+                        ) : null}
                       </TableCell>
                       <TableCell>{row.category ?? "—"}</TableCell>
                       <TableCell>{row.isCompleted ? "Yes" : "No"}</TableCell>
@@ -191,12 +217,12 @@ function PreDockChecklistInner() {
                             render={<Link href={href} />}
                             nativeButton={false}
                           >
-                            Edit
+                            {isClass ? "Upload" : "Edit"}
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => void handleDelete(row.id)}
+                            onClick={() => setPendingDelete(row)}
                           >
                             Delete
                           </Button>
@@ -212,6 +238,37 @@ function PreDockChecklistInner() {
       </TableCard>
 
       <PaginationBar page={page} totalPages={totalPages} total={total} onPageChange={setPage} />
+
+      <AlertDialog
+        open={pendingDelete != null}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setPendingDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete checklist item?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDelete
+                ? `Remove “${pendingDelete.title}”? This cannot be undone.`
+                : "This cannot be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!pendingDelete || deleting}
+              variant="destructive"
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmDelete();
+              }}
+            >
+              {deleting ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

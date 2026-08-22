@@ -208,8 +208,14 @@ export function useEntityFormSubmit(
     });
     setSaving(false);
     if (!res.ok) {
-      const data = (await res.json()) as { error?: string };
-      setError(data.error ?? "Save failed");
+      let message = "Save failed";
+      try {
+        const data = (await res.json()) as { error?: string };
+        message = data.error ?? message;
+      } catch {
+        message = res.statusText || message;
+      }
+      setError(message);
       return;
     }
     router.push(redirectTo);

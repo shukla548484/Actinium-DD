@@ -45,6 +45,7 @@ export async function getExternalOversightProjects(roleCode: string | null) {
   const projects = await prisma.dryDockProject.findMany({
     where: {
       ...notDeleted,
+      archivedAt: null,
       status: { notIn: ["cancelled", "closed"] },
     },
     select: {

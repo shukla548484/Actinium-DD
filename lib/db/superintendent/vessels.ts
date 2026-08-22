@@ -55,6 +55,7 @@ function mapVessel(
     status: row.status,
     nextDryDockDue: row.nextDryDockDue?.toISOString() ?? null,
     lastDryDockDate: row.lastDryDockDate?.toISOString() ?? null,
+    lastIntermediateSurveyDate: row.lastIntermediateSurveyDate?.toISOString() ?? null,
     classSociety: row.classSociety,
     readinessScore: row.readinessScore,
     dryDockProjectCount: row._count?.dryDockProjects,

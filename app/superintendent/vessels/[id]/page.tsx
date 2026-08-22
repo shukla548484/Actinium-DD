@@ -39,6 +39,7 @@ type VesselDetail = {
   yearBuilt: number | null;
   nextDryDockDue: string | null;
   lastDryDockDate: string | null;
+  lastIntermediateSurveyDate: string | null;
   classSociety: string | null;
   readinessScore: number | null;
   technicalProfile: TechnicalProfile | null;
@@ -125,6 +126,8 @@ export default function SuperintendentVesselDetailPage() {
                 yearBuilt: form.get("yearBuilt") ? Number(form.get("yearBuilt")) : null,
                 nextDryDockDue: (form.get("nextDryDockDue") as string) || null,
                 lastDryDockDate: (form.get("lastDryDockDate") as string) || null,
+                lastIntermediateSurveyDate:
+                  (form.get("lastIntermediateSurveyDate") as string) || null,
                 classSociety: (form.get("classSociety") as string) || null,
                 readinessScore: form.get("readinessScore")
                   ? Number(form.get("readinessScore"))
@@ -184,16 +187,22 @@ export default function SuperintendentVesselDetailPage() {
                 />
               </div>
               <DatePickerField
-                id="nextDryDockDue"
-                name="nextDryDockDue"
-                label="Next dry dock due"
-                defaultValue={toDateInput(vessel.nextDryDockDue)}
+                id="lastIntermediateSurveyDate"
+                name="lastIntermediateSurveyDate"
+                label="Last Intermediate Survey date"
+                defaultValue={toDateInput(vessel.lastIntermediateSurveyDate)}
               />
               <DatePickerField
                 id="lastDryDockDate"
                 name="lastDryDockDate"
-                label="Last dry dock"
+                label="Last Docking Survey date"
                 defaultValue={toDateInput(vessel.lastDryDockDate)}
+              />
+              <DatePickerField
+                id="nextDryDockDue"
+                name="nextDryDockDue"
+                label="Next dry dock due"
+                defaultValue={toDateInput(vessel.nextDryDockDue)}
               />
               <div className="space-y-2">
                 <Label htmlFor="classSociety">Class society</Label>

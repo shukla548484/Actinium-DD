@@ -24,6 +24,10 @@ const CREW_PAGE_ICONS: Record<string, LucideIcon> = {
   "page.shipAccess.dryDockDashboard": PlusCircle,
   "page.shipAccess.dryDockJobs": Eye,
   "page.shipAccess.dryDockJobs.new": PlusCircle,
+  "page.shipAccess.simpleJobs": Eye,
+  "page.shipAccess.simpleJobs.new": PlusCircle,
+  "page.shipAccess.simpleJobs.edit": Pencil,
+  "page.shipAccess.simpleJobs.masterReview": ShieldCheck,
   "page.shipAccess.defects.new": PlusCircle,
   "page.shipAccess.defects.edit": Pencil,
   "page.shipAccess.defects": Eye,
@@ -39,6 +43,12 @@ const CREW_PAGE_ICONS: Record<string, LucideIcon> = {
 };
 
 function navHrefForPage(page: CrewPageDefinition): string {
+  if (page.key === "page.shipAccess.simpleJobs.edit") {
+    return "/ship-access/dry-dock/simple-jobs?status=draft";
+  }
+  if (page.key === "page.shipAccess.simpleJobs.masterReview") {
+    return "/ship-access/dry-dock/simple-jobs?status=submitted";
+  }
   if (page.key === "page.shipAccess.jobs.edit") {
     return "/ship-access/dry-dock/jobs?status=draft";
   }

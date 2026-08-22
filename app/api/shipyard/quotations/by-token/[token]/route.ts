@@ -7,6 +7,7 @@ import {
   listTariffSchedulesForYard,
   saveQuotationTerms,
   submitQuotation,
+  updateQuotationCurrencySettings,
   upsertQuotationLines,
 } from "@/lib/db/shipyardQuotation";
 import { parseBody } from "@/lib/superintendent/validation";
@@ -38,6 +39,11 @@ const patchSchema = z.discriminatedUnion("action", [
     scheduleId: z.string().min(1),
   }),
   z.object({
+    action: z.literal("set_currency"),
+    quoteCurrency: z.string().min(3).max(3),
+    localCurrency: z.string().min(3).max(3).optional(),
+  }),
+  z.object({
     action: z.literal("submit"),
   }),
 ]);
@@ -66,7 +72,12 @@ export async function GET(
     : [];
 
   return NextResponse.json({
-    request,
+    request: {
+      ...request,
+      invites: request.invites
+        .filter((i) => i.token === token)
+        .map(({ token: _token, ...rest }) => rest),
+    },
     tariffs,
     inviteId: invite?.id ?? null,
     tokenAccess: true,
@@ -115,6 +126,17 @@ export async function PATCH(
         return NextResponse.json({ error: result.error }, { status: result.status });
       }
       return NextResponse.json({ request: result.request });
+    }
+
+    if (parsed.data.action === "set_currency") {
+      const result = await updateQuotationCurrencySettings(invite.requestId, {
+        quoteCurrency: parsed.data.quoteCurrency,
+        localCurrency: parsed.data.localCurrency,
+      });
+      if (!result.ok) {
+        return NextResponse.json({ error: result.error }, { status: result.status });
+      }
+      return NextResponse.json({ request: result.request, fx: result.fx });
     }
 
     const result = await submitQuotation(invite.requestId, invite.id);

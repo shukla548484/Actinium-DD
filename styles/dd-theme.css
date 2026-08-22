@@ -1,37 +1,144 @@
 /**
  * Actinium-DD — design tokens
- * Palette: Black · Rose · Orange · Deep Yellow
+ *
+ * Palette roles (from reference sheets):
+ * 1) Backgrounds  — cool slate gray scale
+ * 2) Buttons/borders — cool cyan → blue → indigo
+ * 3) Notifications/messages — warm pink → red → orange → gold
  */
 :root {
-  /* Core palette */
-  --dd-black: #0a0a0a;
-  --dd-black-soft: #18181b;
-  --dd-black-muted: #3f3f46;
+  /* —— 1) Backgrounds (slate) —— */
+  --dd-bg-1: #f8f9fa;
+  --dd-bg-2: #e9ecef;
+  --dd-bg-3: #dee2e6;
+  --dd-bg-4: #ced4da;
+  --dd-bg-5: #adb5bd;
+  --dd-bg-6: #6c757d;
+  --dd-bg-7: #495057;
+  --dd-bg-8: #343a40;
 
-  --dd-rose: #be123c;
-  --dd-rose-bright: #e11d48;
-  --dd-rose-muted: #fff1f2;
-  --dd-rose-border: #fecdd3;
+  /* —— 2) Accent / buttons / borders (cool blues) —— */
+  --dd-accent-cyan-soft: #a5f3fc;
+  --dd-accent-sky-soft: #bae6fd;
+  --dd-accent-blue-soft: #bfdbfe;
+  --dd-accent-indigo-soft: #c7d2fe;
+  --dd-accent-cyan: #22d3ee;
+  --dd-accent-sky: #38bdf8;
+  --dd-accent-blue: #3b82f6;
+  --dd-accent-indigo: #6366f1;
+  --dd-accent-violet: #8b5cf6;
+  --dd-accent-teal: #14b8a6;
+  --dd-accent-blue-deep: #2563eb;
+  --dd-accent-indigo-deep: #4f46e5;
+  --dd-accent-navy: #1e3a8a;
 
-  --dd-orange: #c2410c;
-  --dd-orange-bright: #ea580c;
-  --dd-orange-muted: #fff7ed;
-  --dd-orange-border: #fed7aa;
+  /* Dual-tone border pairs (buttons + cards) */
+  --dd-border-pair-1a: var(--dd-accent-cyan);
+  --dd-border-pair-1b: var(--dd-accent-sky);
+  --dd-border-pair-2a: var(--dd-accent-sky);
+  --dd-border-pair-2b: var(--dd-accent-blue);
+  --dd-border-pair-3a: var(--dd-accent-blue);
+  --dd-border-pair-3b: var(--dd-accent-indigo);
+  --dd-border-pair-4a: var(--dd-accent-indigo);
+  --dd-border-pair-4b: var(--dd-accent-violet);
+  --dd-border-pair-5a: var(--dd-accent-teal);
+  --dd-border-pair-5b: var(--dd-accent-cyan);
 
-  --dd-yellow: #a16207;
-  --dd-yellow-bright: #ca8a04;
-  --dd-yellow-muted: #fefce8;
-  --dd-yellow-border: #fef08a;
+  /* —— 3) Messages / notifications (warm) —— */
+  --dd-msg-pink-soft: #fecaca;
+  --dd-msg-peach-soft: #fed7aa;
+  --dd-msg-amber-soft: #fde68a;
+  --dd-msg-yellow-soft: #fef08a;
+  --dd-msg-coral: #fb7185;
+  --dd-msg-orange: #f97316;
+  --dd-msg-amber: #f59e0b;
+  --dd-msg-gold: #eab308;
+  --dd-msg-red: #ef4444;
+  --dd-msg-crimson: #dc2626;
+  --dd-msg-maroon: #7f1d1d;
+  --dd-msg-rust: #c2410c;
+  --dd-msg-olive: #a16207;
 
-  --dd-surface: #fafafa;
-  --dd-surface-warm: #f8f6f3;
+  /* Legacy brand aliases → warm sheet */
+  --dd-black: var(--dd-bg-8);
+  --dd-black-soft: var(--dd-bg-7);
+  --dd-black-muted: var(--dd-bg-6);
+
+  --dd-rose: var(--dd-msg-crimson);
+  --dd-rose-bright: var(--dd-msg-red);
+  --dd-rose-muted: var(--dd-msg-pink-soft);
+  --dd-rose-border: #fca5a5;
+
+  --dd-orange: var(--dd-msg-rust);
+  --dd-orange-bright: var(--dd-msg-orange);
+  --dd-orange-muted: var(--dd-msg-peach-soft);
+  --dd-orange-border: #fdba74;
+
+  --dd-yellow: var(--dd-msg-olive);
+  --dd-yellow-bright: var(--dd-msg-gold);
+  --dd-yellow-muted: var(--dd-msg-yellow-soft);
+  --dd-yellow-border: #fde047;
+
+  /* Card fills = slate background steps */
+  --dd-mosaic-fill-1: var(--dd-bg-1);
+  --dd-mosaic-fill-2: var(--dd-bg-2);
+  --dd-mosaic-fill-3: var(--dd-bg-3);
+  --dd-mosaic-fill-4: var(--dd-bg-4);
+  --dd-mosaic-fill-5: #ffffff;
+
+  /* Card borders = cool accent pairs */
+  --dd-mosaic-border-1a: var(--dd-border-pair-1a);
+  --dd-mosaic-border-1b: var(--dd-border-pair-1b);
+  --dd-mosaic-border-2a: var(--dd-border-pair-2a);
+  --dd-mosaic-border-2b: var(--dd-border-pair-2b);
+  --dd-mosaic-border-3a: var(--dd-border-pair-3a);
+  --dd-mosaic-border-3b: var(--dd-border-pair-3b);
+  --dd-mosaic-border-4a: var(--dd-border-pair-4a);
+  --dd-mosaic-border-4b: var(--dd-border-pair-4b);
+  --dd-mosaic-border-5a: var(--dd-border-pair-5a);
+  --dd-mosaic-border-5b: var(--dd-border-pair-5b);
+
+  /* Keep old mosaic names as warm aliases for any leftover refs */
+  --dd-mosaic-maroon: var(--dd-msg-maroon);
+  --dd-mosaic-crimson: var(--dd-msg-crimson);
+  --dd-mosaic-vermilion: var(--dd-msg-orange);
+  --dd-mosaic-amber: var(--dd-msg-amber);
+  --dd-mosaic-cream: var(--dd-msg-yellow-soft);
+
+  --dd-surface: var(--dd-bg-1);
+  --dd-surface-warm: var(--dd-bg-1);
   --dd-card: #ffffff;
-  --dd-border: #e4e4e7;
-  --dd-text: #18181b;
-  --dd-text-muted: #71717a;
+  --dd-border: var(--dd-bg-3);
+  --dd-input: var(--dd-bg-5); /* identifiable field border #adb5bd */
+  --dd-text: var(--dd-bg-8);
+  --dd-text-muted: var(--dd-bg-6);
 
-  --background: var(--dd-surface-warm);
-  --foreground: var(--dd-text);
+  --dd-card-fill: var(--dd-mosaic-fill-5);
+  --dd-card-border-a: var(--dd-mosaic-border-3a);
+  --dd-card-border-b: var(--dd-mosaic-border-3b);
+  --dd-card-border-angle: 135deg;
+  --dd-card-glow-a: color-mix(in oklab, var(--dd-accent-sky) 20%, transparent);
+  --dd-card-glow-b: color-mix(in oklab, var(--dd-accent-indigo) 16%, transparent);
+
+  --background: var(--dd-bg-1);
+  --foreground: var(--dd-bg-8);
+  --card: #ffffff;
+  --card-foreground: var(--dd-bg-8);
+  --popover: #ffffff;
+  --popover-foreground: var(--dd-bg-8);
+  --primary: var(--dd-accent-blue-deep);
+  --primary-foreground: #f8fafc;
+  --secondary: var(--dd-accent-blue-soft);
+  --secondary-foreground: var(--dd-accent-navy);
+  --muted: var(--dd-bg-2);
+  --muted-foreground: var(--dd-bg-6);
+  --accent: var(--dd-accent-indigo-soft);
+  --accent-foreground: var(--dd-accent-navy);
+  --destructive: var(--dd-msg-crimson);
+  --border: color-mix(in oklab, var(--dd-accent-blue) 28%, var(--dd-bg-3));
+  --input: var(--dd-input);
+  --input-fill: #ffffff;
+  --ring: var(--dd-accent-indigo);
 }
 
 @theme inline {
@@ -50,20 +157,50 @@
   --color-dd-yellow-bright: var(--dd-yellow-bright);
   --color-dd-yellow-muted: var(--dd-yellow-muted);
   --color-dd-yellow-border: var(--dd-yellow-border);
+  --color-dd-bg-1: var(--dd-bg-1);
+  --color-dd-bg-2: var(--dd-bg-2);
+  --color-dd-bg-3: var(--dd-bg-3);
+  --color-dd-bg-4: var(--dd-bg-4);
+  --color-dd-bg-5: var(--dd-bg-5);
+  --color-dd-bg-6: var(--dd-bg-6);
+  --color-dd-bg-7: var(--dd-bg-7);
+  --color-dd-bg-8: var(--dd-bg-8);
+  --color-dd-accent-cyan: var(--dd-accent-cyan);
+  --color-dd-accent-sky: var(--dd-accent-sky);
+  --color-dd-accent-blue: var(--dd-accent-blue);
+  --color-dd-accent-indigo: var(--dd-accent-indigo);
+  --color-dd-accent-violet: var(--dd-accent-violet);
+  --color-dd-msg-red: var(--dd-msg-red);
+  --color-dd-msg-orange: var(--dd-msg-orange);
+  --color-dd-msg-amber: var(--dd-msg-amber);
+  --color-dd-msg-gold: var(--dd-msg-gold);
   --color-dd-surface: var(--dd-surface);
   --color-dd-surface-warm: var(--dd-surface-warm);
   --color-dd-card: var(--dd-card);
   --color-dd-border: var(--dd-border);
+  --color-dd-input: var(--dd-input);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 }
 
-/* Module accent cards */
+/* Module accent cards — slate fill + cool dual-tone border */
 .dd-card {
   border-radius: 0.75rem;
-  border: 1px solid var(--dd-border);
-  background: var(--dd-card);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--dd-card-fill, var(--dd-card)), var(--dd-card-fill, var(--dd-card)))
+      padding-box,
+    linear-gradient(
+      var(--dd-card-border-angle),
+      var(--dd-card-border-a),
+      var(--dd-card-border-b)
+    )
+      border-box;
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--dd-accent-blue) 10%, transparent),
+    -6px -4px 18px -8px var(--dd-card-glow-a),
+    6px 4px 18px -8px var(--dd-card-glow-b),
+    0 1px 2px rgb(0 0 0 / 0.03);
 }
 
 /* Use CSS padding — Tailwind arbitrary `p-[var(...)]` does not apply in Vite builds */
@@ -88,7 +225,7 @@
 
 .dd-card-black {
   border-color: var(--dd-black-soft);
-  background: linear-gradient(135deg, var(--dd-card) 0%, #f4f4f5 100%);
+  background: linear-gradient(135deg, var(--dd-card) 0%, var(--dd-bg-2) 100%);
 }
 
 /* Dry-dock job create wizard: section cards in a 3-column grid (≈3 rows) */
@@ -134,9 +271,33 @@
   margin: 0 0 0.75rem;
   break-inside: avoid;
   page-break-inside: avoid;
-  border-color: #dbe3ef !important;
-  background: #ffffff !important;
   border-radius: 0.75rem;
+}
+
+.dd-create-job-board > .dd-create-card:nth-child(5n + 1) {
+  --dd-card-fill: var(--dd-mosaic-fill-1);
+  --dd-card-border-a: var(--dd-mosaic-border-1a);
+  --dd-card-border-b: var(--dd-mosaic-border-1b);
+}
+.dd-create-job-board > .dd-create-card:nth-child(5n + 2) {
+  --dd-card-fill: var(--dd-mosaic-fill-2);
+  --dd-card-border-a: var(--dd-mosaic-border-2a);
+  --dd-card-border-b: var(--dd-mosaic-border-2b);
+}
+.dd-create-job-board > .dd-create-card:nth-child(5n + 3) {
+  --dd-card-fill: var(--dd-mosaic-fill-3);
+  --dd-card-border-a: var(--dd-mosaic-border-3a);
+  --dd-card-border-b: var(--dd-mosaic-border-3b);
+}
+.dd-create-job-board > .dd-create-card:nth-child(5n + 4) {
+  --dd-card-fill: var(--dd-mosaic-fill-4);
+  --dd-card-border-a: var(--dd-mosaic-border-4a);
+  --dd-card-border-b: var(--dd-mosaic-border-4b);
+}
+.dd-create-job-board > .dd-create-card:nth-child(5n + 5) {
+  --dd-card-fill: var(--dd-mosaic-fill-5);
+  --dd-card-border-a: var(--dd-mosaic-border-5a);
+  --dd-card-border-b: var(--dd-mosaic-border-5b);
 }
 
 .dd-create-card-tall {
@@ -148,8 +309,8 @@
 }
 
 .dd-create-picker {
-  border-color: #dbe3ef !important;
-  background: #ffffff !important;
+  border-color: color-mix(in oklab, var(--dd-accent-blue) 35%, var(--dd-border)) !important;
+  background: var(--dd-bg-1) !important;
 }
 
 @media (max-width: 1180px) {
@@ -215,15 +376,15 @@
 }
 
 .dd-btn-primary {
-  background: var(--dd-black);
+  background: var(--dd-accent-blue-deep);
   color: white;
 }
 .dd-btn-primary:hover {
-  background: var(--dd-black-soft);
+  background: var(--dd-accent-indigo-deep);
 }
 
 .dd-sidebar {
-  background: var(--dd-black);
+  background: var(--dd-bg-8);
   color: #fafafa;
-  border-color: #27272a;
+  border-color: var(--dd-bg-7);
 }

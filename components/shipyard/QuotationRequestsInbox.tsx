@@ -12,7 +12,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TableCard } from "@/components/layout/TableCard";
+import { useShipyardLanguage } from "@/components/shipyard/ShipyardLanguageProvider";
 import { SHIPYARD_DOCK_CYCLE_LABELS } from "@/lib/shipyard/quotationCategories";
+import { shipyardQuoteUi, type ShipyardQuoteUiKey } from "@/lib/i18n/shipyardQuotationUi";
 
 export type QuotationInboxRow = {
   inviteId: string;
@@ -43,30 +45,29 @@ function fmtDate(iso: string | null) {
 }
 
 export function QuotationRequestsInbox({ rows }: { rows: QuotationInboxRow[] }) {
+  const { locale } = useShipyardLanguage();
+  const t = (key: ShipyardQuoteUiKey) => shipyardQuoteUi(locale, key);
+
   return (
-    <TableCard
-      title="Vessel job quotation requests"
-      description="Packages shared from ship access for yard pricing."
-    >
+    <TableCard title={t("inboxTitle")} description={t("inboxDescription")}>
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Reference</TableHead>
-            <TableHead>Vessel</TableHead>
-            <TableHead>Received</TableHead>
-            <TableHead>Due</TableHead>
-            <TableHead>Cycle</TableHead>
-            <TableHead>Jobs</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Open</TableHead>
+            <TableHead>{t("reference")}</TableHead>
+            <TableHead>{t("vessel")}</TableHead>
+            <TableHead>{t("received")}</TableHead>
+            <TableHead>{t("due")}</TableHead>
+            <TableHead>{t("cycle")}</TableHead>
+            <TableHead>{t("jobs")}</TableHead>
+            <TableHead>{t("status")}</TableHead>
+            <TableHead className="text-right">{t("open")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {rows.length === 0 ? (
             <TableRow>
               <TableCell colSpan={8} className="text-center text-muted-foreground">
-                No quotation requests yet. Ship-access crews share selected jobs from the Jobs
-                Index.
+                {t("emptyInbox")}
               </TableCell>
             </TableRow>
           ) : (
@@ -95,7 +96,7 @@ export function QuotationRequestsInbox({ rows }: { rows: QuotationInboxRow[] }) 
                     render={<Link href={`/shipyard/quotations/${row.requestId}`} />}
                     nativeButton={false}
                   >
-                    Open
+                    {t("open")}
                   </Button>
                 </TableCell>
               </TableRow>

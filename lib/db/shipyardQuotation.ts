@@ -11,6 +11,8 @@ import { notDeleted } from "@/lib/superintendent/helpers";
 import { mapJobToQuoteCategory } from "@/lib/shipyard/quotationCategories";
 import { DEFAULT_SHIPYARD_TARIFF_RATES } from "@/lib/shipyard/tariffDefaults";
 import { buildShipyardQuotationMailto } from "@/lib/shipyard/quotationMailto";
+import { convertLocalToUsd } from "@/lib/fx/rates";
+import { resolveFxForQuote } from "@/lib/db/projectCurrency";
 
 function newToken(): string {
   return randomBytes(24).toString("hex");
@@ -55,6 +57,8 @@ export type CreateQuotationShareInput = {
   notes?: string | null;
   requestedByName?: string | null;
   currency?: string;
+  localCurrency?: string | null;
+  quoteCurrency?: string;
 };
 
 const requestInclude = {
@@ -128,6 +132,14 @@ export type QuotationRequestDetail = Prisma.ShipyardQuotationRequestGetPayload<{
   include: typeof requestInclude;
 }>;
 
+/** Office/superintendent payload — never expose yard invite tokens. */
+export function sanitizeQuotationForOffice(request: QuotationRequestDetail) {
+  return {
+    ...request,
+    invites: request.invites.map(({ token: _token, ...invite }) => invite),
+  };
+}
+
 export async function listShipyardCompanies() {
   return prisma.company.findMany({
     where: { ...notDeleted, category: "shipyard", status: "active" },
@@ -200,6 +212,14 @@ export async function createQuotationShareFromVesselJobs(input: CreateQuotationS
     include: { vessel: { select: { name: true, code: true } } },
   });
 
+  if (jobs.length !== uniqueJobIds.length) {
+    return {
+      ok: false as const,
+      error: `Only ${jobs.length} of ${uniqueJobIds.length} selected jobs are valid for this vessel`,
+      status: 400 as const,
+    };
+  }
+
   if (jobs.length === 0) {
     return { ok: false as const, error: "No movable jobs found for this vessel", status: 400 as const };
   }
@@ -246,7 +266,31 @@ export async function createQuotationShareFromVesselJobs(input: CreateQuotationS
   const referenceCode = await nextReferenceCode();
   const token = newToken();
 
+  const localCurrency = (input.localCurrency?.trim() || "KRW").toUpperCase();
+  const quoteCurrency = (input.quoteCurrency?.trim() || input.currency?.trim() || "USD").toUpperCase();
+  const fx = await resolveFxForQuote({
+    localCurrency,
+    dryDockProjectId: projectFields.dryDockProjectId ?? input.dryDockProjectId,
+  });
+
   const created = await prisma.$transaction(async (tx) => {
+    // Stamp assignment numbers on source jobs first so snapshots carry the codes.
+    const stampedCodes = new Map<string, string>();
+    for (const job of jobs) {
+      let code = job.jobCode?.trim() || null;
+      if (!code || !job.exportAssignedAt) {
+        code = code || (await nextJobAssignmentNumberTx(tx, job.vesselId, jobs[0]!.vessel.code));
+        await tx.ddVesselJob.update({
+          where: { id: job.id },
+          data: {
+            jobCode: code,
+            exportAssignedAt: job.exportAssignedAt ?? new Date(),
+          },
+        });
+      }
+      stampedCodes.set(job.id, code);
+    }
+
     const request = await tx.shipyardQuotationRequest.create({
       data: {
         referenceCode,
@@ -263,7 +307,11 @@ export async function createQuotationShareFromVesselJobs(input: CreateQuotationS
         sentAt: new Date(),
         notes: input.notes?.trim() || null,
         requestedByName: input.requestedByName?.trim() || null,
-        currency: input.currency ?? "USD",
+        currency: quoteCurrency,
+        localCurrency,
+        quoteCurrency,
+        exchangeRateLocalPerUsd: fx.localPerUsd,
+        exchangeRateSource: fx.source,
         jobs: {
           create: jobs.map((job, index) => ({
             ddVesselJobId: job.id,
@@ -273,7 +321,7 @@ export async function createQuotationShareFromVesselJobs(input: CreateQuotationS
               title: job.title,
             }),
             sortOrder: index,
-            jobCode: job.jobCode,
+            jobCode: stampedCodes.get(job.id) ?? job.jobCode,
             title: job.title,
             category: job.category,
             workshop: job.workshop,
@@ -294,22 +342,6 @@ export async function createQuotationShareFromVesselJobs(input: CreateQuotationS
       },
       include: requestInclude,
     });
-
-    // Mark source jobs export-ready with assignment numbers when missing.
-    for (const job of jobs) {
-      if (!job.jobCode || !job.exportAssignedAt) {
-        const code =
-          job.jobCode?.trim() ||
-          (await nextJobAssignmentNumberTx(tx, job.vesselId, jobs[0]!.vessel.code));
-        await tx.ddVesselJob.update({
-          where: { id: job.id },
-          data: {
-            jobCode: code,
-            exportAssignedAt: job.exportAssignedAt ?? new Date(),
-          },
-        });
-      }
-    }
 
     return request;
   });
@@ -481,31 +513,56 @@ export async function upsertQuotationLines(
     return { ok: false as const, error: "Quote is locked", status: 400 as const };
   }
 
+  const rate = request.exchangeRateLocalPerUsd && request.exchangeRateLocalPerUsd > 0
+    ? request.exchangeRateLocalPerUsd
+    : 1;
+  const quoteCurrency = (request.quoteCurrency || request.currency || "USD").toUpperCase();
+  const localCurrency = (request.localCurrency || "USD").toUpperCase();
+
   const allowed = new Set(request.jobs.map((j) => j.id));
   await prisma.$transaction(
     lines
       .filter((line) => allowed.has(line.requestJobId))
       .map((line) => {
         const qty = line.quantity ?? 1;
-        const rate = line.unitRate ?? null;
-        const amount = rate == null ? null : qty * rate;
+        const unitRate = line.unitRate ?? null;
+        const amount = unitRate == null ? null : qty * unitRate;
+        let unitRateUsd: number | null = null;
+        let amountUsd: number | null = null;
+        if (unitRate != null) {
+          if (quoteCurrency === "USD") {
+            unitRateUsd = unitRate;
+            amountUsd = amount;
+          } else if (localCurrency === quoteCurrency) {
+            unitRateUsd = convertLocalToUsd(unitRate, rate);
+            amountUsd = amount == null ? null : convertLocalToUsd(amount, rate);
+          } else {
+            unitRateUsd = unitRate;
+            amountUsd = amount;
+          }
+        }
         return prisma.shipyardQuotationLine.upsert({
           where: { requestJobId: line.requestJobId },
           create: {
             requestJobId: line.requestJobId,
             quantity: qty,
             unit: line.unit?.trim() || "ls",
-            unitRate: rate,
+            unitRate,
             amount,
+            unitRateUsd,
+            amountUsd,
             notes: line.notes?.trim() || null,
-            currency: request.currency,
+            currency: quoteCurrency,
           },
           update: {
             quantity: qty,
             unit: line.unit?.trim() || "ls",
-            unitRate: rate,
+            unitRate,
             amount,
+            unitRateUsd,
+            amountUsd,
             notes: line.notes?.trim() || null,
+            currency: quoteCurrency,
           },
         });
       }),
@@ -519,6 +576,69 @@ export async function upsertQuotationLines(
   }
 
   return { ok: true as const, request: await getQuotationRequestById(requestId) };
+}
+
+export async function updateQuotationCurrencySettings(
+  requestId: string,
+  input: {
+    quoteCurrency: string;
+    localCurrency?: string | null;
+    refreshRate?: boolean;
+  },
+) {
+  const request = await prisma.shipyardQuotationRequest.findFirst({
+    where: { id: requestId, ...notDeleted },
+  });
+  if (!request) return { ok: false as const, error: "Request not found", status: 404 as const };
+  if (request.status === "submitted" || request.status === "withdrawn") {
+    return { ok: false as const, error: "Quote is locked", status: 400 as const };
+  }
+
+  const localCurrency = (input.localCurrency ?? request.localCurrency ?? "KRW").toUpperCase();
+  const quoteCurrency = input.quoteCurrency.toUpperCase();
+  const fx = await resolveFxForQuote({
+    localCurrency,
+    dryDockProjectId: request.dryDockProjectId,
+  });
+
+  await prisma.shipyardQuotationRequest.update({
+    where: { id: requestId },
+    data: {
+      localCurrency,
+      quoteCurrency,
+      currency: quoteCurrency,
+      exchangeRateLocalPerUsd: fx.localPerUsd,
+      exchangeRateSource: fx.source,
+    },
+  });
+
+  // Recompute USD mirrors for existing lines when quote currency changes.
+  const lines = await prisma.shipyardQuotationLine.findMany({
+    where: { requestJob: { requestId } },
+  });
+  await prisma.$transaction(
+    lines.map((line) => {
+      const unitRate = line.unitRate;
+      const amount = line.amount;
+      let unitRateUsd: number | null = null;
+      let amountUsd: number | null = null;
+      if (unitRate != null) {
+        if (quoteCurrency === "USD") {
+          unitRateUsd = unitRate;
+          amountUsd = amount;
+        } else {
+          unitRateUsd = convertLocalToUsd(unitRate, fx.localPerUsd);
+          amountUsd = amount == null ? null : convertLocalToUsd(amount, fx.localPerUsd);
+        }
+      }
+      return prisma.shipyardQuotationLine.update({
+        where: { id: line.id },
+        data: { currency: quoteCurrency, unitRateUsd, amountUsd },
+      });
+    }),
+  );
+
+  return { ok: true as const, request: await getQuotationRequestById(requestId), fx };
 }
 
 export async function saveQuotationTerms(requestId: string, body: string) {
@@ -544,6 +664,9 @@ export async function applyTariffScheduleToQuote(requestId: string, scheduleId: 
     where: { id: requestId, ...notDeleted },
   });
   if (!request) return { ok: false as const, error: "Request not found", status: 404 as const };
+  if (request.status === "submitted" || request.status === "withdrawn") {
+    return { ok: false as const, error: "Quote is locked", status: 400 as const };
+  }
 
   const schedule = await prisma.shipyardTariffSchedule.findFirst({
     where: { id: scheduleId, ...notDeleted },
@@ -582,8 +705,24 @@ export async function updateTariffRates(
   scheduleId: string,
   rates: { id: string; unitRate: number; notes?: string | null }[],
 ) {
+  const ownedIds = new Set(
+    (
+      await prisma.shipyardTariffRate.findMany({
+        where: { scheduleId, id: { in: rates.map((r) => r.id) } },
+        select: { id: true },
+      })
+    ).map((r) => r.id),
+  );
+  const safeRates = rates.filter((r) => ownedIds.has(r.id));
+  if (safeRates.length === 0) {
+    return prisma.shipyardTariffSchedule.findFirst({
+      where: { id: scheduleId },
+      include: { rates: { orderBy: [{ groupKey: "asc" }, { sortOrder: "asc" }] } },
+    });
+  }
+
   await prisma.$transaction(
-    rates.map((r) =>
+    safeRates.map((r) =>
       prisma.shipyardTariffRate.update({
         where: { id: r.id },
         data: {
@@ -672,6 +811,37 @@ export async function listTariffSchedulesForYard(yardCompanyId: string) {
   });
 }
 
+/** Clone an existing schedule (rates + currency) for the same yard. */
+export async function copyTariffSchedule(scheduleId: string, newName?: string) {
+  const source = await prisma.shipyardTariffSchedule.findFirst({
+    where: { id: scheduleId, ...notDeleted },
+    include: { rates: { orderBy: [{ groupKey: "asc" }, { sortOrder: "asc" }] } },
+  });
+  if (!source) return { ok: false as const, error: "Schedule not found", status: 404 as const };
+
+  const created = await prisma.shipyardTariffSchedule.create({
+    data: {
+      yardCompanyId: source.yardCompanyId,
+      name: newName?.trim() || `${source.name} (copy)`,
+      currency: source.currency,
+      isDefault: false,
+      rates: {
+        create: source.rates.map((r) => ({
+          groupKey: r.groupKey,
+          label: r.label,
+          unit: r.unit,
+          unitRate: r.unitRate,
+          notes: r.notes,
+          sortOrder: r.sortOrder,
+        })),
+      },
+    },
+    include: { rates: { orderBy: [{ groupKey: "asc" }, { sortOrder: "asc" }] } },
+  });
+
+  return { ok: true as const, schedule: created };
+}
+
 export async function assertYardOwnsQuotationRequest(
   requestId: string,
   yardCompanyId: string,
@@ -684,20 +854,19 @@ export async function assertYardOwnsQuotationRequest(
 }
 
 export async function resolveYardCompanyIdForSession(userId: string | null): Promise<string | null> {
-  if (!userId) {
-    const first = await prisma.company.findFirst({
-      where: { ...notDeleted, category: "shipyard", status: "active" },
-      orderBy: { name: "asc" },
-      select: { id: true },
+  if (userId) {
+    const employee = await prisma.employee.findFirst({
+      where: { userId, ...notDeleted },
+      select: { companyId: true, company: { select: { category: true } } },
     });
-    return first?.id ?? null;
+    if (employee?.company.category === "shipyard") return employee.companyId;
+    // Authenticated non-yard user: never fall back to another yard.
+    return null;
   }
 
-  const employee = await prisma.employee.findFirst({
-    where: { userId, ...notDeleted },
-    select: { companyId: true, company: { select: { category: true } } },
-  });
-  if (employee?.company.category === "shipyard") return employee.companyId;
+  // Auth-off / anonymous: only for local bootstrap when auth is disabled.
+  const { isAuthEnabled } = await import("@/lib/auth/edge");
+  if (isAuthEnabled()) return null;
 
   const first = await prisma.company.findFirst({
     where: { ...notDeleted, category: "shipyard", status: "active" },

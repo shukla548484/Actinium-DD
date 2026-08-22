@@ -156,6 +156,15 @@ export const purchaseNavItems: PurchaseNavItem[] = [
     group: "Orders & finance",
   },
   {
+    id: "currency-conversion",
+    label: "Currency conversion",
+    href: "/purchase/currency-conversion",
+    description: "Per-project USD ↔ local FX rates for shipyard quotes",
+    icon: DollarSign,
+    group: "Orders & finance",
+    minAccessLevel: 28,
+  },
+  {
     id: "po-budget-change",
     label: "PO Budget Change",
     href: "/purchase/po-budget-change",

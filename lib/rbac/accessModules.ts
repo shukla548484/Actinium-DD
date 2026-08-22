@@ -127,8 +127,10 @@ export const ACCESS_MODULES: AccessModuleDefinition[] = [
   {
     code: "office",
     label: "Office departments",
-    description: "Executive, fleet, HSEQ, crewing, accounts",
-    userTypes: ["system", "office"],
+    description: "Executive, fleet, HSEQ, crewing, accounts — admin monitor only",
+    navId: "office",
+    // System/admin assign & monitor only — not for individual office roles.
+    userTypes: ["system"],
     pages: uniquePages([
       ...pagesFromPermissionPrefix("page.office.department"),
       ...pagesFromPermissionPrefix("page.office.procurement"),

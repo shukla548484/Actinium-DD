@@ -49,58 +49,66 @@ const TYPE_META: Record<
   success: {
     label: "Success",
     icon: CheckCircle2,
-    frame: "border-emerald-200/90 bg-emerald-50/95 text-emerald-950",
-    iconClass: "text-emerald-600",
-    badge: "bg-emerald-600/10 text-emerald-800",
+    frame:
+      "border-[color:var(--dd-msg-gold)]/50 bg-[color:var(--dd-msg-yellow-soft)]/95 text-[color:var(--dd-msg-olive)]",
+    iconClass: "text-[color:var(--dd-msg-gold)]",
+    badge: "bg-[color:var(--dd-msg-gold)]/15 text-[color:var(--dd-msg-olive)]",
   },
   error: {
     label: "Error",
     icon: XCircle,
-    frame: "border-red-200/90 bg-red-50/95 text-red-950",
-    iconClass: "text-red-600",
-    badge: "bg-red-600/10 text-red-800",
+    frame:
+      "border-[color:var(--dd-msg-crimson)]/45 bg-[color:var(--dd-msg-pink-soft)]/95 text-[color:var(--dd-msg-maroon)]",
+    iconClass: "text-[color:var(--dd-msg-crimson)]",
+    badge: "bg-[color:var(--dd-msg-crimson)]/12 text-[color:var(--dd-msg-maroon)]",
   },
   failure: {
     label: "Failure",
     icon: CircleAlert,
-    frame: "border-rose-200/90 bg-rose-50/95 text-rose-950",
-    iconClass: "text-rose-600",
-    badge: "bg-rose-600/10 text-rose-800",
+    frame:
+      "border-[color:var(--dd-msg-maroon)]/40 bg-[color:var(--dd-msg-pink-soft)]/90 text-[color:var(--dd-msg-maroon)]",
+    iconClass: "text-[color:var(--dd-msg-maroon)]",
+    badge: "bg-[color:var(--dd-msg-maroon)]/10 text-[color:var(--dd-msg-maroon)]",
   },
   warning: {
     label: "Warning",
     icon: AlertTriangle,
-    frame: "border-amber-200/90 bg-amber-50/95 text-amber-950",
-    iconClass: "text-amber-600",
-    badge: "bg-amber-600/10 text-amber-900",
+    frame:
+      "border-[color:var(--dd-msg-amber)]/50 bg-[color:var(--dd-msg-amber-soft)]/95 text-[color:var(--dd-msg-olive)]",
+    iconClass: "text-[color:var(--dd-msg-amber)]",
+    badge: "bg-[color:var(--dd-msg-amber)]/15 text-[color:var(--dd-msg-olive)]",
   },
   info: {
     label: "Info",
     icon: Info,
-    frame: "border-sky-200/90 bg-sky-50/95 text-sky-950",
-    iconClass: "text-sky-600",
-    badge: "bg-sky-600/10 text-sky-800",
+    frame:
+      "border-[color:var(--dd-msg-orange)]/40 bg-[color:var(--dd-msg-peach-soft)]/95 text-[color:var(--dd-msg-rust)]",
+    iconClass: "text-[color:var(--dd-msg-orange)]",
+    badge: "bg-[color:var(--dd-msg-orange)]/12 text-[color:var(--dd-msg-rust)]",
   },
   alert: {
     label: "Alert",
     icon: Bell,
-    frame: "border-orange-200/90 bg-orange-50/95 text-orange-950",
-    iconClass: "text-orange-600",
-    badge: "bg-orange-600/10 text-orange-900",
+    frame:
+      "border-[color:var(--dd-msg-orange)]/50 bg-[color:var(--dd-msg-peach-soft)]/95 text-[color:var(--dd-msg-rust)]",
+    iconClass: "text-[color:var(--dd-msg-orange)]",
+    badge: "bg-[color:var(--dd-msg-orange)]/15 text-[color:var(--dd-msg-rust)]",
   },
   approval: {
     label: "Approval",
     icon: ShieldCheck,
-    frame: "border-slate-200/90 bg-white/95 text-slate-950",
-    iconClass: "text-[color:var(--dd-brand-rose,#e11d48)]",
-    badge: "bg-slate-900/5 text-slate-800",
+    frame:
+      "border-[color:var(--dd-msg-crimson)]/35 bg-[color:var(--dd-msg-pink-soft)]/90 text-[color:var(--dd-msg-maroon)]",
+    iconClass: "text-[color:var(--dd-msg-crimson)]",
+    badge: "bg-[color:var(--dd-msg-crimson)]/10 text-[color:var(--dd-msg-maroon)]",
   },
   notification: {
     label: "Notice",
     icon: Bell,
-    frame: "border-border bg-card/95 text-card-foreground",
-    iconClass: "text-muted-foreground",
-    badge: "bg-muted text-muted-foreground",
+    frame:
+      "border-[color:var(--dd-msg-amber)]/35 bg-[color:var(--dd-msg-yellow-soft)]/90 text-[color:var(--dd-msg-olive)]",
+    iconClass: "text-[color:var(--dd-msg-amber)]",
+    badge: "bg-[color:var(--dd-msg-amber)]/12 text-[color:var(--dd-msg-olive)]",
   },
 };
 

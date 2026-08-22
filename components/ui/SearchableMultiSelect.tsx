@@ -57,10 +57,11 @@ export function SearchableMultiSelect({
     const el = triggerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
+    const maxWidth = Math.min(window.innerWidth - 16, 576);
     setMenuPos({
       top: rect.bottom + 4,
-      left: rect.left,
-      width: Math.max(rect.width, 288),
+      left: Math.min(rect.left, window.innerWidth - Math.min(Math.max(rect.width, 320), maxWidth) - 8),
+      width: Math.min(Math.max(rect.width, 320), maxWidth),
     });
   }, []);
 
@@ -156,7 +157,7 @@ export function SearchableMultiSelect({
                     )}
                     onClick={() => toggleValue(item.value)}
                   >
-                    <span className="truncate">{item.label}</span>
+                    <span className="whitespace-nowrap">{item.label}</span>
                     {isSelected ? <CheckIcon className="size-4 shrink-0" /> : null}
                   </button>
                 </li>
@@ -183,7 +184,7 @@ export function SearchableMultiSelect({
           }
         }}
         className={cn(
-          "flex min-h-8 w-full items-center justify-between gap-1.5 rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm transition-colors outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30 dark:hover:bg-input/50",
+          "flex min-h-8 w-full items-center justify-between gap-1.5 rounded-lg border border-input bg-input-fill px-2.5 py-1.5 text-sm transition-colors outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-input/50",
           selectedItems.length === 0 && "text-muted-foreground",
         )}
       >
@@ -196,7 +197,7 @@ export function SearchableMultiSelect({
                 key={item.value}
                 className="inline-flex max-w-full items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium text-foreground"
               >
-                <span className="truncate">{item.label}</span>
+                <span className="whitespace-nowrap">{item.label}</span>
                 <span
                   role="button"
                   tabIndex={-1}

@@ -67,16 +67,20 @@ export async function getUserPermissions(userId: string): Promise<Set<string>> {
     return keys;
   }
 
-  // Employees and ship crew: page access only from assigned modules → pages.
+  // Employees and ship crew: prefer explicit module → page assignments.
+  // If none are assigned yet, keep role catalog page.* keys so office roles
+  // (e.g. TECH_SUPDT) still get a usable nav and page access.
   if (user.employeeProfile?.id) {
     const { getEffectiveEmployeePermissionKeys } = await import(
       "@/lib/db/employeeModuleAccess"
     );
     const assigned = await getEffectiveEmployeePermissionKeys(user.employeeProfile.id);
-    for (const key of [...keys]) {
-      if (key.startsWith("page.")) keys.delete(key);
+    if (assigned.length > 0) {
+      for (const key of [...keys]) {
+        if (key.startsWith("page.")) keys.delete(key);
+      }
+      for (const key of assigned) keys.add(key);
     }
-    for (const key of assigned) keys.add(key);
   }
 
   return keys;

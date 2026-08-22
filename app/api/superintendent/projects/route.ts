@@ -89,8 +89,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ project }, { status: 201 });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Failed to create project";
-    if (msg.includes("Unique constraint")) {
-      return NextResponse.json({ error: "Project ID already exists" }, { status: 409 });
+    if (msg.includes("Unique constraint") || /already exists/i.test(msg)) {
+      return NextResponse.json({ error: msg.includes("already exists") ? msg : "Project ID already exists" }, { status: 409 });
     }
     if (msg.includes("Unknown argument") || msg.includes("Invalid `prisma.")) {
       console.error("[superintendent/projects POST]", msg);

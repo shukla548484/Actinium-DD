@@ -22,12 +22,21 @@ import {
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SearchableMultiSelect } from "@/components/ui/SearchableMultiSelect";
 import {
   Select,
   SelectContent,
@@ -64,6 +73,8 @@ export function SpecEditor({ projectId, specLines, categories, onUpdated }: Prop
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [selectedTemplateCategories, setSelectedTemplateCategories] = useState<string[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const updateLine = useCallback((id: string, patch: Partial<SpecLine>) => {
@@ -134,6 +145,25 @@ export function SpecEditor({ projectId, specLines, categories, onUpdated }: Prop
     (acc[line.bucket] ??= []).push(line);
     return acc;
   }, {});
+  const templateCategoryOptions = categories.map((category) => ({
+    value: category.slug,
+    label: formatCategoryLabel(category),
+    searchText: `${category.categoryNo} ${category.name} ${category.slug}`,
+  }));
+  const selectedTemplateCategoryLabels = categories
+    .filter((category) => selectedTemplateCategories.includes(category.slug))
+    .map(formatCategoryLabel);
+  const templateDownloadHref =
+    selectedTemplateCategories.length > 0
+      ? `/api/projects/${projectId}/spec/template?mode=empty&buckets=${encodeURIComponent(
+          selectedTemplateCategories.join(","),
+        )}`
+      : "";
+  function downloadSelectedTemplates() {
+    if (!templateDownloadHref) return;
+    window.location.assign(templateDownloadHref);
+    setShowTemplatePicker(false);
+  }
 
   return (
     <div className="space-y-4">
@@ -145,12 +175,8 @@ export function SpecEditor({ projectId, specLines, categories, onUpdated }: Prop
           </AlertDescription>
         </Alert>
         <div className="flex shrink-0 gap-2">
-          <Button
-            variant="outline"
-            render={<a href={`/api/projects/${projectId}/spec/template?mode=empty`} />}
-            nativeButton={false}
-          >
-            Download template
+          <Button variant="outline" onClick={() => setShowTemplatePicker(true)}>
+            Download category templates
           </Button>
           <Button
             variant="outline"
@@ -171,6 +197,81 @@ export function SpecEditor({ projectId, specLines, categories, onUpdated }: Prop
           <AlertDescription>{message.text}</AlertDescription>
         </Alert>
       )}
+
+      <Dialog open={showTemplatePicker} onOpenChange={setShowTemplatePicker}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Download category templates</DialogTitle>
+            <DialogDescription>
+              Select one or more categories. The downloaded workbook will include only those
+              category sheets, each with its own specification columns.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Categories</Label>
+              <SearchableMultiSelect
+                items={templateCategoryOptions}
+                values={selectedTemplateCategories}
+                onValuesChange={setSelectedTemplateCategories}
+                placeholder="Search and select categories"
+                searchPlaceholder="Search categories..."
+                emptyMessage="No categories available"
+              />
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setSelectedTemplateCategories(categories.map((category) => category.slug))}
+                >
+                  Select all
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setSelectedTemplateCategories([])}
+                >
+                  Clear
+                </Button>
+              </div>
+            </div>
+
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <p className="text-sm font-medium">
+                Selected categories ({selectedTemplateCategoryLabels.length})
+              </p>
+              {selectedTemplateCategoryLabels.length > 0 ? (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {selectedTemplateCategoryLabels.map((label) => (
+                    <Badge key={label} variant="secondary">
+                      {label}
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Select at least one category before downloading.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTemplatePicker(false)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={!templateDownloadHref}
+              onClick={downloadSelectedTemplates}
+            >
+              Confirm Download
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog
         open={deleteTarget != null}
@@ -761,11 +862,10 @@ function ImportSpecForm({
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-xs text-muted-foreground">
-          Upload an .xlsx or .xls file with columns: <strong>Code</strong>, <strong>Description</strong>,
-          <strong> Bucket</strong> (docking/general/utilities/hull_prep/hull_paint/steel/machinery/other),
-          <strong> Unit</strong>, <strong>Qty</strong>, <strong>Days</strong>, <strong>Area</strong>,
-          <strong> Calc Rule</strong> (lump_sum/per_day/unit_qty/per_m2/…), <strong>Ref Rate</strong>,
-          <strong> Max Discount</strong>, <strong>Notes</strong>, <strong>中文</strong>, <strong>日本語</strong>.
+          Upload an .xlsx or .xls file using the category template tabs. Keep the standard columns
+          such as <strong>Category No</strong>, <strong>Code</strong>, <strong>Description (EN)</strong>,
+          <strong> Unit</strong>, <strong>Qty</strong>, <strong>Days</strong>, <strong>Area m²</strong>,
+          and <strong>Calc Rule</strong>. Extra category-specific columns are imported into Scope Notes.
           Existing line codes will be skipped.
         </p>
 

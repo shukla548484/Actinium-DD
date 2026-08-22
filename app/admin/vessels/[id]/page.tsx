@@ -83,6 +83,30 @@ export default async function VesselDetailPage({ params }: Props) {
               <span className="text-muted-foreground">Year built</span>
               <span>{vessel.yearBuilt ?? "—"}</span>
             </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Last Intermediate Survey</span>
+              <span>
+                {vessel.lastIntermediateSurveyDate
+                  ? new Date(vessel.lastIntermediateSurveyDate).toLocaleDateString()
+                  : "—"}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Last Docking Survey</span>
+              <span>
+                {vessel.lastDryDockDate
+                  ? new Date(vessel.lastDryDockDate).toLocaleDateString()
+                  : "—"}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Next dry dock due</span>
+              <span>
+                {vessel.nextDryDockDue
+                  ? new Date(vessel.nextDryDockDue).toLocaleDateString()
+                  : "—"}
+              </span>
+            </div>
           </CardContent>
         </Card>
 

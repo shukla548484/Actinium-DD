@@ -29,6 +29,8 @@ type ProjectDetail = {
   projectType: string;
   priority: string;
   status: string;
+  archivedAt?: string | null;
+  archivedByUserId?: string | null;
   plannedStart: string | null;
   plannedEnd: string | null;
   actualStart: string | null;
@@ -88,12 +90,14 @@ export default function ProjectDetailPage() {
     <PageShell>
       <PageHeader
         title={project.name}
-        description={`${project.vessel.name} (${project.vessel.code}) · ${project.status.replace(/_/g, " ")}`}
+        description={`${project.vessel.name} (${project.vessel.code}) · ${project.status.replace(/_/g, " ")}${project.archivedAt || project.status === "archived" ? " · Archived" : ""}`}
         actions={
           <ProjectActionsBar
             projectId={project.id}
             projectName={project.name}
             status={project.status}
+            archivedAt={project.archivedAt}
+            archivedByUserId={project.archivedByUserId}
           />
         }
       />

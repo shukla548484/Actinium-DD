@@ -53,8 +53,8 @@ export default function DryDockNewJobPageClient() {
   return (
     <PageShell size="full" className="bg-slate-50">
       <PageHeader
-        title="Create New Dry Dock Job"
-        description="Define job details, requirements, attachments, and scope for dry dock planning and execution."
+        title="Create Dry-Dock Job"
+        description="Select jobs, define scope, plan resources, then review and create."
         showBack={false}
       />
       {ctx.vesselId ? (

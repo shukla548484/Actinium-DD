@@ -42,6 +42,8 @@ export function ShipAccessNav() {
           "page.shipAccess.machineryDashboard",
           "page.shipAccess.machineryRunningHours",
           "page.shipAccess.dryDockDashboard",
+          "page.shipAccess.simpleJobs",
+          "page.shipAccess.simpleJobs.new",
           "page.shipAccess.dryDockJobs.new",
           "page.shipAccess.dryDockJobs",
           "page.shipAccess.defects.new",

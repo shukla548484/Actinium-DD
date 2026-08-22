@@ -2,6 +2,7 @@ import {
   buildShipyardQuotationMailto,
   shipyardQuotationPortalUrl,
 } from "@/lib/shipyard/quotationMailto";
+import { buildQuotationRequestSummaryText } from "@/lib/shipyard/quotationSummaryAttachment";
 
 export type ShipyardQuotationInviteEmailInput = {
   contactEmail: string | null | undefined;
@@ -10,6 +11,9 @@ export type ShipyardQuotationInviteEmailInput = {
   vesselName?: string | null;
   vesselCode?: string | null;
   dueAt?: string | null;
+  dockCycle?: string | null;
+  plannedStart?: string | null;
+  plannedEnd?: string | null;
   token: string;
   jobTitles?: string[];
   notes?: string | null;
@@ -46,6 +50,19 @@ export async function trySendShipyardQuotationInviteEmail(
         }</ul>`
       : "";
 
+  const summaryText = buildQuotationRequestSummaryText({
+    referenceCode: input.referenceCode,
+    vesselName: input.vesselName,
+    vesselCode: input.vesselCode,
+    dueAt: input.dueAt,
+    dockCycle: input.dockCycle,
+    plannedStart: input.plannedStart,
+    plannedEnd: input.plannedEnd,
+    notes: input.notes,
+    jobTitles: input.jobTitles,
+    portalUrl,
+  });
+
   const from =
     process.env.RESEND_FROM_EMAIL?.trim() ||
     process.env.EMAIL_FROM?.trim() ||
@@ -58,11 +75,16 @@ export async function trySendShipyardQuotationInviteEmail(
     <p><strong>Reference:</strong> ${escapeHtml(input.referenceCode)}<br/>
     ${vessel ? `<strong>Vessel:</strong> ${escapeHtml(vessel)}<br/>` : ""}
     ${input.dueAt ? `<strong>Due:</strong> ${escapeHtml(input.dueAt)}<br/>` : ""}
+    ${input.plannedStart || input.plannedEnd
+      ? `<strong>Planned window:</strong> ${escapeHtml(
+          [input.plannedStart, input.plannedEnd].filter(Boolean).join(" → "),
+        )}<br/>`
+      : ""}
     </p>
     ${input.notes ? `<p><strong>Notes:</strong><br/>${escapeHtml(input.notes)}</p>` : ""}
     ${jobsHtml ? `<p><strong>Jobs included:</strong></p>${jobsHtml}` : ""}
     <p><a href="${escapeHtml(portalUrl)}">Open quotation workspace</a></p>
-    <p style="color:#666;font-size:12px">This link is unique to your yard. Do not share it.</p>
+    <p style="color:#666;font-size:12px">A summary attachment is included. This link is unique to your yard.</p>
   `;
 
   try {
@@ -81,6 +103,12 @@ export async function trySendShipyardQuotationInviteEmail(
           `Quotation request ${input.referenceCode}\n` +
           (vessel ? `Vessel: ${vessel}\n` : "") +
           `Open: ${portalUrl}\n`,
+        attachments: [
+          {
+            filename: `${input.referenceCode}-summary.txt`,
+            content: Buffer.from(summaryText, "utf8").toString("base64"),
+          },
+        ],
       }),
     });
     const data = (await res.json()) as { id?: string; message?: string };

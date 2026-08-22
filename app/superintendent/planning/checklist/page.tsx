@@ -8,10 +8,7 @@ export const dynamic = "force-dynamic";
 export default function ListPage() {
   return (
     <PageShell>
-      <PageHeader
-        title="Pre-dock checklist"
-        description="Readiness tasks before yard entry."
-      />
+      <PageHeader title="Class status upload" />
       <PreDockChecklistPage />
     </PageShell>
   );

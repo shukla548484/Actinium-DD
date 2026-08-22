@@ -4,7 +4,9 @@ import { InactivityMonitor } from "@/components/auth/InactivityMonitor";
 import { GlobalLoaderProvider } from "@/components/layout/GlobalLoaderProvider";
 import { PortalShell } from "@/components/layout/PortalShell";
 import { PwaBootstrap } from "@/components/mobile/PwaBootstrap";
+import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { AppNotifyProvider } from "@/components/ui/AppNotifyProvider";
+import { COLOR_THEME_STORAGE_KEY } from "@/lib/theme/colorThemes";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -27,6 +29,8 @@ export const metadata: Metadata = {
   },
 };
 
+const colorThemeBootScript = `(function(){try{var t=localStorage.getItem(${JSON.stringify(COLOR_THEME_STORAGE_KEY)});if(t)document.documentElement.setAttribute("data-color-theme",t);}catch(e){}})();`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -35,16 +39,22 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: colorThemeBootScript }} />
+      </head>
       <body className="dd-app-shell bg-background text-foreground antialiased">
-        <GlobalLoaderProvider>
-          <AppNotifyProvider>
-            <PwaBootstrap />
-            <InactivityMonitor />
-            <PortalShell>{children}</PortalShell>
-          </AppNotifyProvider>
-        </GlobalLoaderProvider>
+        <ThemeProvider>
+          <GlobalLoaderProvider>
+            <AppNotifyProvider>
+              <PwaBootstrap />
+              <InactivityMonitor />
+              <PortalShell>{children}</PortalShell>
+            </AppNotifyProvider>
+          </GlobalLoaderProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

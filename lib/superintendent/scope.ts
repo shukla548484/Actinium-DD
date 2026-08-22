@@ -12,7 +12,7 @@ import { prisma } from "@/lib/prisma";
 
 export const SUPERINTENDENT_EMPLOYEE_COOKIE = "superintendent_employee_id";
 
-/** undefined = office mode (all vessels); [] = no assignments; string[] = scoped vessels */
+/** undefined = unrestricted (platform admin); [] = no vessels; string[] = assigned vessels */
 export async function getScopedVesselIds(): Promise<string[] | undefined> {
   const jar = await cookies();
   const employeeId = jar.get(SUPERINTENDENT_EMPLOYEE_COOKIE)?.value?.trim();

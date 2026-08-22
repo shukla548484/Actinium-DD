@@ -111,15 +111,25 @@ export function DryDockReadinessDashboard({ vesselId, dryDockProjectId }: Props)
       ) : null}
 
       <div className="flex flex-wrap gap-2">
-        <Button render={<Link href="/ship-access/dry-dock/jobs/new" />} nativeButton={false}>
-          Add dry dock job
+        <Button render={<Link href="/ship-access/dry-dock/simple-jobs/new" />} nativeButton={false}>
+          New Job
+        </Button>
+        <Button
+          variant="outline"
+          render={<Link href="/ship-access/dry-dock/simple-jobs" />}
+          nativeButton={false}
+        >
+          Jobs
+        </Button>
+        <Button render={<Link href="/ship-access/dry-dock/jobs/new" />} nativeButton={false} variant="outline">
+          Add library job
         </Button>
         <Button
           variant="outline"
           render={<Link href="/ship-access/dry-dock/jobs" />}
           nativeButton={false}
         >
-          View proposed jobs
+          View library jobs
         </Button>
         <Button
           variant="outline"

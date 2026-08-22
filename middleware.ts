@@ -14,7 +14,9 @@ function isStaticAsset(pathname: string): boolean {
   return (
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico" ||
-    /\.(?:ico|png|jpg|jpeg|gif|webp|svg|css|js|woff2?|ttf|map)$/i.test(pathname)
+    pathname === "/manifest.webmanifest" ||
+    pathname === "/manifest" ||
+    /\.(?:ico|png|jpg|jpeg|gif|webp|svg|css|js|woff2?|ttf|map|webmanifest)$/i.test(pathname)
   );
 }
 
@@ -35,6 +37,8 @@ function isPublicRoute(pathname: string): boolean {
   // Shipyard quotation invite token portal (mailto deep link)
   if (pathname.startsWith("/shipyard/quotations/t/")) return true;
   if (pathname.startsWith("/api/shipyard/quotations/by-token/")) return true;
+  if (pathname.startsWith("/api/shipyard/i18n/packs")) return true;
+  if (pathname.startsWith("/api/geo/locale")) return true;
   // Classic tender quote token portal
   if (pathname.startsWith("/quote/")) return true;
   if (pathname.startsWith("/api/quote/")) return true;

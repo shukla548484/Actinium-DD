@@ -149,7 +149,7 @@ export function OrganizationCompanyForm({ module, initial, companyId, mode }: Pr
                 onValueChange={(v) => setCategory(v as CompanyCategory)}
                 required
               >
-                <SelectTrigger aria-required="true">
+                <SelectTrigger aria-required="true" className="w-full min-w-[16rem]">
                   <SelectValue placeholder="Select company type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -173,7 +173,7 @@ export function OrganizationCompanyForm({ module, initial, companyId, mode }: Pr
                 value={type}
                 onValueChange={(v) => setType(v as CompanyType)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -189,7 +189,7 @@ export function OrganizationCompanyForm({ module, initial, companyId, mode }: Pr
                 value={status}
                 onValueChange={(v) => setStatus(v as EntityStatus)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -209,7 +209,7 @@ export function OrganizationCompanyForm({ module, initial, companyId, mode }: Pr
                 value={parentId || null}
                 onValueChange={(v) => setParentId(v ?? "")}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full min-w-[16rem]">
                   <SelectValue placeholder="Select master company" />
                 </SelectTrigger>
                 <SelectContent>

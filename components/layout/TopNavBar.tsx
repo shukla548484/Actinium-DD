@@ -14,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ThemeMenuItems } from "@/components/theme/ThemeMenuItems";
 import { Input } from "@/components/ui/input";
 import {
   Sheet,
@@ -33,6 +34,11 @@ import {
   type TopNavId,
   type TopNavItem,
 } from "@/lib/navigation/topNavItems";
+import {
+  shipyardNavDualLabel,
+  useShipyardLangPrefs,
+} from "@/lib/i18n/shipyardNavLabels";
+import type { ShipyardQuoteLangPrefs } from "@/lib/i18n/shipyardQuotationUi";
 
 const MENU_CLOSE_DELAY_MS = 400;
 
@@ -54,6 +60,7 @@ export interface TopNavBarProps {
 
 function ModuleDropdown({
   item,
+  prefs,
   pathname,
   isOpen,
   onOpen,
@@ -62,6 +69,7 @@ function ModuleDropdown({
   onCancelClose,
 }: {
   item: TopNavItem;
+  prefs: ShipyardQuoteLangPrefs;
   pathname: string;
   isOpen: boolean;
   onOpen: () => void;
@@ -78,9 +86,13 @@ function ModuleDropdown({
   const isActive = isTopNavItemActive(pathname, item);
   const sections = getTopNavSections(item);
   const hasMenu = sections.some((s) => s.items.length > 0);
+  const triggerLabel = shipyardNavDualLabel(prefs, {
+    topNavId: item.id,
+    fallback: item.label,
+  });
 
   const btnClass = cn(
-    "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+    "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 py-1.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
     (isActive || isOpen) && "bg-sidebar-accent text-sidebar-accent-foreground",
   );
 
@@ -131,7 +143,7 @@ function ModuleDropdown({
     return (
       <Link href={item.href ?? "/projects"} className={btnClass}>
         <Icon className="size-5 shrink-0" aria-hidden />
-        <span>{item.label}</span>
+        <span className="min-w-0">{triggerLabel}</span>
       </Link>
     );
   }
@@ -145,7 +157,7 @@ function ModuleDropdown({
       onMouseEnter={onCancelClose}
       onMouseLeave={onScheduleClose}
     >
-      <div className="dropdown-scroll min-w-[15rem] w-64 max-h-[min(600px,calc(100dvh-var(--dd-nav-height,3rem)))] overflow-y-auto overscroll-contain rounded-lg border border-border bg-popover py-1.5 text-popover-foreground shadow-lg">
+      <div className="dropdown-scroll min-w-[15rem] w-72 max-h-[min(600px,calc(100dvh-var(--dd-nav-height,3rem)))] overflow-y-auto overscroll-contain rounded-lg border border-border bg-popover py-1.5 text-popover-foreground shadow-lg">
         {sections.flatMap((group) =>
           group.items.map((sub) => {
             const subActive =
@@ -154,7 +166,10 @@ function ModuleDropdown({
               <TopNavSubmenuLink
                 key={`${sub.href}-${sub.label}`}
                 href={sub.href}
-                label={sub.label}
+                label={shipyardNavDualLabel(prefs, {
+                  href: sub.href,
+                  fallback: sub.label,
+                })}
                 icon={sub.icon}
                 active={subActive}
                 onNavigate={navigateTo}
@@ -191,7 +206,7 @@ function ModuleDropdown({
           }}
         >
           <Icon className="size-5 shrink-0" aria-hidden />
-          <span>{item.label}</span>
+          <span className="min-w-0 text-left">{triggerLabel}</span>
         </button>
       </div>
       {panel && createPortal(panel, document.body)}
@@ -202,9 +217,11 @@ function ModuleDropdown({
 function TasksPendingLink({
   pathname,
   pendingTasksCount,
+  label,
 }: {
   pathname: string;
   pendingTasksCount: number;
+  label: React.ReactNode;
 }) {
   const isActive =
     pathname === tasksNavItem.href || pathname.startsWith(`${tasksNavItem.href}/`);
@@ -213,13 +230,13 @@ function TasksPendingLink({
     <Link
       href={tasksNavItem.href}
       className={cn(
-        "relative flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+        "relative flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 py-1.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         isActive && "bg-sidebar-accent text-sidebar-accent-foreground",
       )}
       title={tasksNavItem.description}
     >
       <ClipboardList className="size-5 shrink-0" aria-hidden />
-      <span>{tasksNavItem.label}</span>
+      <span className="min-w-0 text-left">{label}</span>
       {pendingTasksCount > 0 ? (
         <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
           {pendingTasksCount > 99 ? "99+" : pendingTasksCount}
@@ -250,6 +267,12 @@ export function TopNavBar({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const prefs = useShipyardLangPrefs();
+  const tasksLabel = shipyardNavDualLabel(prefs, {
+    topNavId: "tasks",
+    fallback: tasksNavItem.label,
+  });
 
   const cancelClose = useCallback(() => {
     if (closeTimer.current) {
@@ -293,10 +316,12 @@ export function TopNavBar({
           key={item.id}
           type="button"
           onClick={() => onNavigate(item.id)}
-          className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 py-2 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent"
+          className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 py-1.5 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent"
         >
           <item.icon className="size-5" aria-hidden />
-          <span>{item.label}</span>
+          <span className="min-w-0 text-left">
+            {shipyardNavDualLabel(prefs, { topNavId: item.id, fallback: item.label })}
+          </span>
         </button>
       );
     }
@@ -305,6 +330,7 @@ export function TopNavBar({
       <ModuleDropdown
         key={item.id}
         item={item}
+        prefs={prefs}
         pathname={pathname}
         isOpen={openMenu === item.id}
         onOpen={() => setOpenMenu(item.id)}
@@ -329,7 +355,11 @@ export function TopNavBar({
         <div className="hidden min-w-0 flex-1 items-center gap-0.5 overflow-visible md:flex">
           {navItems.map(renderModule)}
           {showTasksPending ? (
-            <TasksPendingLink pathname={pathname} pendingTasksCount={pendingTasksCount} />
+            <TasksPendingLink
+              pathname={pathname}
+              pendingTasksCount={pendingTasksCount}
+              label={tasksLabel}
+            />
           ) : null}
         </div>
 
@@ -354,9 +384,14 @@ export function TopNavBar({
               <div className="dropdown-scroll space-y-4 overflow-y-auto px-4 py-3">
                 {navItems.map((item) => (
                   <div key={item.id}>
-                    <p className="mb-1 flex items-center gap-2 px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      <item.icon className="size-4" />
-                      {item.label}
+                    <p className="mb-1 flex items-start gap-2 px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <item.icon className="mt-0.5 size-4 shrink-0" />
+                      <span>
+                        {shipyardNavDualLabel(prefs, {
+                          topNavId: item.id,
+                          fallback: item.label,
+                        })}
+                      </span>
                     </p>
                     <div className="space-y-0.5 pl-2">
                       {getTopNavSections(item).flatMap((g) =>
@@ -364,7 +399,10 @@ export function TopNavBar({
                           <TopNavSubmenuLink
                             key={sub.href + sub.label}
                             href={sub.href}
-                            label={sub.label}
+                            label={shipyardNavDualLabel(prefs, {
+                              href: sub.href,
+                              fallback: sub.label,
+                            })}
                             icon={sub.icon}
                             active={
                               pathname === sub.href || pathname.startsWith(`${sub.href}/`)
@@ -383,7 +421,10 @@ export function TopNavBar({
                           onClick={() => setMobileOpen(false)}
                           className="block rounded-md px-3 py-2 text-sm hover:bg-accent"
                         >
-                          Open {item.label}
+                          {shipyardNavDualLabel(prefs, {
+                            topNavId: item.id,
+                            fallback: item.label,
+                          })}
                         </Link>
                       ) : null}
                     </div>
@@ -397,7 +438,7 @@ export function TopNavBar({
                       className="flex items-center gap-2 rounded-md px-2 py-2 text-sm font-medium hover:bg-accent"
                     >
                       <ClipboardList className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-                      {tasksNavItem.label}
+                      {tasksLabel}
                       {pendingTasksCount > 0 ? (
                         <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
                           {pendingTasksCount > 99 ? "99+" : pendingTasksCount}
@@ -467,11 +508,13 @@ export function TopNavBar({
               </Avatar>
               <span className="hidden truncate text-xs font-medium sm:inline">{userName}</span>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-48">
+            <DropdownMenuContent align="end" className="min-w-52">
               <div className="px-2 py-1.5">
                 <p className="text-sm font-medium">{userName}</p>
                 <p className="text-xs text-muted-foreground">{userRole}</p>
               </div>
+              <ThemeMenuItems />
+              <DropdownMenuSeparator />
               {mode === "portal" ? (
                 <>
                   <DropdownMenuItem render={<Link href="/account" />}>

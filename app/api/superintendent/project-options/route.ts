@@ -21,6 +21,7 @@ export async function GET(request: Request) {
   const projects = await prisma.dryDockProject.findMany({
     where: {
       ...notDeleted,
+      archivedAt: null,
       ...dryDockProjectScopeWhere(vesselIds),
       ...(vesselId ? { vesselId } : {}),
     },

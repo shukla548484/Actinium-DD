@@ -2,6 +2,10 @@ import type { EntityStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { bumpVesselCode, generateVesselCode, normalizeVesselCode } from "@/lib/admin/codes";
 import type { ListQuery, VesselDto } from "@/lib/admin/types";
+import {
+  deriveNextDryDockDue,
+  parseOptionalDateInput,
+} from "@/lib/vessels/surveyWindows";
 
 const notDeleted = { deletedAt: null };
 
@@ -26,6 +30,9 @@ function mapVessel(
     callSign: row.callSign,
     grossTonnage: row.grossTonnage,
     yearBuilt: row.yearBuilt,
+    lastDryDockDate: row.lastDryDockDate?.toISOString() ?? null,
+    lastIntermediateSurveyDate: row.lastIntermediateSurveyDate?.toISOString() ?? null,
+    nextDryDockDue: row.nextDryDockDue?.toISOString() ?? null,
     status: row.status,
     employeeCount: row._count?.employeeVessels,
     createdAt: row.createdAt.toISOString(),
@@ -127,18 +134,39 @@ export async function createVessel(input: {
   companyId: string;
   name: string;
   code?: string;
+  codeMode?: "manual" | "auto";
   imoNumber?: string | null;
   flag?: string | null;
   vesselType?: string | null;
   callSign?: string | null;
   grossTonnage?: number | null;
   yearBuilt?: number | null;
+  lastDryDockDate?: string | null;
+  lastIntermediateSurveyDate?: string | null;
+  nextDryDockDue?: string | null;
   status?: EntityStatus;
 }) {
-  const code = await uniqueVesselCode(
-    input.companyId,
-    input.code?.trim() ? normalizeVesselCode(input.code) : generateVesselCode(input.name),
-  );
+  const codeMode = input.codeMode ?? (input.code?.trim() ? "manual" : "auto");
+  let code: string;
+
+  if (codeMode === "manual") {
+    const requested = normalizeVesselCode(input.code ?? "");
+    const existing = await prisma.vessel.findFirst({
+      where: { companyId: input.companyId, code: requested, ...notDeleted },
+    });
+    if (existing) {
+      throw new Error(`Vessel code ${requested} is already used for this company`);
+    }
+    code = requested;
+  } else {
+    code = await uniqueVesselCode(input.companyId, generateVesselCode(input.name));
+  }
+
+  const lastDryDockDate = parseOptionalDateInput(input.lastDryDockDate);
+  const lastIntermediateSurveyDate = parseOptionalDateInput(input.lastIntermediateSurveyDate);
+  const nextDryDockDue =
+    parseOptionalDateInput(input.nextDryDockDue) ?? deriveNextDryDockDue(lastDryDockDate);
+
   const row = await prisma.vessel.create({
     data: {
       companyId: input.companyId,
@@ -150,6 +178,9 @@ export async function createVessel(input: {
       callSign: input.callSign?.trim() || null,
       grossTonnage: input.grossTonnage ?? null,
       yearBuilt: input.yearBuilt ?? null,
+      lastDryDockDate,
+      lastIntermediateSurveyDate,
+      nextDryDockDue,
       status: input.status ?? "active",
     },
     include: {
@@ -171,9 +202,28 @@ export async function updateVessel(
     callSign: string | null;
     grossTonnage: number | null;
     yearBuilt: number | null;
+    lastDryDockDate: string | null;
+    lastIntermediateSurveyDate: string | null;
+    nextDryDockDue: string | null;
     status: EntityStatus;
   }>,
 ) {
+  const lastDryDockDate =
+    input.lastDryDockDate !== undefined
+      ? parseOptionalDateInput(input.lastDryDockDate)
+      : undefined;
+  const lastIntermediateSurveyDate =
+    input.lastIntermediateSurveyDate !== undefined
+      ? parseOptionalDateInput(input.lastIntermediateSurveyDate)
+      : undefined;
+
+  let nextDryDockDue: Date | null | undefined;
+  if (input.nextDryDockDue !== undefined) {
+    nextDryDockDue = parseOptionalDateInput(input.nextDryDockDue);
+  } else if (lastDryDockDate !== undefined) {
+    nextDryDockDue = deriveNextDryDockDue(lastDryDockDate);
+  }
+
   const row = await prisma.vessel.update({
     where: { id },
     data: {
@@ -185,6 +235,9 @@ export async function updateVessel(
       ...(input.callSign !== undefined ? { callSign: input.callSign?.trim() || null } : {}),
       ...(input.grossTonnage !== undefined ? { grossTonnage: input.grossTonnage } : {}),
       ...(input.yearBuilt !== undefined ? { yearBuilt: input.yearBuilt } : {}),
+      ...(lastDryDockDate !== undefined ? { lastDryDockDate } : {}),
+      ...(lastIntermediateSurveyDate !== undefined ? { lastIntermediateSurveyDate } : {}),
+      ...(nextDryDockDue !== undefined ? { nextDryDockDue } : {}),
       ...(input.status != null ? { status: input.status } : {}),
     },
     include: {

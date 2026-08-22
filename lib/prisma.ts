@@ -19,18 +19,29 @@ function modelHasField(modelName: string, fieldName: string): boolean {
   return model?.fields.some((f) => f.name === fieldName) ?? false;
 }
 
-/** Fingerprint of superintendent dry-dock fields — bump forces client recreation after generate. */
+/** Fingerprint of schema fields that force client recreation after generate. */
 function prismaSchemaFingerprint(): string {
-  const model = Prisma.dmmf.datamodel.models.find((m) => m.name === "DryDockProject");
-  if (!model) return "missing-dry-dock-project";
-  const required = [
+  const dd = Prisma.dmmf.datamodel.models.find((m) => m.name === "DryDockProject");
+  const project = Prisma.dmmf.datamodel.models.find((m) => m.name === "Project");
+  if (!dd || !project) return "missing-project-models";
+  const ddRequired = [
     "projectType",
     "priority",
     "expectedSailing",
     "baselineLockedAt",
     "workspaceProvisionedAt",
+    "archivedAt",
+    "archivedByUserId",
   ];
-  return required.map((name) => (model.fields.some((f) => f.name === name) ? "1" : "0")).join("");
+  const projectRequired = ["archivedAt", "archivedByUserId", "preferredShipyards"];
+  const defects = Prisma.dmmf.datamodel.models.find((m) => m.name === "DdProjectDefect");
+  return [
+    ...ddRequired.map((name) => (dd.fields.some((f) => f.name === name) ? "1" : "0")),
+    ...projectRequired.map((name) =>
+      project.fields.some((f) => f.name === name) ? "1" : "0",
+    ),
+    defects?.fields.some((f) => f.name === "requisitionNumber") ? "1" : "0",
+  ].join("");
 }
 
 function isStalePrismaClient(client: PrismaClient | undefined): boolean {
@@ -41,17 +52,22 @@ function isStalePrismaClient(client: PrismaClient | undefined): boolean {
 
   if (!modelHasField("Company", "category")) return true;
   if (!modelHasField("DryDockProject", "projectType")) return true;
+  if (!modelHasField("DryDockProject", "archivedAt")) return true;
+  if (!modelHasField("Project", "archivedAt")) return true;
   if (!modelHasField("EmployeeModuleAssignment", "moduleCode")) return true;
   if (!modelHasField("EmployeeModulePage", "pageKey")) return true;
+  if (!modelHasField("DdProjectDefect", "requisitionNumber")) return true;
 
   const extended = client as PrismaClient & {
     company?: { count?: unknown };
     employeeModuleAssignment?: { findMany?: unknown };
     employeeModulePage?: { findMany?: unknown };
+    ddProjectDefect?: { count?: unknown };
   };
   if (typeof extended.company?.count !== "function") return true;
   if (typeof extended.employeeModuleAssignment?.findMany !== "function") return true;
   if (typeof extended.employeeModulePage?.findMany !== "function") return true;
+  if (typeof extended.ddProjectDefect?.count !== "function") return true;
 
   return false;
 }

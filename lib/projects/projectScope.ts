@@ -30,7 +30,7 @@ export async function listScopedProjects(): Promise<Project[]> {
 
   const scope = await buildUserScope(userId);
   const rows = await prisma.project.findMany({
-    where: { ...notDeleted, ...projectScopeWhere(scope) },
+    where: { ...notDeleted, archivedAt: null, ...projectScopeWhere(scope) },
     orderBy: { updatedAt: "desc" },
   });
   return rows.map(mapProject);

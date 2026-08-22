@@ -49,5 +49,10 @@ export { provisionDryDockProjectWorkspace } from "./provisionWorkspace";
 export { ensureProjectChecklistFromTemplate } from "./ensureChecklist";
 export { getProjectWorkspaceSummary } from "./workspaceSummary";
 export type { ProjectWorkspaceSummary, WorkspaceModuleCard, WorkspaceWorkshop } from "./workspaceSummary";
+export {
+  fallbackWorkspaceNavModules,
+  WORKSPACE_NAV_MODULE_IDS,
+  buildWorkspaceModuleCard,
+} from "./workspaceNav";
 export { projectScopedHref, projectPlanningHref, projectMonitoringHref, projectBudgetHref } from "./workspaceLinks";
 export { DRY_DOCK_DESIGN_RULES, assertDryDockFeatureOwnership } from "./designPrinciples";

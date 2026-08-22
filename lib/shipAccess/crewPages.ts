@@ -4,6 +4,7 @@ export type CrewPageGroup =
   | "Overview"
   | "Machinery"
   | "Defects"
+  | "Jobs"
   | "Dry dock jobs"
   | "Dry dock scope"
   | "Purchase";
@@ -96,6 +97,38 @@ export const CREW_ASSIGNABLE_PAGES: CrewPageDefinition[] = [
     description: "Endorse CE-approved dry dock scope jobs (Master only)",
     route: "/ship-access/dry-dock/jobs",
     group: "Dry dock scope",
+    actionKeys: ["ship.job.masterApprove"],
+  },
+  {
+    key: "page.shipAccess.simpleJobs",
+    label: "Jobs",
+    description: "Simple dry-dock Jobs — Paint Jobs with area × Sa prep costing",
+    route: "/ship-access/dry-dock/simple-jobs",
+    group: "Jobs",
+    actionKeys: ["ship.job.read"],
+  },
+  {
+    key: "page.shipAccess.simpleJobs.new",
+    label: "New Job",
+    description: "Create a Paint Job with prep and coating lines",
+    route: "/ship-access/dry-dock/simple-jobs/new",
+    group: "Jobs",
+    actionKeys: ["ship.job.create"],
+  },
+  {
+    key: "page.shipAccess.simpleJobs.edit",
+    label: "Update Jobs",
+    description: "Edit draft or rejected Jobs before submission",
+    route: "/ship-access/dry-dock/simple-jobs",
+    group: "Jobs",
+    actionKeys: ["ship.job.update"],
+  },
+  {
+    key: "page.shipAccess.simpleJobs.masterReview",
+    label: "Master Jobs review",
+    description: "Approve or reject submitted Jobs (Master only)",
+    route: "/ship-access/dry-dock/simple-jobs",
+    group: "Jobs",
     actionKeys: ["ship.job.masterApprove"],
   },
   {
@@ -210,6 +243,8 @@ export const DEFAULT_CREW_PAGE_KEYS = [
   "page.shipAccess.dryDockDashboard",
   "page.shipAccess.dryDockJobs",
   "page.shipAccess.dryDockJobs.new",
+  "page.shipAccess.simpleJobs",
+  "page.shipAccess.simpleJobs.new",
   "page.shipAccess.defects",
   "page.shipAccess.defects.new",
   "page.shipAccess.purchase",
@@ -250,6 +285,25 @@ export function crewPagePermissionForPath(
   }
   if (path === "/ship-access/dry-dock" || path === "/ship-access/dry-dock/") {
     return "page.shipAccess.dryDockDashboard";
+  }
+  if (path === "/ship-access/dry-dock/simple-jobs/new") {
+    return "page.shipAccess.simpleJobs.new";
+  }
+  if (/^\/ship-access\/dry-dock\/simple-jobs\/[^/]+\/edit\/?$/.test(path)) {
+    return "page.shipAccess.simpleJobs.edit";
+  }
+  if (path === "/ship-access/dry-dock/simple-jobs" || path.startsWith("/ship-access/dry-dock/simple-jobs/")) {
+    const params =
+      typeof search === "string"
+        ? new URLSearchParams(search.startsWith("?") ? search.slice(1) : search)
+        : search;
+    if (params?.get("status") === "draft" || params?.get("status") === "rejected") {
+      return "page.shipAccess.simpleJobs.edit";
+    }
+    if (params?.get("status") === "submitted") {
+      return "page.shipAccess.simpleJobs.masterReview";
+    }
+    return "page.shipAccess.simpleJobs";
   }
   if (path === "/ship-access/dry-dock/jobs/new") {
     return "page.shipAccess.dryDockJobs.new";
@@ -345,6 +399,14 @@ export function crewApiPermissionForPath(
   }
   if (pathname.startsWith("/api/ship-access/dry-dock/readiness")) {
     return "page.shipAccess.dryDockDashboard";
+  }
+  if (pathname.match(/^\/api\/ship-access\/simple-jobs\/[^/]+\/master-review/)) {
+    return "ship.job.masterApprove";
+  }
+  if (pathname.startsWith("/api/ship-access/simple-jobs")) {
+    if (method === "GET") return "page.shipAccess.simpleJobs";
+    if (method === "POST") return "page.shipAccess.simpleJobs.new";
+    return "page.shipAccess.simpleJobs.edit";
   }
   if (pathname.match(/^\/api\/ship-access\/vessel-jobs\/[^/]+\/master-review/)) {
     return "ship.job.masterApprove";

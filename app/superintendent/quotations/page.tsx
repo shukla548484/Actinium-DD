@@ -46,6 +46,21 @@ type DetailJob = {
   } | null;
 };
 
+type DetailHeader = {
+  referenceCode: string;
+  status: string;
+  dockCycle: string;
+  plannedStart: string | null;
+  plannedEnd: string | null;
+  dueAt: string | null;
+  notes: string | null;
+  vessel: { name: string; code: string; imoNumber: string | null };
+  tariffSnapshot: {
+    currency: string;
+    ratesJson: unknown;
+  } | null;
+};
+
 export default function SuperintendentQuotationsPage() {
   const [status, setStatus] = useState("submitted");
   const [rows, setRows] = useState<OfficeRow[]>([]);
@@ -53,6 +68,7 @@ export default function SuperintendentQuotationsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailJobs, setDetailJobs] = useState<DetailJob[]>([]);
   const [detailTerms, setDetailTerms] = useState("");
+  const [detailHeader, setDetailHeader] = useState<DetailHeader | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
   const load = useCallback(async () => {
@@ -83,7 +99,7 @@ export default function SuperintendentQuotationsPage() {
       const res = await fetch(`/api/superintendent/quotations?id=${id}`);
       const data = (await res.json()) as {
         error?: string;
-        request?: {
+        request?: DetailHeader & {
           jobs: DetailJob[];
           terms: { body: string } | null;
         };
@@ -94,6 +110,17 @@ export default function SuperintendentQuotationsPage() {
       }
       setDetailJobs(data.request.jobs);
       setDetailTerms(data.request.terms?.body ?? "");
+      setDetailHeader({
+        referenceCode: data.request.referenceCode,
+        status: data.request.status,
+        dockCycle: data.request.dockCycle,
+        plannedStart: data.request.plannedStart,
+        plannedEnd: data.request.plannedEnd,
+        dueAt: data.request.dueAt,
+        notes: data.request.notes,
+        vessel: data.request.vessel,
+        tariffSnapshot: data.request.tariffSnapshot,
+      });
     } finally {
       setDetailLoading(false);
     }
@@ -195,6 +222,47 @@ export default function SuperintendentQuotationsPage() {
               <ActiniumLoadingState label="Loading…" size="sm" minHeight={80} />
             ) : (
               <>
+                {detailHeader ? (
+                  <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                    <p>
+                      <span className="text-muted-foreground">Reference: </span>
+                      <span className="font-mono">{detailHeader.referenceCode}</span>
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">Vessel: </span>
+                      {detailHeader.vessel.name} ({detailHeader.vessel.code})
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">Status: </span>
+                      {detailHeader.status}
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">Cycle: </span>
+                      {SHIPYARD_DOCK_CYCLE_LABELS[
+                        detailHeader.dockCycle as keyof typeof SHIPYARD_DOCK_CYCLE_LABELS
+                      ] ?? detailHeader.dockCycle}
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">Window: </span>
+                      {[detailHeader.plannedStart, detailHeader.plannedEnd]
+                        .filter(Boolean)
+                        .map((d) => new Date(d!).toLocaleDateString())
+                        .join(" → ") || "—"}
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">Due: </span>
+                      {detailHeader.dueAt
+                        ? new Date(detailHeader.dueAt).toLocaleDateString()
+                        : "—"}
+                    </p>
+                    {detailHeader.notes ? (
+                      <p className="sm:col-span-2 lg:col-span-3">
+                        <span className="text-muted-foreground">Notes: </span>
+                        {detailHeader.notes}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
                 <div className="space-y-2">
                   {detailJobs.map((job) => (
                     <div key={job.id} className="flex flex-wrap justify-between gap-2 border-b py-2 text-sm">
@@ -218,6 +286,30 @@ export default function SuperintendentQuotationsPage() {
                     <pre className="whitespace-pre-wrap rounded border bg-muted/30 p-3 text-xs">
                       {detailTerms}
                     </pre>
+                  </div>
+                ) : null}
+                {Array.isArray(detailHeader?.tariffSnapshot?.ratesJson) &&
+                (detailHeader.tariffSnapshot.ratesJson as unknown[]).length > 0 ? (
+                  <div>
+                    <p className="mb-1 text-sm font-medium">
+                      Tariff snapshot ({detailHeader.tariffSnapshot.currency})
+                    </p>
+                    <div className="space-y-1 rounded border bg-muted/20 p-3 text-xs">
+                      {(
+                        detailHeader.tariffSnapshot.ratesJson as {
+                          label: string;
+                          unit: string;
+                          unitRate: number;
+                        }[]
+                      ).map((r, i) => (
+                        <div key={`${r.label}-${i}`} className="flex justify-between gap-2">
+                          <span>
+                            {r.label} ({r.unit})
+                          </span>
+                          <span className="font-mono">{r.unitRate}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ) : null}
               </>

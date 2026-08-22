@@ -8,15 +8,16 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/80",
+        default:
+          "border border-[color:var(--dd-accent-indigo)]/25 bg-primary text-primary-foreground hover:bg-[color:var(--dd-accent-indigo-deep)]",
         outline:
-          "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+          "border-[color:var(--dd-accent-blue)]/55 bg-background text-[color:var(--dd-accent-navy)] hover:bg-[color:var(--dd-accent-blue-soft)] hover:text-[color:var(--dd-accent-navy)] aria-expanded:bg-[color:var(--dd-accent-indigo-soft)] aria-expanded:text-[color:var(--dd-accent-navy)] dark:border-[color:var(--dd-accent-sky)]/40 dark:bg-input/30 dark:hover:bg-input/50",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+          "border border-[color:var(--dd-accent-sky)]/40 bg-secondary text-secondary-foreground hover:bg-[color:var(--dd-accent-sky-soft)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
         ghost:
-          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+          "hover:bg-[color:var(--dd-accent-indigo-soft)] hover:text-[color:var(--dd-accent-navy)] aria-expanded:bg-[color:var(--dd-accent-indigo-soft)] aria-expanded:text-[color:var(--dd-accent-navy)] dark:hover:bg-muted/50",
         destructive:
-          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
+          "border border-[color:var(--dd-msg-crimson)]/30 bg-[color:var(--dd-msg-pink-soft)] text-[color:var(--dd-msg-maroon)] hover:bg-[color:var(--dd-msg-coral)]/35 focus-visible:border-[color:var(--dd-msg-crimson)]/50 focus-visible:ring-[color:var(--dd-msg-crimson)]/25 dark:bg-[color:var(--dd-msg-maroon)]/35 dark:text-[color:var(--dd-msg-pink-soft)] dark:hover:bg-[color:var(--dd-msg-maroon)]/50",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {

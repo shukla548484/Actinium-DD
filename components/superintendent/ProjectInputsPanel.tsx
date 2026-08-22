@@ -20,6 +20,7 @@ type InputsPayload = {
   catalog: InputSectionDef[];
   submissions: InputSubmissionDto[];
   readiness: InputReadinessReport;
+  vesselType?: string | null;
 };
 
 const STATUS_DOT: Record<string, string> = {
@@ -169,6 +170,7 @@ export function ProjectInputsPanel({ dryDockProjectId, pageKey = "vessel", readO
             onSaved={onSaved}
             readOnly={readOnly}
             enteredByRole={enteredByRole ?? activeSection.enteredBy}
+            vesselType={data.vesselType}
           />
         </CardContent>
       </Card>

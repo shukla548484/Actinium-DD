@@ -8,6 +8,7 @@ import { useShipAccessContext } from "@/components/shipAccess/ShipAccessScopeBar
 import { ShipJobActionsMenu } from "@/components/shipAccess/ShipJobActionsMenu";
 import { ShipJobScopeDialog } from "@/components/shipAccess/ShipJobScopeDialog";
 import { ShareJobsToShipyardDialog } from "@/components/shipAccess/ShareJobsToShipyardDialog";
+import { SelectedJobsPreviewDialog } from "@/components/shipAccess/SelectedJobsPreviewDialog";
 import { PageHeader, PageShell } from "@/components/layout/PageShell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -74,6 +75,7 @@ function ShipAccessJobsIndex() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [targetVesselId, setTargetVesselId] = useState("");
   const [moving, setMoving] = useState(false);
+  const [sharePreviewOpen, setSharePreviewOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [scopeJobId, setScopeJobId] = useState<string | null>(null);
   const [scopeJobTitle, setScopeJobTitle] = useState<string | undefined>(undefined);
@@ -333,23 +335,46 @@ function ShipAccessJobsIndex() {
     }
   }, [load, otherVessels, selectedIds, targetVesselId, vesselId]);
 
+  const selectedJobs = useMemo(
+    () => jobs.filter((job) => selectedIds.has(job.id)),
+    [jobs, selectedIds],
+  );
+
   return (
     <PageShell size="wide">
       <PageHeader
         title="Jobs"
         description={
-          vesselId
-            ? `Job index for ${vesselLabel}. Assign each job to a party, or move selected jobs to another vessel assigned to you.`
-            : "Select a vessel in the ship access bar to view and assign jobs."
+          !vesselId
+            ? "Select a vessel in the ship access bar to view and assign jobs."
+            : undefined
         }
         actions={
-          <Button
-            render={<Link href="/ship-access/jobs/new" />}
-            nativeButton={false}
-            disabled={!vesselId}
-          >
-            Create job
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {vesselId ? (
+              <>
+                <span className="text-sm text-muted-foreground">
+                  {selectedIds.size === 0
+                    ? "No jobs selected"
+                    : `${selectedIds.size} job${selectedIds.size === 1 ? "" : "s"} selected`}
+                </span>
+                <Button
+                  variant="outline"
+                  disabled={selectedIds.size === 0}
+                  onClick={() => setSharePreviewOpen(true)}
+                >
+                  Share to Shipyard
+                </Button>
+              </>
+            ) : null}
+            <Button
+              render={<Link href="/ship-access/jobs/new" />}
+              nativeButton={false}
+              disabled={!vesselId}
+            >
+              Create job
+            </Button>
+          </div>
         }
       />
 
@@ -400,55 +425,49 @@ function ShipAccessJobsIndex() {
             </CardContent>
           </Card>
 
-          <Card className="mb-4 border-primary/20 bg-primary/5">
-            <CardContent className="flex flex-wrap items-end gap-4 py-4">
-              <div className="min-w-[160px] space-y-1">
-                <p className="text-sm font-medium">Selected jobs</p>
-                <p className="text-xs text-muted-foreground">
-                  {selectedIds.size === 0
-                    ? "Select jobs in the list to move vessels or share for quotation."
-                    : `${selectedIds.size} job${selectedIds.size === 1 ? "" : "s"} selected`}
-                </p>
-              </div>
-              <Button
-                size="sm"
-                disabled={selectedIds.size === 0}
-                onClick={() => setShareOpen(true)}
-              >
-                Share to shipyard for quotation
-              </Button>
-              {otherVessels.length > 0 ? (
-                <>
-                  <div className="min-w-[240px] flex-1 space-y-2">
-                    <p className="text-sm font-medium">Move to vessel</p>
-                    <LabeledSelect
-                      items={[
-                        { value: "", label: "Select vessel…" },
-                        ...otherVesselItems,
-                      ]}
-                      value={targetVesselId}
-                      onValueChange={setTargetVesselId}
-                      placeholder="Select vessel…"
-                      className="w-full"
-                      disabled={selectedIds.size === 0 || moving}
-                    />
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={selectedIds.size === 0 || !targetVesselId || moving}
-                    onClick={() => void moveSelectedToVessel()}
-                  >
-                    {moving ? "Moving…" : "Assign to vessel"}
-                  </Button>
-                </>
-              ) : vessels.length <= 1 ? (
-                <p className="text-xs text-muted-foreground">
-                  Only one assigned vessel — jobs cannot be moved to another ship from here.
-                </p>
-              ) : null}
-            </CardContent>
-          </Card>
+          {otherVessels.length > 0 ? (
+            <Card className="mb-4 border-primary/20 bg-primary/5">
+              <CardContent className="flex flex-wrap items-end gap-4 py-4">
+                <div className="min-w-[160px] space-y-1">
+                  <p className="text-sm font-medium">Move selected jobs</p>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedIds.size === 0
+                      ? "Select jobs in the list to move them to another vessel."
+                      : `${selectedIds.size} job${selectedIds.size === 1 ? "" : "s"} selected`}
+                  </p>
+                </div>
+                <div className="min-w-[240px] flex-1 space-y-2">
+                  <p className="text-sm font-medium">Move to vessel</p>
+                  <LabeledSelect
+                    items={[
+                      { value: "", label: "Select vessel…" },
+                      ...otherVesselItems,
+                    ]}
+                    value={targetVesselId}
+                    onValueChange={setTargetVesselId}
+                    placeholder="Select vessel…"
+                    className="w-full"
+                    disabled={selectedIds.size === 0 || moving}
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={selectedIds.size === 0 || !targetVesselId || moving}
+                  onClick={() => void moveSelectedToVessel()}
+                >
+                  {moving ? "Moving…" : "Assign to vessel"}
+                </Button>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          <SelectedJobsPreviewDialog
+            open={sharePreviewOpen}
+            onOpenChange={setSharePreviewOpen}
+            jobs={selectedJobs}
+            onContinueShare={() => setShareOpen(true)}
+          />
 
           <ShareJobsToShipyardDialog
             open={shareOpen}

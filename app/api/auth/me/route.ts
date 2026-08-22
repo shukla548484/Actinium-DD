@@ -7,6 +7,7 @@ import {
   getEmployeeAssignedModuleCodes,
   getEffectiveEmployeePageKeys,
 } from "@/lib/db/employeeModuleAccess";
+import { moduleCodeForPageKey } from "@/lib/rbac/accessModules";
 import { getUserPermissions } from "@/lib/db/rbac";
 
 export const dynamic = "force-dynamic";
@@ -51,7 +52,9 @@ export async function GET() {
   }
 
   const unrestricted =
-    permissions.has("platform.tenant.manage") || user.roleCode === "SYS_ADMIN";
+    permissions.has("platform.tenant.manage") ||
+    permissions.has("*") ||
+    user.roleCode === "SYS_ADMIN";
 
   const employeeId = crewContext?.employeeId ?? user.employeeId;
   let assignedPageKeys = crewContext?.assignedPageKeys ?? [];
@@ -64,6 +67,21 @@ export async function GET() {
     ]);
     assignedModuleCodes = modules;
     if (pages.length > 0) assignedPageKeys = pages;
+  }
+
+  // Role fallback: office users often have role permissions but no explicit
+  // employee module rows yet — derive modules/pages so the top nav is usable.
+  if (!unrestricted && assignedModuleCodes.length === 0) {
+    const rolePageKeys = [...permissions].filter((key) => key.startsWith("page."));
+    if (rolePageKeys.length > 0) {
+      assignedPageKeys = rolePageKeys;
+      const derived = new Set<string>();
+      for (const key of rolePageKeys) {
+        const code = moduleCodeForPageKey(key);
+        if (code) derived.add(code);
+      }
+      assignedModuleCodes = [...derived].sort();
+    }
   }
 
   return NextResponse.json({

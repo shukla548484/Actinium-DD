@@ -30,7 +30,12 @@ export async function scopedDryDockProjectWhere(
   extra: Prisma.DryDockProjectWhereInput = {},
 ): Promise<Prisma.DryDockProjectWhereInput> {
   const vesselIds = await getScopedVesselIds();
-  return { ...notDeleted, ...dryDockProjectScopeWhere(vesselIds), ...extra };
+  return {
+    ...notDeleted,
+    archivedAt: null,
+    ...dryDockProjectScopeWhere(vesselIds),
+    ...extra,
+  };
 }
 
 export async function scopedChildWhere(
@@ -47,8 +52,14 @@ export async function scopedChildWhere(
     ...notDeleted,
     ...(dryDockProjectId ? { dryDockProjectId } : {}),
     ...(vesselIds
-      ? { dryDockProject: { ...notDeleted, vesselId: { in: vesselIds } } }
-      : {}),
+      ? {
+          dryDockProject: {
+            ...notDeleted,
+            archivedAt: null,
+            vesselId: { in: vesselIds },
+          },
+        }
+      : { dryDockProject: { ...notDeleted, archivedAt: null } }),
   };
   return { ok: true, where };
 }

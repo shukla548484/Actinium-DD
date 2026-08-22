@@ -369,82 +369,90 @@ export function ProjectsWorkbench({ data, newProjectHref = "/projects/new" }: Pr
         </p>
       </div>
 
-      <section className="space-y-3">
-        <div className="flex items-end justify-between gap-2">
-          <div>
-            <h2 className="text-lg font-semibold tracking-tight">Active projects</h2>
-            <p className="text-sm text-muted-foreground">
-              Dry dock work that needs attention now — planning through final inspection.
-            </p>
-          </div>
-          <Badge variant="outline">{active.length}</Badge>
-        </div>
-        {active.length === 0 ? (
-          <Card className="border-dashed shadow-none">
-            <CardContent className="py-8 text-center text-sm text-muted-foreground">
-              {q ? "No active projects match your search." : "No active dry dock projects."}
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-3 lg:grid-cols-2">
-            {active.map((project) => (
-              <ActiveProjectCard key={project.id} project={project} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="space-y-3">
-        <div className="flex items-end justify-between gap-2">
-          <div>
-            <h2 className="text-lg font-semibold tracking-tight">Recently completed</h2>
-            <p className="text-sm text-muted-foreground">
-              Review status and budget outcome for projects finished in the last{" "}
-              {data.meta.recentDays} days.
-            </p>
-          </div>
-          <Badge variant="outline">{recent.length}</Badge>
-        </div>
-        {recent.length === 0 ? (
-          <Card className="border-dashed shadow-none">
-            <CardContent className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
-              <CheckCircle2 className="size-4" />
-              {q ? "No completed projects match your search." : "No recently completed projects."}
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-3 lg:grid-cols-2">
-            {recent.map((project) => (
-              <CompletedProjectCard key={project.id} project={project} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="space-y-3">
-        <Card className="shadow-none">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <CardTitle className="text-base">Open tenders</CardTitle>
-                <CardDescription>
-                  Specs and yard comparison not yet linked to a dry dock workspace.
-                </CardDescription>
-              </div>
-              <Badge variant="secondary">{tenders.length}</Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {tenders.length === 0 ? (
-              <p className="py-4 text-center text-sm text-muted-foreground">
-                {q ? "No tenders match your search." : "No open tenders without a workspace."}
+      <div className="grid gap-6">
+        {/* Row 1 — Active projects */}
+        <section className="space-y-3">
+          <div className="flex items-end justify-between gap-2">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">Active projects</h2>
+              <p className="text-sm text-muted-foreground">
+                Dry dock work that needs attention now — planning through final inspection.
               </p>
+            </div>
+            <Badge variant="outline">{active.length}</Badge>
+          </div>
+          {active.length === 0 ? (
+            <Card className="border-dashed shadow-none">
+              <CardContent className="py-8 text-center text-sm text-muted-foreground">
+                {q ? "No active projects match your search." : "No active dry dock projects."}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-3 lg:grid-cols-2">
+              {active.map((project) => (
+                <ActiveProjectCard key={project.id} project={project} />
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Row 2 — Recently completed | Open tenders */}
+        <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+          <section className="space-y-3">
+            <div className="flex items-end justify-between gap-2">
+              <div>
+                <h2 className="text-lg font-semibold tracking-tight">Recently completed</h2>
+                <p className="text-sm text-muted-foreground">
+                  Review status and budget outcome for projects finished in the last{" "}
+                  {data.meta.recentDays} days.
+                </p>
+              </div>
+              <Badge variant="outline">{recent.length}</Badge>
+            </div>
+            {recent.length === 0 ? (
+              <Card className="border-dashed shadow-none">
+                <CardContent className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+                  <CheckCircle2 className="size-4" />
+                  {q
+                    ? "No completed projects match your search."
+                    : "No recently completed projects."}
+                </CardContent>
+              </Card>
             ) : (
-              tenders.map((tender) => <TenderRow key={tender.id} tender={tender} />)
+              <div className="grid gap-3">
+                {recent.map((project) => (
+                  <CompletedProjectCard key={project.id} project={project} />
+                ))}
+              </div>
             )}
-          </CardContent>
-        </Card>
-      </section>
+          </section>
+
+          <section className="space-y-3">
+            <Card className="shadow-none">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <CardTitle className="text-base">Open tenders</CardTitle>
+                    <CardDescription>
+                      Specs and yard comparison not yet linked to a dry dock workspace.
+                    </CardDescription>
+                  </div>
+                  <Badge variant="secondary">{tenders.length}</Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {tenders.length === 0 ? (
+                  <p className="py-4 text-center text-sm text-muted-foreground">
+                    {q ? "No tenders match your search." : "No open tenders without a workspace."}
+                  </p>
+                ) : (
+                  tenders.map((tender) => <TenderRow key={tender.id} tender={tender} />)
+                )}
+              </CardContent>
+            </Card>
+          </section>
+        </div>
+      </div>
 
       <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <Clock3 className="size-3.5" />

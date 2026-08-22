@@ -168,6 +168,7 @@ export async function listPreviousProjectsForVessel(
     where: {
       vesselId,
       ...notDeleted,
+      archivedAt: null,
       ...(excludeProjectId ? { id: { not: excludeProjectId } } : {}),
     },
     orderBy: { plannedStart: "desc" },

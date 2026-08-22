@@ -150,7 +150,7 @@ export function AppFooter({ className, compact }: AppFooterProps) {
               © {year} {SITE_FOOTER.companyName}. All rights reserved.
             </p>
             <p className="text-xs text-zinc-500">
-              Actinium Ship Management · Dry dock operations platform
+              Actinium DD Manager · Dry dock operations platform
             </p>
           </div>
         </div>

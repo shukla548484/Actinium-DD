@@ -3,6 +3,10 @@ import { requireSuperintendentApiAccess } from "@/lib/auth/superintendentAccess"
 import { notDeleted } from "@/lib/superintendent/helpers";
 import { assertChildDryDockProjectInScope } from "@/lib/superintendent/childRouteScope";
 import { ddChecklistItemUpdateSchema, parseBody } from "@/lib/superintendent/validation";
+import {
+  hasCompletedClassStatusUpload,
+  isClassStatusChecklistTitle,
+} from "@/lib/superintendent/classStatusAnalysis";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -14,10 +18,22 @@ export async function GET(_request: Request, ctx: RouteCtx) {
   if (denied) return denied;
 
   const { id } = await ctx.params;
-  const checklistItem = await prisma.ddChecklistItem.findFirst({ where: { id, ...notDeleted } });
+  let checklistItem = await prisma.ddChecklistItem.findFirst({ where: { id, ...notDeleted } });
   if (!checklistItem) return NextResponse.json({ error: "Checklist item not found" }, { status: 404 });
   const access = await assertChildDryDockProjectInScope(checklistItem.dryDockProjectId);
   if (!access.ok) return access.response;
+
+  if (
+    !checklistItem.isCompleted &&
+    isClassStatusChecklistTitle(checklistItem.title) &&
+    hasCompletedClassStatusUpload(checklistItem.classStatusAnalysis)
+  ) {
+    checklistItem = await prisma.ddChecklistItem.update({
+      where: { id },
+      data: { isCompleted: true, completedAt: new Date() },
+    });
+  }
+
   return NextResponse.json({ checklistItem });
 }
 

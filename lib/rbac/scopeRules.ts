@@ -1,4 +1,4 @@
-import type { Prisma, RbacScopeType } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getUserPermissions } from "@/lib/db/rbac";
 import { notDeleted } from "@/lib/superintendent/helpers";
@@ -6,14 +6,12 @@ import { prisma } from "@/lib/prisma";
 
 /** Resolved RBAC scope for a signed-in user (permissions + scope dimensions). */
 export type UserScope = {
-  /** No vessel/project/invite filtering — org admin, system roles, etc. */
+  /** No vessel/project/invite filtering — platform/system admins only. */
   unrestricted: boolean;
   vesselIds: string[];
   projectIds: string[];
   yardInviteIds: string[];
 };
-
-const ORG_WIDE_SCOPE_TYPES: RbacScopeType[] = ["organization", "system"];
 
 export function emptyUserScope(): UserScope {
   return { unrestricted: false, vesselIds: [], projectIds: [], yardInviteIds: [] };
@@ -23,7 +21,14 @@ export function unrestrictedUserScope(): UserScope {
   return { unrestricted: true, vesselIds: [], projectIds: [], yardInviteIds: [] };
 }
 
-/** Load vessel / project / yard-invite scope from UserRole rows + employee assignments. */
+/**
+ * Load vessel / project / yard-invite scope from UserRole rows + employee assignments.
+ *
+ * Unrestricted only for platform admins (`platform.tenant.manage`).
+ * `organization` / `system` UserRole.scopeType means tenant membership, not “see all vessels”.
+ * Office users see only vessels in `employee_vessels` (plus any explicit vessel/project/invite scopes).
+ * No vessel/project/invite scope → empty (see nothing), not unrestricted.
+ */
 export async function buildUserScope(userId: string): Promise<UserScope> {
   const [userRoles, employee, permissions] = await Promise.all([
     prisma.userRole.findMany({
@@ -42,11 +47,7 @@ export async function buildUserScope(userId: string): Promise<UserScope> {
     getUserPermissions(userId),
   ]);
 
-  if (permissions.has("platform.tenant.manage")) {
-    return unrestrictedUserScope();
-  }
-
-  if (userRoles.some((ur) => ORG_WIDE_SCOPE_TYPES.includes(ur.scopeType))) {
+  if (permissions.has("platform.tenant.manage") || permissions.has("*")) {
     return unrestrictedUserScope();
   }
 
@@ -59,15 +60,11 @@ export async function buildUserScope(userId: string): Promise<UserScope> {
     if (ur.scopeType === "vessel") vesselIds.add(ur.scopeId);
     if (ur.scopeType === "project") projectIds.add(ur.scopeId);
     if (ur.scopeType === "yard_invite") yardInviteIds.add(ur.scopeId);
+    // organization | system | company: membership only — do not grant fleet-wide access
   }
 
   for (const a of employee?.vesselAssignments ?? []) {
     vesselIds.add(a.vesselId);
-  }
-
-  const hasRestriction = vesselIds.size > 0 || projectIds.size > 0 || yardInviteIds.size > 0;
-  if (!hasRestriction) {
-    return unrestrictedUserScope();
   }
 
   return {

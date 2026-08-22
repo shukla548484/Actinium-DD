@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { VesselJobAttachmentMeta } from "@/lib/db/vesselJobAttachments";
 import type { DdVesselJobDto } from "@/lib/superintendent/types";
 import { JOB_REQUIREMENT_OPTIONS } from "@/lib/vessel/jobRequirements";
@@ -31,7 +32,7 @@ function blank(value: string | number | null | undefined): string {
   return String(value);
 }
 
-function Section({
+function ScopeCard({
   title,
   children,
 }: {
@@ -39,12 +40,14 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="space-y-2">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        {title}
-      </h3>
-      {children}
-    </section>
+    <Card size="sm" className="shadow-none">
+      <CardHeader className="border-b pb-3">
+        <CardTitle className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pt-3">{children}</CardContent>
+    </Card>
   );
 }
 
@@ -150,10 +153,19 @@ export function ShipJobScopeDialog({ jobId, open, onOpenChange, previewTitle }: 
   const videos = attachments.filter(isVideoAttachment);
   const files = attachments.filter((a) => !isImageAttachment(a) && !isVideoAttachment(a));
 
+  const hasScopeDetails = [
+    job?.description,
+    job?.conditionDescription,
+    job?.observedDefect,
+    job?.repairRecommendation,
+    job?.replacementParts,
+    job?.consumables,
+  ].some((v) => v?.trim());
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="flex max-h-[min(92vh,880px)] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl"
+        className="flex h-[75vh] max-h-[75vh] w-[90vw] max-w-[90vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[90vw]"
         showCloseButton
       >
         <DialogHeader className="shrink-0 border-b px-4 py-3 pr-12 sm:px-5">
@@ -183,25 +195,18 @@ export function ShipJobScopeDialog({ jobId, open, onOpenChange, previewTitle }: 
           </DialogDescription>
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50/60 px-4 py-4 sm:px-5">
           {loading ? (
             <ActiniumLoadingState label="Loading scope…" size="sm" minHeight={160} />
           ) : error ? (
             <p className="text-sm text-destructive">{error}</p>
           ) : job ? (
-            <div className="space-y-6">
-              <Section title="Job details">
+            <div className="grid gap-4 lg:grid-cols-2">
+              <ScopeCard title="Job details">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Field label="Vessel" value={`${job.vesselName} (${job.vesselCode})`} />
                   <Field label="Category / department" value={job.department ?? job.category} />
                   <Field label="Workshop" value={blank(job.workshop)} />
-                  <Field
-                    label="Machinery path"
-                    value={
-                      [job.systemKey, job.machineryKey, job.componentKey].filter(Boolean).join(" / ") ||
-                      "—"
-                    }
-                  />
                   <Field
                     label="Condition"
                     value={
@@ -211,52 +216,41 @@ export function ShipJobScopeDialog({ jobId, open, onOpenChange, previewTitle }: 
                   <Field
                     label="Submitted"
                     value={
-                      job.submittedAt
-                        ? new Date(job.submittedAt).toLocaleString()
-                        : "—"
+                      job.submittedAt ? new Date(job.submittedAt).toLocaleString() : "—"
                     }
                   />
                 </div>
-              </Section>
+              </ScopeCard>
 
-              <Section title="Scope of work">
-                <div className="space-y-3 rounded-lg border bg-muted/20 p-3">
-                  {[
-                    job.description,
-                    job.conditionDescription,
-                    job.observedDefect,
-                    job.repairRecommendation,
-                    job.replacementParts,
-                    job.consumables,
-                  ].some((v) => v?.trim()) ? (
-                    <>
-                      <Field label="Description" value={blank(job.description)} multiline />
-                      <Field
-                        label="Condition description"
-                        value={blank(job.conditionDescription)}
-                        multiline
-                      />
-                      <Field label="Observed defect" value={blank(job.observedDefect)} multiline />
-                      <Field
-                        label="Repair recommendation"
-                        value={blank(job.repairRecommendation)}
-                        multiline
-                      />
-                      <Field
-                        label="Replacement parts"
-                        value={blank(job.replacementParts)}
-                        multiline
-                      />
-                      <Field label="Consumables" value={blank(job.consumables)} multiline />
-                    </>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No scope details recorded yet.</p>
-                  )}
-                </div>
-              </Section>
+              <ScopeCard title="Scope of work">
+                {hasScopeDetails ? (
+                  <div className="space-y-3">
+                    <Field label="Description" value={blank(job.description)} multiline />
+                    <Field
+                      label="Condition description"
+                      value={blank(job.conditionDescription)}
+                      multiline
+                    />
+                    <Field label="Observed defect" value={blank(job.observedDefect)} multiline />
+                    <Field
+                      label="Repair recommendation"
+                      value={blank(job.repairRecommendation)}
+                      multiline
+                    />
+                    <Field
+                      label="Replacement parts"
+                      value={blank(job.replacementParts)}
+                      multiline
+                    />
+                    <Field label="Consumables" value={blank(job.consumables)} multiline />
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No scope details recorded yet.</p>
+                )}
+              </ScopeCard>
 
               {requirementLabels.length > 0 ? (
-                <Section title="Requirements">
+                <ScopeCard title="Requirements">
                   <div className="flex flex-wrap gap-1.5">
                     {requirementLabels.map((label) => (
                       <Badge key={label} variant="secondary">
@@ -264,13 +258,13 @@ export function ShipJobScopeDialog({ jobId, open, onOpenChange, previewTitle }: 
                       </Badge>
                     ))}
                   </div>
-                </Section>
+                </ScopeCard>
               ) : null}
 
-              {(measurements.length > 0 ||
-                job.runningHoursAtSurvey != null ||
-                job.lastOverhaulDate) && (
-                <Section title="Survey / measurements">
+              {measurements.length > 0 ||
+              job.runningHoursAtSurvey != null ||
+              job.lastOverhaulDate ? (
+                <ScopeCard title="Survey / measurements">
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Field
                       label="Running hours at survey"
@@ -288,10 +282,10 @@ export function ShipJobScopeDialog({ jobId, open, onOpenChange, previewTitle }: 
                       <Field key={key} label={key} value={String(value)} />
                     ))}
                   </div>
-                </Section>
-              )}
+                </ScopeCard>
+              ) : null}
 
-              <Section title="Estimates & risk">
+              <ScopeCard title="Estimates & risk">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Field label="Estimated manhours" value={blank(job.estimatedManhours)} />
                   <Field
@@ -305,9 +299,9 @@ export function ShipJobScopeDialog({ jobId, open, onOpenChange, previewTitle }: 
                   <Field label="Environmental risk" value={blank(job.environmentalRisk)} />
                   <Field label="Criticality" value={blank(job.criticality)} />
                 </div>
-              </Section>
+              </ScopeCard>
 
-              <Section title="Attachments">
+              <ScopeCard title="Attachments">
                 {attachments.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No photos or files attached.</p>
                 ) : (
@@ -328,7 +322,7 @@ export function ShipJobScopeDialog({ jobId, open, onOpenChange, previewTitle }: 
                               <img
                                 src={a.fileUrl}
                                 alt={a.caption || a.fileName}
-                                className="max-h-72 w-full object-contain bg-muted/30"
+                                className="max-h-56 w-full object-contain bg-muted/30"
                               />
                               <figcaption className="space-y-0.5 border-t px-2.5 py-2 text-xs">
                                 <p className="truncate font-medium">{a.fileName}</p>
@@ -354,7 +348,7 @@ export function ShipJobScopeDialog({ jobId, open, onOpenChange, previewTitle }: 
                               <video
                                 src={a.fileUrl}
                                 controls
-                                className="max-h-72 w-full bg-black"
+                                className="max-h-56 w-full bg-black"
                               />
                               <p className="border-t px-2.5 py-2 text-xs font-medium">
                                 {a.fileName}
@@ -384,7 +378,7 @@ export function ShipJobScopeDialog({ jobId, open, onOpenChange, previewTitle }: 
                                 href={a.fileUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-start gap-2 rounded-md border px-3 py-2 text-sm text-primary hover:bg-muted/40"
+                                className="flex items-start gap-2 rounded-md border bg-background px-3 py-2 text-sm text-primary hover:bg-muted/40"
                               >
                                 <FileText className="mt-0.5 size-4 shrink-0" />
                                 <span className="min-w-0">
@@ -394,20 +388,11 @@ export function ShipJobScopeDialog({ jobId, open, onOpenChange, previewTitle }: 
                                       {a.caption}
                                     </span>
                                   ) : null}
-                                  {a.mimeType?.includes("pdf") ? (
-                                    <span className="mt-1 block text-xs text-muted-foreground">
-                                      Opens in a new tab · also available below
-                                    </span>
-                                  ) : null}
+                                  <span className="mt-1 block text-xs text-muted-foreground">
+                                    Opens in a new tab
+                                  </span>
                                 </span>
                               </a>
-                              {a.mimeType?.includes("pdf") || /\.pdf$/i.test(a.fileName) ? (
-                                <iframe
-                                  title={a.fileName}
-                                  src={a.fileUrl}
-                                  className="mt-2 h-72 w-full rounded-md border bg-muted/20"
-                                />
-                              ) : null}
                             </li>
                           ))}
                         </ul>
@@ -415,7 +400,7 @@ export function ShipJobScopeDialog({ jobId, open, onOpenChange, previewTitle }: 
                     ) : null}
                   </div>
                 )}
-              </Section>
+              </ScopeCard>
             </div>
           ) : null}
         </div>

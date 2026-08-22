@@ -29,6 +29,7 @@ export type SuperintendentNavId =
   | "risks"
   | "jobs"
   | "vesselJobBank"
+  | "simpleJobs"
   | "shipyardQuotations"
   | "budget"
   | "variations"
@@ -91,9 +92,9 @@ export const superintendentNavItems: SuperintendentNavItem[] = [
   },
   {
     id: "checklist",
-    label: "Pre-dock checklist",
+    label: "Class status upload",
     href: "/superintendent/planning/checklist",
-    description: "Readiness tasks before yard entry",
+    description: "Upload Class Status Report and confirm dry-dock actions",
     group: "Planning",
     icon: ListChecks,
   },
@@ -128,6 +129,14 @@ export const superintendentNavItems: SuperintendentNavItem[] = [
     description: "Ship-proposed jobs awaiting superintendent curation",
     group: "Jobs",
     icon: Inbox,
+  },
+  {
+    id: "simpleJobs",
+    label: "Jobs",
+    href: "/superintendent/simple-jobs",
+    description: "Simple Paint Jobs template (area × Sa prep costing)",
+    group: "Jobs",
+    icon: ListChecks,
   },
   {
     id: "shipyardQuotations",
@@ -247,6 +256,7 @@ export function resolveSuperintendentNavId(pathname: string): SuperintendentNavI
   if (pathname.startsWith("/superintendent/planning/milestones")) return "milestones";
   if (pathname.startsWith("/superintendent/planning/risks")) return "risks";
   if (pathname.startsWith("/superintendent/vessel-jobs")) return "vesselJobBank";
+  if (pathname.startsWith("/superintendent/simple-jobs")) return "simpleJobs";
   if (pathname.startsWith("/superintendent/quotations")) return "shipyardQuotations";
   if (pathname.startsWith("/superintendent/jobs")) return "jobs";
   if (pathname.startsWith("/superintendent/budget/variations")) return "variations";

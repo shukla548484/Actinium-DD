@@ -1,4 +1,5 @@
 import { ShipyardMobileNav, ShipyardSidebar } from "@/components/shipyard/ShipyardSidebar";
+import { ShipyardLanguageProvider } from "@/components/shipyard/ShipyardLanguageProvider";
 import { ModuleScrollArea } from "@/components/layout/ModuleScrollArea";
 import { enforceOfficePageAccess } from "@/lib/auth/officePageAccess";
 import { headers } from "next/headers";
@@ -20,7 +21,9 @@ export default async function ShipyardLayout({ children }: { children: React.Rea
       </div>
       <div className="dd-module-row">
         <ShipyardSidebar />
-        <ModuleScrollArea>{children}</ModuleScrollArea>
+        <ModuleScrollArea>
+          <ShipyardLanguageProvider>{children}</ShipyardLanguageProvider>
+        </ModuleScrollArea>
       </div>
     </div>
   );

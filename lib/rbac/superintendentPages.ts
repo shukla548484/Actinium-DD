@@ -12,6 +12,7 @@ export const SUPERINTENDENT_PAGE_KEYS = [
   "page.superintendent.approvals",
   "page.superintendent.vesselRequisitions",
   "page.superintendent.vesselJobs",
+  "page.superintendent.simpleJobs",
   "page.superintendent.planning",
   "page.superintendent.jobs",
   "page.superintendent.vessels",

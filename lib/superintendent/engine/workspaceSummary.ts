@@ -2,22 +2,11 @@ import type { DryDockProjectType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { notDeleted } from "@/lib/db/superintendent/pagination";
 import { getEnabledModules } from "./projectTemplates";
-import { resolveModuleMeta } from "./projectModules";
 import type { DdProjectModuleId } from "./projectModules";
 import { getVesselScopeIntegrationStats } from "@/lib/db/superintendent/vesselJobs";
-import {
-  projectBudgetHref,
-  projectMonitoringHref,
-  projectScopedHref,
-} from "./workspaceLinks";
+import { buildWorkspaceModuleCard, type WorkspaceModuleCard } from "./workspaceNav";
 
-export type WorkspaceModuleCard = {
-  id: DdProjectModuleId;
-  label: string;
-  description: string;
-  href: string;
-  count: number | null;
-};
+export type { WorkspaceModuleCard };
 
 export type WorkspaceWorkshop = {
   name: string;
@@ -44,37 +33,10 @@ export type ProjectWorkspaceSummary = {
     vesselJobsIntegrated: number;
     vesselJobsAutoImported: number;
     vesselJobsPendingBank: number;
+    importedDefects: number;
   };
   scopePreview: { title: string; workshop: string | null; category: string }[];
 };
-
-function moduleHref(id: DdProjectModuleId, projectId: string): string {
-  const inProject: Partial<Record<DdProjectModuleId, string>> = {
-    overview: `/superintendent/projects/${projectId}`,
-    scope: `/superintendent/projects/${projectId}/scope`,
-    jobs: `/superintendent/projects/${projectId}/scope`,
-    timeline: `/superintendent/projects/${projectId}/timeline`,
-    workshops: `/superintendent/projects/${projectId}/workshops`,
-    documents: `/superintendent/projects/${projectId}/documents`,
-    rfq: `/superintendent/projects/${projectId}/rfq`,
-    closeout: `/superintendent/projects/${projectId}/closeout`,
-    permits: `/superintendent/projects/${projectId}/permits`,
-    procurement: `/superintendent/projects/${projectId}/procurement`,
-    inspections: `/superintendent/projects/${projectId}/inspections`,
-    sea_trial: `/superintendent/projects/${projectId}/sea-trial`,
-    shipyard: `/superintendent/projects/${projectId}/shipyard`,
-    reports: `/superintendent/projects/${projectId}/reports`,
-    resources: `/superintendent/projects/${projectId}/resources`,
-    budget: projectBudgetHref(projectId),
-    variations: projectBudgetHref(projectId, "variations"),
-    survey: projectScopedHref("survey", projectId),
-    approvals: projectScopedHref("approvals", projectId),
-    daily_progress: projectMonitoringHref(projectId, "daily-reports"),
-    delays: projectMonitoringHref(projectId, "delays"),
-  };
-  if (inProject[id]) return inProject[id]!;
-  return projectScopedHref(id, projectId);
-}
 
 function moduleCount(
   id: DdProjectModuleId,
@@ -90,6 +52,22 @@ function moduleCount(
   };
   const key = map[id];
   return key ? (counts[key] ?? 0) : null;
+}
+
+async function countImportedDefects(dryDockProjectId: string): Promise<number> {
+  try {
+    const defectDelegate = (
+      prisma as typeof prisma & {
+        ddProjectDefect?: { count: (args: { where: object }) => Promise<number> };
+      }
+    ).ddProjectDefect;
+    if (typeof defectDelegate?.count !== "function") return 0;
+    return await defectDelegate.count({
+      where: { dryDockProjectId, ...notDeleted },
+    });
+  } catch {
+    return 0;
+  }
 }
 
 export async function getProjectWorkspaceSummary(
@@ -118,28 +96,6 @@ export async function getProjectWorkspaceSummary(
 
   if (!project) return null;
 
-  const [documentRequirements, rfqSteps, scopeJobs, workshopGroups, vesselScopeStats] =
-    await Promise.all([
-    prisma.ddChecklistItem.count({
-      where: { dryDockProjectId, category: "Documents", ...notDeleted },
-    }),
-    prisma.ddChecklistItem.count({
-      where: { dryDockProjectId, category: "RFQ", ...notDeleted },
-    }),
-    prisma.ddJob.findMany({
-      where: { dryDockProjectId, ...notDeleted },
-      orderBy: { sortOrder: "asc" },
-      take: 8,
-      select: { title: true, category: true, description: true, workshop: true },
-    }),
-    prisma.ddJob.groupBy({
-      by: ["workshop"],
-      where: { dryDockProjectId, ...notDeleted, workshop: { not: null } },
-      _count: { _all: true },
-    }),
-    getVesselScopeIntegrationStats(dryDockProjectId),
-  ]);
-
   const counts = {
     jobs: project._count.jobs,
     checklistItems: project._count.checklistItems,
@@ -150,17 +106,47 @@ export async function getProjectWorkspaceSummary(
   };
 
   const enabled = getEnabledModules(project.projectType);
+  const modules: WorkspaceModuleCard[] = enabled.map((id) =>
+    buildWorkspaceModuleCard(id, dryDockProjectId, moduleCount(id, counts)),
+  );
 
-  const modules: WorkspaceModuleCard[] = enabled.map((id) => {
-    const meta = resolveModuleMeta(id);
-    return {
-      id,
-      label: meta.label,
-      description: meta.description,
-      href: moduleHref(id, dryDockProjectId),
-      count: moduleCount(id, counts),
-    };
-  });
+  let documentRequirements = 0;
+  let rfqSteps = 0;
+  let scopeJobs: {
+    title: string;
+    category: string;
+    description: string | null;
+    workshop: string | null;
+  }[] = [];
+  let workshopGroups: { workshop: string | null; _count: { _all: number } }[] = [];
+  let vesselScopeStats: Awaited<ReturnType<typeof getVesselScopeIntegrationStats>> = null;
+
+  try {
+    [documentRequirements, rfqSteps, scopeJobs, workshopGroups, vesselScopeStats] = await Promise.all([
+      prisma.ddChecklistItem.count({
+        where: { dryDockProjectId, category: "Documents", ...notDeleted },
+      }),
+      prisma.ddChecklistItem.count({
+        where: { dryDockProjectId, category: "RFQ", ...notDeleted },
+      }),
+      prisma.ddJob.findMany({
+        where: { dryDockProjectId, ...notDeleted },
+        orderBy: { sortOrder: "asc" },
+        take: 8,
+        select: { title: true, category: true, description: true, workshop: true },
+      }),
+      prisma.ddJob.groupBy({
+        by: ["workshop"],
+        where: { dryDockProjectId, ...notDeleted, workshop: { not: null } },
+        _count: { _all: true },
+      }),
+      getVesselScopeIntegrationStats(dryDockProjectId),
+    ]);
+  } catch {
+    // KPI extras failed — still return modules so the workspace shell stays visible.
+  }
+
+  const importedDefects = await countImportedDefects(dryDockProjectId);
 
   const workshops: WorkspaceWorkshop[] = workshopGroups
     .map((g) => ({
@@ -184,6 +170,7 @@ export async function getProjectWorkspaceSummary(
       vesselJobsIntegrated: vesselScopeStats?.integratedTotal ?? 0,
       vesselJobsAutoImported: vesselScopeStats?.autoImportedAtProvision ?? 0,
       vesselJobsPendingBank: vesselScopeStats?.pendingInBank ?? 0,
+      importedDefects,
     },
     scopePreview: scopeJobs.map((j) => ({
       title: j.title,

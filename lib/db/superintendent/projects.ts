@@ -60,7 +60,10 @@ export async function listDryDockProjects(query: ListQuery = {}) {
     return { projects: [], total: 0, page, limit, totalPages: 0 };
   }
 
-  const where: Prisma.DryDockProjectWhereInput = { ...notDeleted };
+  const where: Prisma.DryDockProjectWhereInput = {
+    ...notDeleted,
+    archivedAt: null,
+  };
   if (vesselIds?.length) {
     where.vesselId = { in: vesselIds };
   } else if (query.vesselId) {
@@ -144,6 +147,9 @@ export async function createDryDockProject(input: {
     input.referenceCode?.trim() || (await nextDryDockProjectCode(input.vesselId));
   const plannedStart = toDate(input.plannedStart) ?? null;
 
+  const { assertUniqueProjectName } = await import("@/lib/projects/uniqueName");
+  await assertUniqueProjectName(input.name);
+
   const row = await prisma.dryDockProject.create({
     data: {
       vesselId: input.vesselId,
@@ -223,6 +229,11 @@ export async function updateDryDockProject(
     notes: string | null;
   }>,
 ) {
+  if (input.name?.trim()) {
+    const { assertUniqueProjectName } = await import("@/lib/projects/uniqueName");
+    await assertUniqueProjectName(input.name, { excludeDryDockProjectId: id });
+  }
+
   const row = await prisma.dryDockProject.update({
     where: { id },
     data: {

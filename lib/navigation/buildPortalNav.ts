@@ -14,7 +14,7 @@ import type { TopNavChild, TopNavItem } from "@/lib/navigation/topNavItems";
 import { topNavItems } from "@/lib/navigation/topNavItems";
 import { shipyardNavChildren } from "@/lib/navigation/shipyardNavItems";
 import { externalNavChildren } from "@/lib/navigation/externalNavItems";
-import { ACCESS_MODULES, getAccessModule } from "@/lib/rbac/accessModules";
+import { ACCESS_MODULES, getAccessModule, moduleCodeForPageKey } from "@/lib/rbac/accessModules";
 import { pagePermissionForPath } from "@/lib/rbac/rolePermissions";
 
 const OFFICE_NAV_IDS = new Set<TopNavItem["id"]>([
@@ -24,6 +24,9 @@ const OFFICE_NAV_IDS = new Set<TopNavItem["id"]>([
   "company",
   "superintendent",
 ]);
+
+/** Admin-monitor chrome — not for individual office roles (e.g. TECH_SUPDT). */
+const ADMIN_MONITOR_NAV_IDS = new Set<TopNavItem["id"]>(["office"]);
 
 /** Turn a catalog resource path into a top-nav href. */
 export function resolveNavHrefFromRoute(route?: string | null): string | null {
@@ -48,6 +51,8 @@ function iconForModule(moduleCode: string): LucideIcon {
     case "admin":
     case "company":
       return Settings;
+    case "office":
+      return FileText;
     case "superintendent":
       return FileText;
     case "shipyard":
@@ -77,9 +82,9 @@ export function buildAssignedModuleNavChildren(
   const seen = new Set<string>();
 
   const pushUnique = (child: TopNavChild, pageKey?: string) => {
-    const dedupe = `${child.href}::${child.label}`;
-    if (seen.has(dedupe)) return;
-    seen.add(dedupe);
+    // Top nav is destination-based — never list the same href twice.
+    if (seen.has(child.href)) return;
+    seen.add(child.href);
     ordered.push(child);
     if (pageKey) coveredKeys.add(pageKey);
   };
@@ -91,23 +96,21 @@ export function buildAssignedModuleNavChildren(
     pushUnique(child, permission);
   }
 
-  // 2) Add any assigned catalog pages not already represented (e.g. Job Creations tabs).
+  // 2) Add assigned catalog pages that are real top-level destinations.
+  // Skip project-scoped routes (/projects/[id]#…) — those are in-workspace tabs,
+  // not global menu entries (collapsing them to /projects duplicated "All projects").
   const fallbackIcon = iconForModule(moduleCode);
   for (const page of mod.pages) {
     if (!pages.has(page.key) || coveredKeys.has(page.key)) continue;
     const rawRoute = page.route;
+    if (!rawRoute || rawRoute.includes("[") || rawRoute.includes("#")) continue;
     const href = resolveNavHrefFromRoute(rawRoute);
     if (!href) continue;
-    const isProjectScoped = Boolean(
-      rawRoute && (rawRoute.includes("[") || rawRoute.includes("#")),
-    );
     pushUnique(
       {
         href,
         label: page.label.replace(/\s+tab$/i, ""),
-        description:
-          page.description ??
-          (isProjectScoped ? "Available inside an open project" : undefined),
+        description: page.description,
         icon: fallbackIcon,
       },
       page.key,
@@ -178,8 +181,16 @@ export function filterTopNavByAssignments(
 ): TopNavItem[] {
   if (options.unrestricted) return items;
 
-  const modules = new Set(options.assignedModuleCodes ?? []);
   const pages = new Set(options.assignedPageKeys ?? []);
+  const modules = new Set(options.assignedModuleCodes ?? []);
+
+  // If only page keys are known, derive modules so parent nav items still appear.
+  if (modules.size === 0 && pages.size > 0) {
+    for (const key of pages) {
+      const code = moduleCodeForPageKey(key);
+      if (code) modules.add(code);
+    }
+  }
 
   if (modules.size === 0) return [];
 
@@ -190,6 +201,9 @@ export function filterTopNavByAssignments(
 
   return items
     .map((item) => {
+      // Office departments is admin monitor only — ignore accidental assignments.
+      if (ADMIN_MONITOR_NAV_IDS.has(item.id)) return null;
+
       const moduleCode = navIdToModule.get(item.id);
       if (moduleCode && !modules.has(moduleCode)) return null;
 
@@ -305,11 +319,13 @@ export function resolveActiveNavIdForUserType(
   if (pathname.startsWith("/superintendent")) return "superintendent";
   if (pathname.startsWith("/shipyard")) return "shipyard";
   if (pathname.startsWith("/purchase")) return "purchase";
+  if (pathname.startsWith("/office")) return "office";
   if (pathname.startsWith("/admin/companies") || pathname.startsWith("/admin/vessels")) {
     return "company";
   }
   if (pathname.startsWith("/admin")) return "admin";
   if (pathname === "/projects/new") return "jobs";
+  if (pathname === "/projects/archived") return "jobs";
   if (pathname.startsWith("/projects")) return "jobs";
   return "company";
 }

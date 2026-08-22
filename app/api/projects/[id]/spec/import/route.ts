@@ -24,16 +24,19 @@ export async function POST(
 
   const bytes = await file.arrayBuffer();
   const workbook = XLSX.read(new Uint8Array(bytes), { type: "array" });
-  const sheetName = workbook.SheetNames[0];
-  if (!sheetName) {
+  if (workbook.SheetNames.length === 0) {
     return NextResponse.json({ error: "Workbook has no sheets." }, { status: 400 });
   }
 
-  const sheet = workbook.Sheets[sheetName];
-  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
+  const rows = workbook.SheetNames.flatMap((sheetName) => {
+    if (sheetName.toLowerCase() === "guide") return [];
+    const sheet = workbook.Sheets[sheetName];
+    if (!sheet) return [];
+    return XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
+  });
 
   if (rows.length === 0) {
-    return NextResponse.json({ error: "Sheet is empty." }, { status: 400 });
+    return NextResponse.json({ error: "Workbook has no import rows." }, { status: 400 });
   }
 
   const existingLines = await listSpecLines(projectId);

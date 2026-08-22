@@ -33,6 +33,9 @@ export type VesselDto = {
   callSign: string | null;
   grossTonnage: number | null;
   yearBuilt: number | null;
+  lastDryDockDate: string | null;
+  lastIntermediateSurveyDate: string | null;
+  nextDryDockDue: string | null;
   status: EntityStatus;
   employeeCount?: number;
   createdAt: string;

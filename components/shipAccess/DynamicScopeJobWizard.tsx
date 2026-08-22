@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { CheckIcon, ListPlus, Trash2 } from "lucide-react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { CheckIcon, ChevronDown, ChevronRight, ListPlus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -18,7 +18,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PaginationBar } from "@/components/superintendent/PaginationBar";
 import { JOB_PRIORITY_ITEMS } from "@/lib/superintendent/constants";
 import type {
   JobInputFieldDef,
@@ -171,8 +170,6 @@ function defaultRepairRecommendation(node: JobLibraryNodeDto): string {
   return `Carry out ${node.name} as per maker instructions and applicable class / maker requirements.`;
 }
 
-const STANDARD_JOBS_PAGE_SIZE = 15;
-
 function StandardJobsPickerTable({
   jobs,
   plannedIds,
@@ -180,6 +177,7 @@ function StandardJobsPickerTable({
   onAdd,
   onRemove,
   onAddAll,
+  onAddMany,
 }: {
   jobs: JobLibraryNodeDto[];
   plannedIds: string[];
@@ -187,24 +185,62 @@ function StandardJobsPickerTable({
   onAdd: (node: JobLibraryNodeDto) => void;
   onRemove: (node: JobLibraryNodeDto) => void;
   onAddAll: () => void;
+  onAddMany?: (nodes: JobLibraryNodeDto[]) => void;
 }) {
-  const [page, setPage] = useState(1);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set());
   const plannedSet = useMemo(() => new Set(plannedIds), [plannedIds]);
   const unplannedCount = useMemo(
     () => jobs.filter((job) => !plannedSet.has(job.id)).length,
     [jobs, plannedSet],
   );
 
-  useEffect(() => {
-    setPage(1);
-  }, [jobs]);
+  const groups = useMemo(() => {
+    const map = new Map<string, JobLibraryNodeDto[]>();
+    for (const job of jobs) {
+      const label = componentLabel(job) || "—";
+      const list = map.get(label) ?? [];
+      list.push(job);
+      map.set(label, list);
+    }
+    return Array.from(map.entries()).map(([label, items]) => ({ label, items }));
+  }, [jobs, componentLabel]);
 
-  const totalPages = Math.max(1, Math.ceil(jobs.length / STANDARD_JOBS_PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const pageRows = jobs.slice(
-    (safePage - 1) * STANDARD_JOBS_PAGE_SIZE,
-    safePage * STANDARD_JOBS_PAGE_SIZE,
+  const groupLabelsKey = groups.map((group) => group.label).join("\0");
+
+  useEffect(() => {
+    setCollapsedGroups((prev) => {
+      const labels = new Set(groupLabelsKey ? groupLabelsKey.split("\0") : []);
+      const next = new Set<string>();
+      for (const label of prev) {
+        if (labels.has(label)) next.add(label);
+      }
+      return next;
+    });
+  }, [jobs, groupLabelsKey]);
+
+  const visibleCount = useMemo(
+    () =>
+      groups.reduce(
+        (sum, group) => (collapsedGroups.has(group.label) ? sum : sum + group.items.length),
+        0,
+      ),
+    [groups, collapsedGroups],
   );
+
+  const allCollapsed = groups.length > 0 && groups.every((group) => collapsedGroups.has(group.label));
+
+  function toggleGroup(label: string) {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  }
+
+  function setAllCollapsed(collapsed: boolean) {
+    setCollapsedGroups(collapsed ? new Set(groups.map((group) => group.label)) : new Set());
+  }
 
   if (jobs.length === 0) return null;
 
@@ -212,16 +248,27 @@ function StandardJobsPickerTable({
     <div className="space-y-3 sm:col-span-2 lg:col-span-3">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <Label>Standard jobs</Label>
+          <Label>Suggested jobs</Label>
           <p className="text-xs text-muted-foreground">
-            Review the library jobs, then add the ones you need to the planned job list.
+            Select library jobs to include in this package.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-xs text-muted-foreground">
-            Showing {pageRows.length} of {jobs.length}
+            Showing {visibleCount} of {jobs.length}
             {plannedIds.length > 0 ? ` · ${plannedIds.length} planned` : ""}
           </p>
+          {groups.length > 1 ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-8 px-2 text-xs"
+              onClick={() => setAllCollapsed(!allCollapsed)}
+            >
+              {allCollapsed ? "Expand all" : "Collapse all"}
+            </Button>
+          ) : null}
           <Button
             type="button"
             size="sm"
@@ -243,63 +290,124 @@ function StandardJobsPickerTable({
               <TableHead className="w-[12rem] whitespace-nowrap">Component</TableHead>
               <TableHead className="w-[14rem] whitespace-nowrap">Job Heading</TableHead>
               <TableHead className="min-w-[18rem]">Job description</TableHead>
+              <TableHead className="w-[11rem] whitespace-nowrap">Job code</TableHead>
+              <TableHead className="w-[4.5rem] whitespace-nowrap">MH</TableHead>
               <TableHead className="w-[9.5rem] text-right whitespace-nowrap">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {pageRows.map((node) => {
-              const planned = plannedSet.has(node.id);
-              const description =
-                node.description?.trim() ||
-                `Carry out ${node.name} as per maker instructions and applicable class / maker requirements.`;
+            {groups.map((group) => {
+              const collapsed = collapsedGroups.has(group.label);
+              const plannedInGroup = group.items.filter((job) => plannedSet.has(job.id)).length;
+              const unplannedInGroup = group.items.length - plannedInGroup;
+
               return (
-                <TableRow key={node.id} data-planned={planned || undefined}>
-                  <TableCell className="align-top text-sm text-muted-foreground">
-                    {componentLabel(node)}
-                  </TableCell>
-                  <TableCell className="align-top">
-                    <p className="font-medium text-foreground">{node.name}</p>
-                    <p className="font-mono text-[11px] text-muted-foreground">
-                      {node.referenceCode ?? node.code}
-                      {node.estimatedManhours != null ? ` · ${node.estimatedManhours} mh` : ""}
-                    </p>
-                  </TableCell>
-                  <TableCell className="align-top">
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
-                      {description}
-                    </p>
-                  </TableCell>
-                  <TableCell className="align-top text-right">
-                    {planned ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
-                        onClick={() => onRemove(node)}
-                      >
-                        <CheckIcon className="size-3.5" />
-                        Planned
-                      </Button>
-                    ) : (
-                      <Button type="button" size="sm" onClick={() => onAdd(node)}>
-                        <ListPlus className="size-3.5" />
-                        Add
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
+                <Fragment key={`group-${group.label}`}>
+                  <TableRow className="bg-slate-50/90 hover:bg-slate-50/90">
+                    <TableCell colSpan={6} className="py-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1.5 text-left text-sm font-semibold text-slate-800"
+                          onClick={() => toggleGroup(group.label)}
+                          aria-expanded={!collapsed}
+                        >
+                          {collapsed ? (
+                            <ChevronRight className="size-4 shrink-0 text-slate-500" />
+                          ) : (
+                            <ChevronDown className="size-4 shrink-0 text-slate-500" />
+                          )}
+                          <span>{group.label}</span>
+                          <span className="font-normal text-muted-foreground">
+                            ({group.items.length} job{group.items.length === 1 ? "" : "s"}
+                            {plannedInGroup > 0 ? ` · ${plannedInGroup} planned` : ""}
+                            {collapsed ? " · collapsed" : ""})
+                          </span>
+                        </button>
+                        <div className="flex items-center gap-2">
+                          {unplannedInGroup > 0 ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => {
+                                const toAdd = group.items.filter((job) => !plannedSet.has(job.id));
+                                if (onAddMany) onAddMany(toAdd);
+                                else for (const job of toAdd) onAdd(job);
+                              }}
+                            >
+                              <ListPlus className="size-3.5" />
+                              Add group ({unplannedInGroup})
+                            </Button>
+                          ) : null}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => toggleGroup(group.label)}
+                          >
+                            {collapsed ? "Expand" : "Collapse"}
+                          </Button>
+                        </div>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  {collapsed
+                    ? null
+                    : group.items.map((node) => {
+                        const planned = plannedSet.has(node.id);
+                        const description =
+                          node.description?.trim() ||
+                          `Carry out ${node.name} as per maker instructions and applicable class / maker requirements.`;
+                        return (
+                          <TableRow key={node.id} data-planned={planned || undefined}>
+                            <TableCell className="align-top text-sm text-muted-foreground">
+                              {group.label}
+                            </TableCell>
+                            <TableCell className="align-top">
+                              <p className="font-medium text-foreground">{node.name}</p>
+                            </TableCell>
+                            <TableCell className="align-top">
+                              <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+                                {description}
+                              </p>
+                            </TableCell>
+                            <TableCell className="align-top font-mono text-xs text-muted-foreground">
+                              {node.referenceCode ?? node.code}
+                            </TableCell>
+                            <TableCell className="align-top text-sm text-muted-foreground">
+                              {node.estimatedManhours != null ? node.estimatedManhours : "—"}
+                            </TableCell>
+                            <TableCell className="align-top text-right">
+                              {planned ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                                  onClick={() => onRemove(node)}
+                                >
+                                  <CheckIcon className="size-3.5" />
+                                  Planned
+                                </Button>
+                              ) : (
+                                <Button type="button" size="sm" onClick={() => onAdd(node)}>
+                                  <ListPlus className="size-3.5" />
+                                  Add
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                </Fragment>
               );
             })}
           </TableBody>
         </Table>
       </div>
-      <PaginationBar
-        page={safePage}
-        totalPages={totalPages}
-        total={jobs.length}
-        onPageChange={setPage}
-      />
     </div>
   );
 }
@@ -349,6 +457,11 @@ export function DynamicScopeJobWizard({
   const [jobRequirements, setJobRequirements] = useState<string[]>([]);
   const [userEditedKeys, setUserEditedKeys] = useState<Set<string>>(() => new Set());
   const descriptionSeededRef = useRef(false);
+  const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4>(1);
+  const [showAdvancedRisk, setShowAdvancedRisk] = useState(false);
+  const [expandedSelectedGroups, setExpandedSelectedGroups] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   const machineryLevelIndex = levelOptions.findIndex((options) =>
     isHomogeneousLevel(options, "machinery"),
@@ -399,13 +512,8 @@ export function DynamicScopeJobWizard({
     machineryAssets.find((asset) => asset.id === selectedMachineryAssetId) ?? null;
 
   const {
-    defectFields,
     measurementFields,
-    repairFields,
     riskFields,
-    approvalFields,
-    attachmentFields,
-    otherFields,
   } =
     useMemo(() => {
       /** Templates can inject the same key more than once (e.g. photosNote). Keep first. */
@@ -422,15 +530,6 @@ export function DynamicScopeJobWizard({
 
       const uniqueTemplate = uniqueByKey(template);
       const condition = uniqueTemplate.filter((f) => f.section === "condition");
-      const attachmentFields = uniqueTemplate.filter((f) => f.type === "photos_note");
-      const defectFields = condition.filter(
-        (f) =>
-          f.type !== "photos_note" &&
-          !MEASUREMENT_KEYS.has(f.key) &&
-          f.type !== "number" &&
-          f.type !== "date" &&
-          f.type !== "measurement",
-      );
       const measurementFields = condition.filter(
         (f) =>
           MEASUREMENT_KEYS.has(f.key) ||
@@ -439,17 +538,8 @@ export function DynamicScopeJobWizard({
           f.type === "measurement",
       );
       return {
-        defectFields,
         measurementFields,
-        repairFields: uniqueTemplate.filter((f) => f.section === "repair"),
         riskFields: uniqueTemplate.filter((f) => f.section === "risk"),
-        approvalFields: uniqueTemplate.filter((f) => f.section === "approval"),
-        attachmentFields,
-        otherFields: uniqueTemplate.filter(
-          (f) =>
-            f.type !== "photos_note" &&
-            (!f.section || !["condition", "repair", "risk", "approval"].includes(f.section)),
-        ),
       };
     }, [template]);
 
@@ -575,6 +665,9 @@ export function DynamicScopeJobWizard({
     setJobRequirements([]);
     setUserEditedKeys(new Set());
     descriptionSeededRef.current = false;
+    setWizardStep(1);
+    setShowAdvancedRisk(false);
+    setExpandedSelectedGroups(new Set());
     resetBranchSelection();
     setLoadingLevel(true);
     const roots = await fetchChildren(null);
@@ -739,8 +832,6 @@ export function DynamicScopeJobWizard({
 
   async function applyComponentSelection(nextIds: string[]) {
     setSelectedComponentIds(nextIds);
-    setSelectedJobIds([]);
-    setResolvedTemplate([]);
     setError(null);
 
     if (nextIds.length === 0) {
@@ -750,6 +841,8 @@ export function DynamicScopeJobWizard({
       }
       setAggregatedStandardJobs([]);
       setJobScopeById({});
+      setSelectedJobIds([]);
+      setResolvedTemplate([]);
       return;
     }
 
@@ -786,8 +879,25 @@ export function DynamicScopeJobWizard({
     }
 
     const uniqueJobs = [...new Map(jobs.map((node) => [node.id, node])).values()];
+    const validJobIds = new Set(uniqueJobs.map((node) => node.id));
+
     setAggregatedStandardJobs(uniqueJobs);
     setJobScopeById(scopes);
+    setSelectedJobIds((prev) => {
+      const next = prev.filter((id) => validJobIds.has(id));
+      if (next.length === 0) {
+        setResolvedTemplate([]);
+      } else if (next[0] !== prev[0]) {
+        const primary = uniqueJobs.find((job) => job.id === next[0]);
+        if (primary) {
+          void loadTemplateForJob(primary, {
+            emptyOnly: descriptionSeededRef.current,
+          });
+        }
+      }
+      if (next.length >= 2) setCollaborateMode(true);
+      return next;
+    });
     setBranchLoading(false);
   }
 
@@ -859,24 +969,6 @@ export function DynamicScopeJobWizard({
     });
     descriptionSeededRef.current = false;
     loadTemplateForJob(node, { emptyOnly: false });
-  }
-
-  function setCollaborateEnabled(enabled: boolean) {
-    setError(null);
-    if (!enabled && selectedMachineryIds.length > 1) {
-      setCollaborateMode(true);
-      setError("Multiple machinery selected — collaboration stays on until you reduce machinery.");
-      return;
-    }
-    setCollaborateMode(enabled);
-    if (!enabled && selectedJobIds.length > 1) {
-      const keepId = selectedJobIds[0];
-      setSelectedJobIds(keepId ? [keepId] : []);
-      const primary = keepId
-        ? aggregatedStandardJobs.find((job) => job.id === keepId)
-        : null;
-      if (primary) loadTemplateForJob(primary, { emptyOnly: true });
-    }
   }
 
   function toggleRequirement(key: string) {
@@ -1173,15 +1265,6 @@ export function DynamicScopeJobWizard({
     );
   }
 
-  function renderReadonlyValue(label: string, value: string | number | null | undefined) {
-    return (
-      <div className="space-y-1.5">
-        <Label>{label}</Label>
-        <Input value={value == null || value === "" ? "—" : String(value)} readOnly className="bg-slate-50" />
-      </div>
-    );
-  }
-
   function setManualValue(key: string, value: string) {
     markUserEdited(key);
     setFormValues((prev) => ({ ...prev, [key]: value }));
@@ -1220,6 +1303,17 @@ export function DynamicScopeJobWizard({
   }
 
   const cascadeLevels = levelOptions.length;
+  const departmentLevelIndex = levelOptions.findIndex(
+    (options) =>
+      options.length > 0 &&
+      !isHomogeneousLevel(options, "machinery") &&
+      !isHomogeneousLevel(options, "component") &&
+      !isHomogeneousLevel(options, "standard_job"),
+  );
+  const departmentOptions =
+    departmentLevelIndex >= 0 ? (levelOptions[departmentLevelIndex] ?? []) : [];
+  const departmentSelected =
+    departmentLevelIndex >= 0 ? (path[departmentLevelIndex] ?? null) : null;
   const lastSelected = path[path.length - 1] ?? null;
   const showEmptyMessage =
     !loadingLevel &&
@@ -1243,10 +1337,6 @@ export function DynamicScopeJobWizard({
     return machinery?.name ?? null;
   };
 
-  const categoryNode = path.find((n) => n.nodeType === "category");
-  const systemNode = path.find((n) => n.nodeType === "system");
-  const machineryNode = selectedMachineryNodes[0] ?? path.find((n) => n.nodeType === "machinery");
-  const componentNode = selectedComponentNodes[0] ?? path.find((n) => n.nodeType === "component");
   const projectLabel =
     dryDockProjectReference ?? dryDockProjectName ?? (dryDockProjectId ? "Active dry dock project" : "—");
   const vesselLabel = [vesselName, vesselCode ? `(${vesselCode})` : ""].filter(Boolean).join(" ");
@@ -1254,65 +1344,182 @@ export function DynamicScopeJobWizard({
     jobRequirements.includes(option.key),
   ).map((option) => option.label);
 
+  const selectedJobs = selectedJobIds
+    .map((id) => aggregatedStandardJobs.find((job) => job.id === id))
+    .filter((node): node is JobLibraryNodeDto => Boolean(node));
+
+  const fromFormMh = Number(formValues.estimatedManhours);
+  const estimatedMhTotal =
+    Number.isFinite(fromFormMh) && fromFormMh > 0
+      ? fromFormMh
+      : selectedJobs.reduce((sum, job) => sum + (job.estimatedManhours ?? 0), 0);
+
+  const estimatedCostTotal = Number(formValues.estimatedCost) || 0;
+
+  const scopePathLabel = [
+    ...ancestorPath.map((n) => n.name),
+    ...selectedMachineryNodes.map((n) => n.name),
+    ...selectedComponentNodes.map((n) => n.name),
+  ]
+    .filter(Boolean)
+    .join(" → ");
+
+  const selectedGroups = (() => {
+    const map = new Map<string, JobLibraryNodeDto[]>();
+    for (const job of selectedJobs) {
+      const scope = jobScopeById[job.id];
+      const label = scope?.componentName ?? scope?.machineryName ?? "Selected jobs";
+      const list = map.get(label) ?? [];
+      list.push(job);
+      map.set(label, list);
+    }
+    return Array.from(map.entries()).map(([label, jobs]) => ({
+      label,
+      jobs,
+      mh: jobs.reduce((sum, job) => sum + (job.estimatedManhours ?? 0), 0),
+    }));
+  })();
+
+  const packageTitle =
+    formValues.shortDescription?.trim() ||
+    (selectedJobs.length === 1
+      ? selectedJobs[0]!.name
+      : selectedJobs.length > 1
+        ? `${selectedJobs[0]!.name} (+${selectedJobs.length - 1} more)`
+        : "Job package");
+
+  const overallRisk = formValues.criticality || "medium";
+
+  const stepMeta: { id: 1 | 2 | 3 | 4; title: string; caption: string }[] = [
+    { id: 1, title: "Select jobs", caption: "Choose standard jobs" },
+    { id: 2, title: "Define scope", caption: "Shared work package" },
+    { id: 3, title: "Plan resources", caption: "Permits & technical data" },
+    { id: 4, title: "Review & create", caption: "Confirm package" },
+  ];
+
+  function goNext() {
+    if (wizardStep === 1 && selectedJobIds.length < 1) {
+      setError("Select at least one standard job to continue");
+      return;
+    }
+    setError(null);
+    if (wizardStep === 1 && selectedJobIds.length >= 1 && !formValues.shortDescription) {
+      setFormValues((prev) => ({
+        ...prev,
+        shortDescription:
+          prev.shortDescription ||
+          (selectedJobs.length === 1
+            ? selectedJobs[0]!.name
+            : selectedComponentNodes[0]?.name
+              ? `${selectedComponentNodes[0].name} inspection and overhaul`
+              : selectedJobs[0]?.name || "Job package"),
+      }));
+    }
+    setWizardStep((s) => (s < 4 ? ((s + 1) as 1 | 2 | 3 | 4) : s));
+  }
+
+  function goBack() {
+    setError(null);
+    setWizardStep((s) => (s > 1 ? ((s - 1) as 1 | 2 | 3 | 4) : s));
+  }
+
+  const summaryPanel = (
+    <aside className="space-y-4 lg:sticky lg:top-4">
+      <Card className="border-slate-200 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Package summary</CardTitle>
+          <CardDescription>Totals update as you build the package.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <div className="flex justify-between gap-3">
+            <span className="text-muted-foreground">Jobs selected</span>
+            <span className="font-medium">{selectedJobIds.length}</span>
+          </div>
+          <div className="flex justify-between gap-3">
+            <span className="text-muted-foreground">Estimated MH</span>
+            <span className="font-medium">{estimatedMhTotal || "—"}</span>
+          </div>
+          <div className="flex justify-between gap-3">
+            <span className="text-muted-foreground">Estimated cost</span>
+            <span className="font-medium">
+              {estimatedCostTotal > 0 ? `$${estimatedCostTotal.toLocaleString()}` : "—"}
+            </span>
+          </div>
+          <div className="flex justify-between gap-3">
+            <span className="text-muted-foreground">Permits</span>
+            <span className="font-medium">{jobRequirements.length || "None"}</span>
+          </div>
+          <div className="flex justify-between gap-3">
+            <span className="text-muted-foreground">Risk</span>
+            <span className="font-medium capitalize">{overallRisk}</span>
+          </div>
+          {wizardStep < 4 ? (
+            <div className="flex flex-col gap-2 border-t pt-3">
+              <Button
+                variant="outline"
+                disabled={!formReady || saving || templateLoading}
+                onClick={() => void submit(false)}
+              >
+                Save draft
+              </Button>
+              <Button
+                className="bg-blue-700 text-white hover:bg-blue-800"
+                disabled={wizardStep === 1 ? selectedJobIds.length < 1 : !formReady}
+                onClick={goNext}
+              >
+                Continue
+              </Button>
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
+    </aside>
+  );
+
   return (
     <div className="dd-job-wizard space-y-4">
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-blue-50 text-xl text-blue-700">
-              ▣
-            </div>
-            <div>
-              <p className="text-xs font-medium text-slate-500">Dry Dock Jobs › Create New Job</p>
-              <h2 className="text-2xl font-semibold tracking-tight text-slate-950">
-                Create New Dry Dock Job
-              </h2>
-              <p className="text-sm text-slate-500">
-                Define job details, requirements and scope for planning and execution.
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              disabled={!formReady || saving || templateLoading}
-              onClick={() => void submit(false)}
-            >
-              {packageMode ? "Save Package Draft" : "Save as Draft"}
-            </Button>
-            <Button
-              className="bg-blue-700 text-white hover:bg-blue-800"
-              disabled={!formReady || saving || templateLoading}
-              onClick={() => void submit(true)}
-            >
-              {saving ? "Creating…" : packageMode ? "Create Jobs" : "Create Job"}
-            </Button>
+          <div>
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-950">
+              Create Dry-Dock Job
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Vessel: <span className="font-medium text-slate-900">{vesselLabel || vesselId}</span>
+              {" · "}
+              Project: <span className="font-medium text-slate-900">{projectLabel}</span>
+            </p>
           </div>
         </div>
 
         <div className="mt-5 grid gap-3 rounded-lg border border-slate-200 p-3 md:grid-cols-4">
-          {[
-            ["1", "Job Overview", "Basic information"],
-            ["2", "Scope & Requirements", "Define scope"],
-            ["3", "Planning & Resources", "Survey, repair & team"],
-            ["4", "Review & Confirm", "Validate & create"],
-          ].map(([number, title, caption], index) => {
-            const active = formReady ? index <= 2 : index === 0;
+          {stepMeta.map((step) => {
+            const active = wizardStep === step.id;
+            const done = wizardStep > step.id;
             return (
-              <div key={number} className="flex items-center gap-3">
+              <button
+                key={step.id}
+                type="button"
+                className="flex items-center gap-3 text-left"
+                onClick={() => {
+                  if (step.id < wizardStep || (step.id === 2 && selectedJobIds.length >= 1)) {
+                    setWizardStep(step.id);
+                  }
+                }}
+              >
                 <span
                   className={cn(
                     "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold",
-                    active ? "bg-blue-700 text-white" : "bg-slate-200 text-slate-600",
+                    active || done ? "bg-blue-700 text-white" : "bg-slate-200 text-slate-600",
                   )}
                 >
-                  {number}
+                  {step.id}
                 </span>
                 <span>
-                  <span className="block text-sm font-semibold text-slate-950">{title}</span>
-                  <span className="block text-xs text-slate-500">{caption}</span>
+                  <span className="block text-sm font-semibold text-slate-950">{step.title}</span>
+                  <span className="block text-xs text-slate-500">{step.caption}</span>
                 </span>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -1329,745 +1536,760 @@ export function DynamicScopeJobWizard({
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
-      <SectionCard
-        className="dd-create-picker"
-        accent="rose"
-        badge="1 · Select"
-        title="Job identification"
-        description="Pick department → system → machinery → component(s) → standard job(s). Multi-select components under one machinery, or multiple machinery to aggregate and collaborate sibling jobs."
+      <div
+        className={cn(
+          "grid gap-4",
+          wizardStep < 4 ? "lg:grid-cols-[minmax(0,1fr)_17rem]" : "",
+        )}
       >
-        <div className="space-y-2">
-          <Label htmlFor="job-library-search">Quick search standard jobs</Label>
-          <Input
-            id="job-library-search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Type at least 2 characters…"
-            className="border-dd-rose-border/80 bg-white/80"
-            disabled={effectiveCollaborate && selectedJobIds.length > 1}
-          />
-          {searchLoading ? (
-            <p className="text-xs text-muted-foreground">Searching…</p>
-          ) : null}
-          {searchResults.length > 0 && !(effectiveCollaborate && selectedJobIds.length > 1) ? (
-            <div className="max-h-48 overflow-auto rounded-lg border border-dd-rose-border bg-white/90">
-              {searchResults.map((node) => (
-                <button
-                  key={node.id}
-                  type="button"
-                  className="flex w-full flex-col gap-0.5 border-b border-dd-rose-border/40 px-3 py-2 text-left last:border-b-0 hover:bg-dd-rose-muted"
-                  onClick={() => selectSearchHit(node)}
-                >
-                  <span className="text-sm font-medium">{node.name}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {node.referenceCode ?? node.code} · standard job
-                  </span>
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </div>
-
-        {ancestorPath.length > 0 ||
-        selectedMachineryNodes.length > 0 ||
-        selectedComponentNodes.length > 0 ||
-        selectedJobIds.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-1.5">
-            {ancestorPath.map((node, idx) => (
-              <span key={node.id} className="inline-flex items-center gap-1.5">
-                {idx > 0 ? <span className="text-dd-rose/50">→</span> : null}
-                <span className="rounded-md bg-dd-rose-muted px-2 py-1 text-xs font-medium text-dd-rose">
-                  {node.name}
-                </span>
-              </span>
-            ))}
-            {selectedMachineryNodes.map((node, idx) => (
-              <span key={node.id} className="inline-flex items-center gap-1.5">
-                <span className="text-dd-rose/50">
-                  {ancestorPath.length > 0 || idx > 0 ? (idx === 0 ? "→" : "+") : ""}
-                </span>
-                <span className="rounded-md bg-dd-orange-muted px-2 py-1 text-xs font-medium text-dd-orange">
-                  {node.name}
-                </span>
-              </span>
-            ))}
-            {selectedComponentNodes.map((node, idx) => (
-              <span key={node.id} className="inline-flex items-center gap-1.5">
-                <span className="text-dd-rose/50">{idx === 0 ? "→" : "+"}</span>
-                <span className="rounded-md bg-dd-yellow-muted px-2 py-1 text-xs font-medium text-dd-yellow">
-                  {node.name}
-                </span>
-              </span>
-            ))}
-            {selectedJobIds.map((id, idx) => {
-              const node = aggregatedStandardJobs.find((job) => job.id === id);
-              if (!node) return null;
-              return (
-                <span key={id} className="inline-flex items-center gap-1.5">
-                  <span className="text-dd-rose/50">{idx === 0 ? "→" : "+"}</span>
-                  <span className="rounded-md bg-dd-rose px-2 py-1 text-xs font-medium text-white">
-                    {node.name}
-                  </span>
-                </span>
-              );
-            })}
-          </div>
-        ) : null}
-
-        {(aggregatedStandardJobs.length >= 2 || multiBranchSelection || collaborateMode) &&
-        aggregatedStandardJobs.length > 0 ? (
-          <div className="rounded-lg border border-dd-orange-border bg-dd-orange-muted/40 p-3">
-            <label className="flex cursor-pointer items-start gap-3">
-              <Checkbox
-                checked={effectiveCollaborate}
-                onCheckedChange={(checked) => setCollaborateEnabled(checked === true)}
-                className="mt-0.5 border-dd-orange data-checked:border-dd-orange data-checked:bg-dd-orange"
-                disabled={selectedMachineryIds.length > 1}
-              />
-              <span className="space-y-0.5">
-                <span className="block text-sm font-medium text-dd-orange">
-                  Collaborate multiple jobs
-                </span>
-                <span className="block text-xs text-muted-foreground">
-                  {selectedMachineryIds.length > 1
-                    ? "Enabled automatically because multiple machinery items are selected. Jobs from all selected machinery/components appear below."
-                    : "Combine related standard jobs into one collaboration package. Each job keeps its library template; they share equipment context and move as a group."}
-                </span>
-              </span>
-            </label>
-          </div>
-        ) : null}
-
-        {loadingLevel && cascadeLevels === 0 ? (
-          <ActiniumLoadingState label="Loading options…" size="sm" />
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {levelOptions.map((options, levelIndex) => {
-              if (isHomogeneousLevel(options, "machinery")) {
-                // Rendered in the machinery + components two-column row below.
-                return null;
-              }
-
-              if (isHomogeneousLevel(options, "component")) {
-                // Legacy single-parent component list — prefer branch multi-select state.
-                return null;
-              }
-
-              if (isHomogeneousLevel(options, "standard_job")) {
-                // Jobs under machinery/components are rendered from aggregatedStandardJobs.
-                if (hasMachineryMultiSelect) return null;
-
-                return (
-                  <StandardJobsPickerTable
-                    key={`jobs-${levelIndex}`}
-                    jobs={options}
-                    plannedIds={selectedJobIds}
-                    componentLabel={() =>
-                      selectedComponentNodes[0]?.name ??
-                      path.find((n) => n.nodeType === "component")?.name ??
-                      "—"
-                    }
-                    onAdd={(node) => {
-                      setAggregatedStandardJobs(options);
-                      if (!selectedJobIds.includes(node.id)) toggleJob(node);
-                    }}
-                    onRemove={(node) => {
-                      if (selectedJobIds.includes(node.id)) toggleJob(node);
-                    }}
-                    onAddAll={() => {
-                      setAggregatedStandardJobs(options);
-                      addAllJobsToPlanned(options);
-                    }}
-                  />
-                );
-              }
-
-              const selected = path[levelIndex] ?? null;
-              return (
-                <div key={`level-${levelIndex}`} className="space-y-2">
-                  <Label>{levelLabel(options, selected)}</Label>
-                  <LabeledSelect
-                    items={options.map((node) => ({
-                      value: node.id,
-                      label: `${node.name}${node.nodeType === "standard_job" && node.referenceCode ? ` (${node.referenceCode})` : ""}`,
-                    }))}
-                    value={selected?.id ?? ""}
-                    onValueChange={(id) => void selectAtLevel(levelIndex, id)}
-                    placeholder={`Select ${levelLabel(options, selected).toLowerCase()}`}
-                    className="w-full border-dd-rose-border/60 bg-white/90"
-                  />
-                </div>
-              );
-            })}
-
-            {hasMachineryMultiSelect ||
-            selectedMachineryNodes.length > 0 ||
-            componentOptions.length > 0 ? (
-              <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2 lg:col-span-3">
-                <div className="space-y-2">
-                  <Label>
-                    Selected machinery
-                    {selectedMachineryIds.length > 0
-                      ? ` (${selectedMachineryIds.length} selected)`
-                      : ""}
-                  </Label>
-                  <div className="min-h-[4.5rem] space-y-2 rounded-lg border border-dd-orange-border bg-dd-orange-muted/30 p-3">
-                    {selectedMachineryNodes.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">
-                        Choose machinery from the list below.
-                      </p>
+        <div className="min-w-0 space-y-4">
+          {wizardStep === 1 ? (
+            <SectionCard accent="rose" title="Select jobs">
+              <div className="space-y-3">
+                <div className="grid gap-x-3 gap-y-2 sm:grid-cols-2">
+                  <div className="flex flex-col gap-2 sm:contents">
+                    <Label htmlFor="job-library-search" className="sm:col-start-1 sm:row-start-1">
+                      Search jobs
+                    </Label>
+                    <Input
+                      id="job-library-search"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Cylinder head inspection…"
+                      className="h-8 border-dd-rose-border/80 bg-white/80 sm:col-start-1 sm:row-start-2"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2 sm:contents">
+                    <Label htmlFor="job-department" className="sm:col-start-2 sm:row-start-1">
+                      {departmentLevelIndex >= 0
+                        ? levelLabel(departmentOptions, departmentSelected)
+                        : "Department"}
+                    </Label>
+                    {departmentLevelIndex >= 0 && !(loadingLevel && cascadeLevels === 0) ? (
+                      <LabeledSelect
+                        id="job-department"
+                        items={departmentOptions.map((node) => ({
+                          value: node.id,
+                          label: node.name,
+                        }))}
+                        value={departmentSelected?.id ?? ""}
+                        onValueChange={(id) => void selectAtLevel(departmentLevelIndex, id)}
+                        placeholder="Select department"
+                        className="h-8 w-full border-dd-rose-border/60 bg-white/90 py-0 sm:col-start-2 sm:row-start-2"
+                      />
                     ) : (
-                      selectedMachineryNodes.map((node) => (
-                        <div
-                          key={node.id}
-                          className="flex items-start justify-between gap-2 rounded-md border border-dd-orange bg-white/90 px-3 py-2"
-                        >
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-dd-orange">{node.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {node.referenceCode ?? node.code}
-                            </p>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 shrink-0 px-2 text-xs text-dd-orange"
-                            onClick={() =>
-                              void applyMachinerySelection(
-                                selectedMachineryIds.filter((id) => id !== node.id),
-                              )
-                            }
-                          >
-                            Remove
-                          </Button>
-                        </div>
-                      ))
+                      <div className="flex h-8 items-center rounded-lg border border-dashed border-dd-rose-border/50 px-2.5 text-sm text-muted-foreground sm:col-start-2 sm:row-start-2">
+                        {loadingLevel ? "Loading…" : "Select department"}
+                      </div>
                     )}
                   </div>
-                  {machineryOptions.length > 0 ? (
-                    <SearchableMultiSelect
-                      items={machineryOptions.map((node) => ({
-                        value: node.id,
-                        label: node.name,
-                        searchText: `${node.name} ${node.code} ${node.referenceCode ?? ""}`,
-                      }))}
-                      values={selectedMachineryIds}
-                      onValuesChange={(ids) => void applyMachinerySelection(ids)}
-                      placeholder="Search & select machinery…"
-                      searchPlaceholder="Search machinery…"
-                      className="w-full"
+                </div>
+                {searchLoading ? <p className="text-xs text-muted-foreground">Searching…</p> : null}
+                {searchResults.length > 0 ? (
+                  <div className="max-h-48 overflow-auto rounded-lg border border-dd-rose-border bg-white/90">
+                    {searchResults.map((node) => (
+                      <button
+                        key={node.id}
+                        type="button"
+                        className="flex w-full flex-col gap-0.5 border-b border-dd-rose-border/40 px-3 py-2 text-left last:border-b-0 hover:bg-dd-rose-muted"
+                        onClick={() => selectSearchHit(node)}
+                      >
+                        <span className="text-sm font-medium">{node.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {node.referenceCode ?? node.code} · standard job
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
+              {scopePathLabel ? (
+                <p className="text-sm text-slate-700">
+                  <span className="text-muted-foreground">Scope path: </span>
+                  {scopePathLabel}
+                </p>
+              ) : null}
+
+              {loadingLevel && cascadeLevels === 0 ? (
+                <ActiniumLoadingState label="Loading options…" size="sm" />
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {levelOptions.map((options, levelIndex) => {
+                    if (levelIndex === departmentLevelIndex) return null;
+                    if (isHomogeneousLevel(options, "machinery")) return null;
+                    if (isHomogeneousLevel(options, "component")) return null;
+                    if (isHomogeneousLevel(options, "standard_job")) {
+                      if (hasMachineryMultiSelect) return null;
+                      return (
+                        <StandardJobsPickerTable
+                          key={`jobs-${levelIndex}`}
+                          jobs={options}
+                          plannedIds={selectedJobIds}
+                          componentLabel={() =>
+                            selectedComponentNodes[0]?.name ??
+                            path.find((n) => n.nodeType === "component")?.name ??
+                            "—"
+                          }
+                          onAdd={(node) => {
+                            setAggregatedStandardJobs(options);
+                            if (!selectedJobIds.includes(node.id)) toggleJob(node);
+                          }}
+                          onRemove={(node) => {
+                            if (selectedJobIds.includes(node.id)) toggleJob(node);
+                          }}
+                          onAddAll={() => {
+                            setAggregatedStandardJobs(options);
+                            addAllJobsToPlanned(options);
+                          }}
+                          onAddMany={(nodes) => {
+                            setAggregatedStandardJobs(options);
+                            addAllJobsToPlanned(nodes);
+                          }}
+                        />
+                      );
+                    }
+                    const selected = path[levelIndex] ?? null;
+                    return (
+                      <div key={`level-${levelIndex}`} className="space-y-2">
+                        <Label>{levelLabel(options, selected)}</Label>
+                        <LabeledSelect
+                          items={options.map((node) => ({
+                            value: node.id,
+                            label: node.name,
+                          }))}
+                          value={selected?.id ?? ""}
+                          onValueChange={(id) => void selectAtLevel(levelIndex, id)}
+                          placeholder={`Select ${levelLabel(options, selected).toLowerCase()}`}
+                          className="w-full border-dd-rose-border/60 bg-white/90"
+                        />
+                      </div>
+                    );
+                  })}
+
+                  {hasMachineryMultiSelect ||
+                  selectedMachineryNodes.length > 0 ||
+                  componentOptions.length > 0 ? (
+                    <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2 lg:col-span-3">
+                      <div className="space-y-2">
+                        <Label>Machinery</Label>
+                        {machineryOptions.length > 0 ? (
+                          <SearchableMultiSelect
+                            items={machineryOptions.map((node) => ({
+                              value: node.id,
+                              label: node.name,
+                              searchText: `${node.name} ${node.code} ${node.referenceCode ?? ""}`,
+                            }))}
+                            values={selectedMachineryIds}
+                            onValuesChange={(ids) => void applyMachinerySelection(ids)}
+                            placeholder="Search & select machinery…"
+                            searchPlaceholder="Search machinery…"
+                            className="w-full"
+                          />
+                        ) : null}
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Component</Label>
+                        <SearchableMultiSelect
+                          items={componentOptions.map((node) => ({
+                            value: node.id,
+                            label:
+                              selectedMachineryIds.length > 1 && machineryGroupLabel(node)
+                                ? `${node.name} · ${machineryGroupLabel(node)}`
+                                : node.name,
+                            searchText: `${node.name} ${node.code} ${node.referenceCode ?? ""} ${machineryGroupLabel(node) ?? ""}`,
+                          }))}
+                          values={selectedComponentIds}
+                          onValuesChange={(ids) => void applyComponentSelection(ids)}
+                          placeholder={
+                            selectedMachineryIds.length === 0
+                              ? "Select machinery first…"
+                              : "Search & select components…"
+                          }
+                          searchPlaceholder="Search components…"
+                          disabled={selectedMachineryIds.length === 0}
+                          emptyMessage={
+                            selectedMachineryIds.length === 0
+                              ? "Select machinery first"
+                              : "No components under selected machinery"
+                          }
+                          className="w-full"
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {aggregatedStandardJobs.length > 0 ? (
+                    <StandardJobsPickerTable
+                      jobs={aggregatedStandardJobs}
+                      plannedIds={selectedJobIds}
+                      componentLabel={(node) => {
+                        const scope = jobScopeById[node.id];
+                        return scope?.componentName ?? scope?.machineryName ?? "—";
+                      }}
+                      onAdd={(node) => {
+                        if (!selectedJobIds.includes(node.id)) toggleJob(node);
+                      }}
+                      onRemove={(node) => {
+                        if (selectedJobIds.includes(node.id)) toggleJob(node);
+                      }}
+                      onAddAll={() => addAllJobsToPlanned(aggregatedStandardJobs)}
+                      onAddMany={(nodes) => addAllJobsToPlanned(nodes)}
                     />
                   ) : null}
                 </div>
+              )}
 
-                <div className="space-y-2">
-                  <Label>
-                    Components
-                    {selectedComponentIds.length > 0
-                      ? ` (${selectedComponentIds.length} selected)`
-                      : ""}
-                  </Label>
-                  <SearchableMultiSelect
-                    items={componentOptions.map((node) => ({
-                      value: node.id,
-                      label:
-                        selectedMachineryIds.length > 1 && machineryGroupLabel(node)
-                          ? `${node.name} · ${machineryGroupLabel(node)}`
-                          : node.name,
-                      searchText: `${node.name} ${node.code} ${node.referenceCode ?? ""} ${machineryGroupLabel(node) ?? ""}`,
-                    }))}
-                    values={selectedComponentIds}
-                    onValuesChange={(ids) => void applyComponentSelection(ids)}
-                    placeholder={
-                      selectedMachineryIds.length === 0
-                        ? "Select machinery first…"
-                        : "Search & select components…"
-                    }
-                    searchPlaceholder="Search components…"
-                    disabled={selectedMachineryIds.length === 0}
-                    emptyMessage={
-                      selectedMachineryIds.length === 0
-                        ? "Select machinery first"
-                        : "No components under selected machinery"
-                    }
-                    className="w-full"
-                  />
-                  {selectedComponentNodes.length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {selectedComponentNodes.map((node) => (
-                        <span
-                          key={node.id}
-                          className="inline-flex items-center gap-1 rounded-md bg-dd-yellow-muted px-2 py-1 text-xs font-medium text-dd-yellow"
-                        >
-                          {node.name}
+              {(loadingLevel && cascadeLevels > 0) || branchLoading ? (
+                <ActiniumLoadingState label="Loading next level…" size="sm" />
+              ) : null}
+              {showEmptyMessage ? (
+                <p className="text-sm text-muted-foreground">{emptyPickerMessage()}</p>
+              ) : null}
+
+              {selectedGroups.length > 0 ? (
+                <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50/80 p-3">
+                  <p className="text-sm font-semibold text-slate-900">
+                    Selected package — {selectedJobIds.length} job
+                    {selectedJobIds.length === 1 ? "" : "s"}
+                  </p>
+                  {selectedGroups.map((group) => {
+                    const expanded = expandedSelectedGroups.has(group.label);
+                    return (
+                      <div
+                        key={group.label}
+                        className="rounded-md border border-slate-200 bg-white px-3 py-2"
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-2">
                           <button
                             type="button"
-                            className="rounded-sm px-0.5 hover:bg-white/50"
-                            aria-label={`Remove ${node.name}`}
+                            className="min-w-0 text-left"
                             onClick={() =>
-                              void applyComponentSelection(
-                                selectedComponentIds.filter((id) => id !== node.id),
-                              )
+                              setExpandedSelectedGroups((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(group.label)) next.delete(group.label);
+                                else next.add(group.label);
+                                return next;
+                              })
                             }
                           >
-                            ×
+                            <p className="text-sm font-medium">
+                              {group.label}{" "}
+                              <span className="font-normal text-muted-foreground">
+                                {group.jobs.length} job{group.jobs.length === 1 ? "" : "s"}
+                              </span>
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {group.jobs.map((j) => j.name).join(" · ")}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Estimated: {group.mh || "—"} MH
+                            </p>
                           </button>
-                        </span>
+                          <div className="flex gap-1">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs"
+                              onClick={() =>
+                                setExpandedSelectedGroups((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(group.label)) next.delete(group.label);
+                                  else next.add(group.label);
+                                  return next;
+                                })
+                              }
+                            >
+                              {expanded ? "Hide" : "Edit"}
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs text-destructive"
+                              onClick={() => {
+                                for (const job of group.jobs) toggleJob(job);
+                              }}
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        </div>
+                        {expanded ? (
+                          <ul className="mt-2 space-y-1 border-t pt-2">
+                            {group.jobs.map((job) => (
+                              <li
+                                key={job.id}
+                                className="flex items-center justify-between gap-2 text-sm"
+                              >
+                                <span>
+                                  {job.name}
+                                  {job.estimatedManhours != null
+                                    ? ` · ${job.estimatedManhours} MH`
+                                    : ""}
+                                </span>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-2 text-destructive"
+                                  onClick={() => toggleJob(job)}
+                                >
+                                  <Trash2 className="size-3.5" />
+                                </Button>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
+                <p className="text-sm text-muted-foreground">
+                  Selected: {selectedJobIds.length} job{selectedJobIds.length === 1 ? "" : "s"}
+                </p>
+                <div className="flex gap-2">
+                  {selectedJobIds.length > 0 || path.length > 0 ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        void resetSelection();
+                        setWizardStep(1);
+                      }}
+                    >
+                      Reset selection
+                    </Button>
+                  ) : null}
+                  <Button
+                    className="bg-blue-700 text-white hover:bg-blue-800"
+                    disabled={selectedJobIds.length < 1}
+                    onClick={goNext}
+                  >
+                    Continue
+                  </Button>
+                </div>
+              </div>
+            </SectionCard>
+          ) : null}
+
+          {wizardStep === 2 && formReady && activeScopeJob ? (
+            <SectionCard accent="yellow" title="Define work scope">
+              {templateLoading ? (
+                <ActiniumLoadingState label="Loading job form template…" size="sm" />
+              ) : null}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Package title</Label>
+                  <Input
+                    value={formValues.shortDescription ?? packageTitle}
+                    onChange={(e) => setManualValue("shortDescription", e.target.value)}
+                    placeholder="Cylinder Head Inspection and Overhaul"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Existing condition / defect</Label>
+                  <Textarea
+                    value={formValues.conditionDescription ?? formValues.observedDefect ?? ""}
+                    onChange={(e) => {
+                      setManualValue("conditionDescription", e.target.value);
+                      setManualValue("observedDefect", e.target.value);
+                    }}
+                    rows={3}
+                    placeholder="Describe leakage, wear, cracks, operating issue…"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Work scope</Label>
+                  <Textarea
+                    value={
+                      formValues.repairRecommendation ??
+                      formValues.jobDescription ??
+                      ""
+                    }
+                    onChange={(e) => {
+                      setManualValue("repairRecommendation", e.target.value);
+                      setManualValue("jobDescription", e.target.value);
+                    }}
+                    rows={4}
+                    placeholder="Inspect, dismantle, clean, measure and overhaul selected items…"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Expected result / acceptance criteria</Label>
+                  <Textarea
+                    value={formValues.expectedResult ?? ""}
+                    onChange={(e) => setManualValue("expectedResult", e.target.value)}
+                    rows={3}
+                    placeholder="Pressure test satisfactory, clearances within maker limits…"
+                  />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Replacement parts</Label>
+                    <Textarea
+                      value={formValues.replacementParts ?? ""}
+                      onChange={(e) => setManualValue("replacementParts", e.target.value)}
+                      rows={3}
+                      placeholder="Add parts…"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Consumables</Label>
+                    <Textarea
+                      value={formValues.consumables ?? ""}
+                      onChange={(e) => setManualValue("consumables", e.target.value)}
+                      rows={3}
+                      placeholder="Add consumables…"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Reference drawing or manual</Label>
+                  <Input
+                    type="file"
+                    multiple
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.jpg,.jpeg,.png"
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files ?? []);
+                      setPendingPhotos((prev) => [...prev, ...files]);
+                      e.target.value = "";
+                    }}
+                  />
+                  {pendingPhotos.length > 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      {pendingPhotos.length} file{pendingPhotos.length === 1 ? "" : "s"} ready to
+                      upload on save.
+                    </p>
+                  ) : null}
+                </div>
+                {selectedJobs.length > 1 ? (
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+                    <p className="font-medium">Jobs in this package</p>
+                    <p className="mt-1 text-muted-foreground">
+                      Shared scope applies to all jobs. Optional job-specific notes can be added
+                      later from job details.
+                    </p>
+                    <ul className="mt-2 list-inside list-disc text-muted-foreground">
+                      {selectedJobs.map((job) => (
+                        <li key={job.id}>{job.name}</li>
                       ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+              <div className="flex justify-between gap-2 border-t pt-3">
+                <Button variant="outline" onClick={goBack}>
+                  Back
+                </Button>
+                <Button className="bg-blue-700 text-white hover:bg-blue-800" onClick={goNext}>
+                  Continue
+                </Button>
+              </div>
+            </SectionCard>
+          ) : null}
+
+          {wizardStep === 3 && formReady && activeScopeJob ? (
+            <div className="space-y-4">
+              <SectionCard accent="orange" title="Resources">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Estimated man-hours</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={
+                        formValues.estimatedManhours ??
+                        (estimatedMhTotal ? String(estimatedMhTotal) : "")
+                      }
+                      onChange={(e) => setManualValue("estimatedManhours", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Estimated cost</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={formValues.estimatedCost ?? ""}
+                      onChange={(e) => setManualValue("estimatedCost", e.target.value)}
+                      placeholder="6500"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Priority</Label>
+                    <LabeledSelect
+                      items={JOB_PRIORITY_ITEMS}
+                      value={priority}
+                      onValueChange={(v) => setPriority(v || "medium")}
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Condition rating</Label>
+                    <LabeledSelect
+                      items={CONDITION_RATING_ITEMS.map((i) => ({
+                        value: i.value,
+                        label: i.label,
+                      }))}
+                      value={conditionRating}
+                      onValueChange={(v) => setConditionRating(v || "monitor")}
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label>Machinery / equipment from vessel register</Label>
+                    {machineryLoading ? (
+                      <ActiniumLoadingState label="Loading machinery…" size="sm" />
+                    ) : machineryAssets.length > 0 ? (
+                      <LabeledSelect
+                        items={machineryAssets.map((asset) => ({
+                          value: asset.id,
+                          label: `${asset.name}${asset.department ? ` · ${asset.department}` : ""}`,
+                        }))}
+                        value={selectedMachineryAssetId}
+                        onValueChange={applyMachineryAsset}
+                        placeholder="Select machinery"
+                        className="w-full"
+                      />
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No machinery registered for this vessel.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </SectionCard>
+
+              <SectionCard accent="yellow" title="Permits and preparations">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {JOB_REQUIREMENT_OPTIONS.map((option) => {
+                    const checked = jobRequirements.includes(option.key);
+                    return (
+                      <label
+                        key={option.key}
+                        className="flex cursor-pointer items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={() => toggleRequirement(option.key)}
+                        />
+                        <span>{option.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </SectionCard>
+
+              <SectionCard accent="orange" title="Technical data">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Running hours</Label>
+                    <Input
+                      value={formValues.runningHours ?? ""}
+                      onChange={(e) => setManualValue("runningHours", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Last overhaul date</Label>
+                    <Input
+                      type="date"
+                      value={formValues.lastOverhaul ?? ""}
+                      onChange={(e) => setManualValue("lastOverhaul", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label>Required measurements / maker limits</Label>
+                    <Textarea
+                      value={formValues.measurements ?? formValues.clearance ?? ""}
+                      onChange={(e) => setManualValue("measurements", e.target.value)}
+                      rows={3}
+                      placeholder="Expected clearances, maker limits…"
+                    />
+                  </div>
+                </div>
+                {measurementFields.length > 0 ? (
+                  <div className="mt-4 border-t pt-4">{renderFieldGrid(measurementFields)}</div>
+                ) : null}
+              </SectionCard>
+
+              <SectionCard accent="black" title="Risk">
+                <div className="space-y-3">
+                  <Label>Overall risk</Label>
+                  <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                    {["Low", "Medium", "High", "Critical"].map((item) => {
+                      const value = item.toLowerCase();
+                      const checked = overallRisk === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => setManualValue("criticality", value)}
+                          className={cn(
+                            "rounded-md border px-3 py-2 text-sm font-medium",
+                            checked
+                              ? "border-orange-400 bg-orange-50 text-orange-700"
+                              : "border-slate-200 bg-white text-slate-700",
+                          )}
+                        >
+                          {item}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    type="button"
+                    className="text-sm font-medium text-blue-700 hover:underline"
+                    onClick={() => setShowAdvancedRisk((v) => !v)}
+                  >
+                    {showAdvancedRisk ? "Hide" : "Show"} advanced risk assessment
+                  </button>
+                  {showAdvancedRisk ? (
+                    <div className="grid gap-4 rounded-lg border border-slate-200 p-3 sm:grid-cols-3">
+                      {(
+                        [
+                          ["operationalRisk", "Operational risk"],
+                          ["safetyRisk", "Safety risk"],
+                          ["environmentalRisk", "Environmental risk"],
+                        ] as const
+                      ).map(([key, label]) => (
+                        <div key={key} className="space-y-2">
+                          <Label>{label}</Label>
+                          <LabeledSelect
+                            items={[
+                              { value: "low", label: "Low" },
+                              { value: "medium", label: "Medium" },
+                              { value: "high", label: "High" },
+                              { value: "critical", label: "Critical" },
+                            ]}
+                            value={formValues[key] || overallRisk}
+                            onValueChange={(v) => setManualValue(key, v || "medium")}
+                            className="w-full"
+                          />
+                        </div>
+                      ))}
+                      {riskFields.length > 0 ? renderFieldGrid(riskFields) : null}
                     </div>
                   ) : null}
                 </div>
-              </div>
-            ) : null}
+              </SectionCard>
 
-            {aggregatedStandardJobs.length > 0 ? (
-              <StandardJobsPickerTable
-                jobs={aggregatedStandardJobs}
-                plannedIds={selectedJobIds}
-                componentLabel={(node) => {
-                  const scope = jobScopeById[node.id];
-                  return scope?.componentName ?? scope?.machineryName ?? "—";
-                }}
-                onAdd={(node) => {
-                  if (!selectedJobIds.includes(node.id)) toggleJob(node);
-                }}
-                onRemove={(node) => {
-                  if (selectedJobIds.includes(node.id)) toggleJob(node);
-                }}
-                onAddAll={() => addAllJobsToPlanned(aggregatedStandardJobs)}
-              />
-            ) : null}
-          </div>
-        )}
-
-        {selectedJobIds.length > 0 ? (
-          <div className="space-y-2 rounded-lg border border-dd-orange-border bg-dd-orange-muted/30 p-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <p className="text-sm font-semibold text-dd-orange">
-                  Planned job list ({selectedJobIds.length})
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  These jobs will be used for the create / collaborate form below.
-                </p>
+              <div className="flex justify-between gap-2">
+                <Button variant="outline" onClick={goBack}>
+                  Back
+                </Button>
+                <Button className="bg-blue-700 text-white hover:bg-blue-800" onClick={goNext}>
+                  Continue
+                </Button>
               </div>
             </div>
-            <ul className="space-y-2">
-              {selectedJobIds.map((id) => {
-                const node = aggregatedStandardJobs.find((job) => job.id === id);
-                if (!node) return null;
-                const scope = jobScopeById[id];
-                const component =
-                  scope?.componentName ??
-                  selectedComponentNodes[0]?.name ??
-                  "—";
-                return (
-                  <li
-                    key={id}
-                    className="flex flex-wrap items-start justify-between gap-2 rounded-md border border-dd-orange/30 bg-white/90 px-3 py-2"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">{node.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {component}
-                        {node.referenceCode ? ` · ${node.referenceCode}` : ""}
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => toggleJob(node)}
-                    >
-                      <Trash2 className="size-3.5" />
-                      Remove
-                    </Button>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ) : null}
+          ) : null}
 
-        {(loadingLevel && cascadeLevels > 0) || branchLoading ? (
-          <ActiniumLoadingState label="Loading next level…" size="sm" />
-        ) : null}
-
-        {showEmptyMessage ? (
-          <p className="text-sm text-muted-foreground">{emptyPickerMessage()}</p>
-        ) : null}
-
-        {selectedJobIds.length === 1 && effectiveCollaborate && !packageMode ? (
-          <p className="text-xs text-dd-orange">
-            Select at least one more related job to create a collaboration package, or keep a single
-            job to save normally.
-          </p>
-        ) : null}
-
-        {path.length > 0 ||
-        selectedMachineryIds.length > 0 ||
-        selectedJobIds.length > 0 ||
-        collaborateMode ? (
-          <Button variant="ghost" size="sm" className="text-dd-rose" onClick={() => void resetSelection()}>
-            Clear selection
-          </Button>
-        ) : null}
-      </SectionCard>
-
-      {formReady && activeScopeJob ? (
-        <div className="dd-create-job-board">
-          <SectionCard
-            className="dd-create-card"
-            accent="black"
-            badge="A"
-            title="Vessel & Project"
-          >
-            <div className="grid gap-4 sm:grid-cols-2">
-              {renderReadonlyValue("Vessel", vesselLabel || vesselId)}
-              {renderReadonlyValue("IMO Number", formValues.imoNumber || formValues.imoNo)}
-              {renderReadonlyValue("Project", projectLabel)}
-              {renderReadonlyValue("Docking Period", formValues.dockingPeriod || "Active project")}
-            </div>
-          </SectionCard>
-
-          <SectionCard
-            className="dd-create-card"
-            accent="black"
-            badge="B"
-            title="Job Categorization"
-            description={
-              packageMode
-                ? `Shared setup for ${selectedJobIds.length} collaborated jobs`
-                : `${activeScopeJob.name}${activeScopeJob.referenceCode ? ` · Ref ${activeScopeJob.referenceCode}` : ""}`
-            }
-          >
-            {templateLoading ? (
-              <ActiniumLoadingState label="Loading job form template…" size="sm" />
-            ) : null}
-            {packageMode ? (
-              <div className="rounded-lg border border-dd-black-soft/15 bg-white/70 p-3 text-sm">
-                <p className="mb-2 font-medium text-foreground">Package members</p>
-                <ul className="list-inside list-disc space-y-1 text-muted-foreground">
-                  {selectedJobIds.map((id) => {
-                    const node = aggregatedStandardJobs.find((job) => job.id === id);
-                    const scope = jobScopeById[id];
-                    const scopeLabel = [scope?.machineryName, scope?.componentName]
-                      .filter(Boolean)
-                      .join(" / ");
-                    return (
-                      <li key={id}>
-                        {node?.name ?? id}
-                        {scopeLabel ? ` · ${scopeLabel}` : ""}
-                      </li>
-                    );
-                  })}
+          {wizardStep === 4 && formReady && activeScopeJob ? (
+            <SectionCard accent="black" title="Review and create">
+              <div className="space-y-4 text-sm">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Job package
+                  </p>
+                  <p className="text-lg font-semibold text-slate-950">{packageTitle}</p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <p>
+                    <span className="text-muted-foreground">Jobs included:</span>{" "}
+                    <span className="font-medium">{selectedJobIds.length}</span>
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Estimated man-hours:</span>{" "}
+                    <span className="font-medium">{estimatedMhTotal || "—"}</span>
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Estimated cost:</span>{" "}
+                    <span className="font-medium">
+                      {estimatedCostTotal > 0
+                        ? `$${estimatedCostTotal.toLocaleString()}`
+                        : "—"}
+                    </span>
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Class attendance:</span>{" "}
+                    <span className="font-medium">
+                      {jobRequirements.includes("class_attendance") ? "Required" : "Not required"}
+                    </span>
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Maker attendance:</span>{" "}
+                    <span className="font-medium">
+                      {jobRequirements.includes("maker_attendance") ? "Required" : "Not required"}
+                    </span>
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Risk:</span>{" "}
+                    <span className="font-medium capitalize">{overallRisk}</span>
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Permits</p>
+                  <p className="font-medium">
+                    {selectedRequirementLabels.length > 0
+                      ? selectedRequirementLabels.join(" · ")
+                      : "None selected"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Attachments
+                  </p>
+                  <p className="font-medium">
+                    {pendingPhotos.length} file{pendingPhotos.length === 1 ? "" : "s"}
+                  </p>
+                </div>
+                {scopePathLabel ? (
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Scope</p>
+                    <p className="font-medium">{scopePathLabel}</p>
+                  </div>
+                ) : null}
+                <ul className="list-inside list-disc text-muted-foreground">
+                  {selectedJobs.map((job) => (
+                    <li key={job.id}>{job.name}</li>
+                  ))}
                 </ul>
               </div>
-            ) : null}
-            <div className="grid gap-4 sm:grid-cols-2">
-              {renderReadonlyValue("Job Category", categoryNode?.name ?? path[0]?.name)}
-              {renderReadonlyValue("Sub Category", systemNode?.name)}
-              {renderReadonlyValue("Equipment / System", machineryNode?.name ?? formValues.equipmentTag)}
-              {renderReadonlyValue("Location on Board", componentNode?.name ?? formValues.locationOnBoard)}
-              {renderReadonlyValue("Job Code (Auto)", activeScopeJob.referenceCode ?? activeScopeJob.code)}
-              <div className="space-y-2">
-                <Label>Machinery / equipment from vessel register</Label>
-                {machineryLoading ? (
-                  <ActiniumLoadingState label="Loading machinery…" size="sm" />
-                ) : machineryAssets.length > 0 ? (
-                  <LabeledSelect
-                    items={machineryAssets.map((asset) => ({
-                      value: asset.id,
-                      label: `${asset.name}${asset.department ? ` · ${asset.department}` : ""}`,
-                    }))}
-                    value={selectedMachineryAssetId}
-                    onValueChange={applyMachineryAsset}
-                    placeholder="Select machinery"
-                    className="w-full"
-                  />
-                ) : (
-                  <p className="text-sm text-muted-foreground">No machinery registered for this vessel.</p>
-                )}
-              </div>
-              {selectedMachineryAsset ? (
-                <div className="rounded-lg border border-dd-black-soft/15 bg-white/70 p-3 text-sm text-muted-foreground">
-                  <p className="font-medium text-foreground">{selectedMachineryAsset.name}</p>
-                  <p>
-                    {[selectedMachineryAsset.maker, selectedMachineryAsset.model]
-                      .filter(Boolean)
-                      .join(" / ") || "Maker/model not recorded"}
-                  </p>
-                  <p>
-                    Running hours: {selectedMachineryAsset.currentRunningHours ?? "—"} · Last overhaul:{" "}
-                    {selectedMachineryAsset.lastOverhaulDate
-                      ? new Date(selectedMachineryAsset.lastOverhaulDate).toLocaleDateString()
-                      : "—"}
-                  </p>
-                </div>
-              ) : null}
-            </div>
-          </SectionCard>
-
-          <SectionCard className="dd-create-card" accent="yellow" badge="C" title="Job Description">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Short Description *</Label>
-                <Input
-                  value={formValues.shortDescription ?? activeScopeJob.name}
-                  onChange={(event) => setManualValue("shortDescription", event.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Detailed Description *</Label>
-                <Textarea
-                  value={formValues.jobDescription ?? formValues.conditionDescription ?? ""}
-                  onChange={(event) => setManualValue("jobDescription", event.target.value)}
-                  rows={4}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Reference Document</Label>
-                <Input
-                  type="file"
-                  multiple
-                  accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.jpg,.jpeg,.png"
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files ?? []);
-                    setPendingPhotos((prev) => [...prev, ...files]);
-                    e.target.value = "";
-                  }}
-                />
-              </div>
-            </div>
-          </SectionCard>
-
-          <SectionCard
-            className="dd-create-card"
-            accent="orange"
-            badge="D"
-            title="Priority & condition"
-            description={
-              packageMode
-                ? "Shared across all jobs in this collaboration package."
-                : "Set how urgent this scope is and the current equipment condition."
-            }
-          >
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Priority</Label>
-                <LabeledSelect
-                  items={JOB_PRIORITY_ITEMS}
-                  value={priority}
-                  onValueChange={(v) => setPriority(v || "medium")}
-                  className="w-full"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Condition rating</Label>
-                <LabeledSelect
-                  items={CONDITION_RATING_ITEMS.map((i) => ({ value: i.value, label: i.label }))}
-                  value={conditionRating}
-                  onValueChange={(v) => setConditionRating(v || "monitor")}
-                  className="w-full"
-                />
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label>Criticality Indicator</Label>
-                <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-                  {["Low", "Medium", "High", "Critical"].map((item) => {
-                    const value = item.toLowerCase();
-                    const checked = (formValues.criticality || "medium") === value;
-                    return (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => setManualValue("criticality", value)}
-                        className={cn(
-                          "rounded-md border px-3 py-2 text-sm font-medium",
-                          checked
-                            ? "border-orange-400 bg-orange-50 text-orange-700"
-                            : "border-slate-200 bg-white text-slate-700",
-                        )}
-                      >
-                        {item}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label>Impact if Delayed</Label>
-                <LabeledSelect
-                  items={JOB_PRIORITY_ITEMS}
-                  value={formValues.impactIfDelayed || priority}
-                  onValueChange={(v) => setManualValue("impactIfDelayed", v || "medium")}
-                  className="w-full"
-                />
-              </div>
-            </div>
-          </SectionCard>
-
-          <SectionCard
-            className="dd-create-card"
-            accent="yellow"
-            badge="E"
-            title="Job type requirements"
-            description="Select permits and attendance needs for this scope. Stored with the job for planning."
-          >
-            <div className="flex flex-wrap gap-2">
-              {JOB_REQUIREMENT_OPTIONS.map((option) => {
-                const checked = jobRequirements.includes(option.key);
-                return (
-                  <button
-                    key={option.key}
-                    type="button"
-                    onClick={() => toggleRequirement(option.key)}
-                    className={cn(
-                      "rounded-md border px-3 py-1.5 text-sm transition-colors",
-                      checked
-                        ? "border-dd-yellow bg-dd-yellow-bright text-dd-black"
-                        : "border-dd-yellow-border bg-white/80 text-dd-black hover:bg-dd-yellow-muted",
-                    )}
-                    aria-pressed={checked}
+              <div className="flex flex-wrap justify-between gap-2 border-t pt-3">
+                <Button variant="outline" onClick={goBack}>
+                  Back
+                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    disabled={saving || templateLoading}
+                    onClick={() => void submit(false)}
                   >
-                    {option.label}
-                  </button>
-                );
-              })}
-            </div>
-            {jobRequirements.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No special requirements selected.</p>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                {jobRequirements.length} requirement{jobRequirements.length === 1 ? "" : "s"} selected.
-              </p>
-            )}
-            {selectedRequirementLabels.length > 0 ? (
-              <div className="rounded-lg border border-slate-200 bg-white p-2 text-xs text-slate-600">
-                Permits to be arranged: {selectedRequirementLabels.join(", ")}
+                    Save Draft
+                  </Button>
+                  <Button
+                    className="bg-blue-700 text-white hover:bg-blue-800"
+                    disabled={saving || templateLoading}
+                    onClick={() => void submit(true)}
+                  >
+                    {saving
+                      ? "Creating…"
+                      : packageMode
+                        ? `Create ${selectedJobIds.length} Jobs`
+                        : "Create Job"}
+                  </Button>
+                </div>
               </div>
-            ) : null}
-          </SectionCard>
-
-          {defectFields.length > 0 ? (
-            <SectionCard
-              className="dd-create-card dd-create-card-tall"
-              accent="yellow"
-              badge="F"
-              title="Condition description & defects"
-              description="Auto-filled from the standard job library when you select a job. Edit as needed."
-            >
-              {renderFieldGrid(defectFields)}
             </SectionCard>
           ) : null}
-
-          {measurementFields.length > 0 ? (
-            <SectionCard
-              className="dd-create-card"
-              accent="orange"
-              badge="G"
-              title="Technical measurements / survey data"
-              description="Running hours, dates, clearances, and other survey figures."
-            >
-              {renderFieldGrid(measurementFields)}
-            </SectionCard>
-          ) : null}
-
-          {repairFields.length > 0 ? (
-            <SectionCard
-              className="dd-create-card dd-create-card-tall"
-              accent="rose"
-              badge="H"
-              title="Repair scope & resources"
-              description="Recommendations, parts, consumables, and attendance needs."
-            >
-              {renderFieldGrid(repairFields)}
-            </SectionCard>
-          ) : null}
-
-          {riskFields.length > 0 ? (
-            <SectionCard
-              className="dd-create-card"
-              accent="black"
-              badge="I"
-              title="Risk & criticality"
-              description="Operational, safety, and environmental risk ratings."
-            >
-              {renderFieldGrid(riskFields)}
-            </SectionCard>
-          ) : null}
-
-          {approvalFields.length > 0 ? (
-            <SectionCard
-              className="dd-create-card"
-              accent="yellow"
-              badge="J"
-              title="Approval notes"
-            >
-              {renderFieldGrid(approvalFields)}
-            </SectionCard>
-          ) : null}
-
-          {otherFields.length > 0 ? (
-            <SectionCard className="dd-create-card" accent="orange" badge="K" title="Additional fields">
-              {renderFieldGrid(otherFields)}
-            </SectionCard>
-          ) : null}
-
-          <SectionCard className="dd-create-card dd-create-card-wide" accent="black" badge="L" title="Attachments">
-            {attachmentFields.length > 0 ? renderFieldGrid(attachmentFields) : null}
-            <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4">
-              <Label>Attach reports, images, drawings or supporting files</Label>
-              <Input
-                className="mt-2 bg-white"
-                type="file"
-                multiple
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.jpg,.jpeg,.png,video/*"
-                onChange={(e) => {
-                  const files = Array.from(e.target.files ?? []);
-                  setPendingPhotos((prev) => [...prev, ...files]);
-                  e.target.value = "";
-                }}
-              />
-              <p className="mt-2 text-xs text-slate-500">
-                {pendingPhotos.length > 0
-                  ? `${pendingPhotos.length} file${pendingPhotos.length === 1 ? "" : "s"} ready to upload on save.`
-                  : "PDF, DOC, XLS, DWG, JPG, PNG and video files can be attached."}
-              </p>
-            </div>
-          </SectionCard>
-
-          <SectionCard className="dd-create-card dd-create-card-wide" accent="black" badge="M" title="Additional Notes">
-            <Textarea
-              value={formValues.additionalNotes ?? ""}
-              onChange={(event) => setManualValue("additionalNotes", event.target.value)}
-              rows={4}
-              placeholder="Add any additional notes or special instructions..."
-            />
-            <div className="flex flex-wrap justify-end gap-2">
-              <Button variant="ghost" size="sm" onClick={() => void resetSelection()}>
-                Clear & reselect
-              </Button>
-              <Button
-                variant="outline"
-                disabled={saving || templateLoading}
-                onClick={() => void submit(false)}
-              >
-                {packageMode ? "Save package as draft" : "Save as Draft"}
-              </Button>
-              <Button
-                className="bg-blue-700 text-white hover:bg-blue-800"
-                disabled={saving || templateLoading}
-                onClick={() => void submit(true)}
-              >
-                {saving ? "Creating…" : packageMode ? `Create ${selectedJobIds.length} Jobs` : "Create Job"}
-              </Button>
-            </div>
-          </SectionCard>
         </div>
-      ) : null}
+
+        {wizardStep < 4 ? summaryPanel : null}
+      </div>
     </div>
   );
 }

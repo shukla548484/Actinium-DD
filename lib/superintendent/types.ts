@@ -64,6 +64,7 @@ export type SuperintendentVesselDto = {
   status: EntityStatus;
   nextDryDockDue: string | null;
   lastDryDockDate: string | null;
+  lastIntermediateSurveyDate: string | null;
   classSociety: string | null;
   readinessScore: number | null;
   dryDockProjectCount?: number;

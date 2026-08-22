@@ -53,6 +53,30 @@ export const shipAccessNavItems: ShipAccessNavItem[] = [
     icon: ShieldCheck,
   },
   {
+    href: "/ship-access/dry-dock/simple-jobs",
+    label: "Jobs",
+    description: "Simple Paint Jobs — area × Sa prep costing",
+    icon: Eye,
+  },
+  {
+    href: "/ship-access/dry-dock/simple-jobs/new",
+    label: "New Job",
+    description: "Create a Paint Job with prep and coating lines",
+    icon: PlusCircle,
+  },
+  {
+    href: "/ship-access/dry-dock/simple-jobs?status=draft",
+    label: "Update Jobs",
+    description: "Edit draft Jobs before submission",
+    icon: Pencil,
+  },
+  {
+    href: "/ship-access/dry-dock/simple-jobs?status=submitted",
+    label: "Master Jobs review",
+    description: "Approve or reject submitted Jobs",
+    icon: ShieldCheck,
+  },
+  {
     href: "/ship-access/jobs/new",
     label: "Create dry dock job",
     description: "Propose scope jobs for superintendent review",

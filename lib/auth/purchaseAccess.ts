@@ -76,6 +76,7 @@ export async function requirePurchaseApiAccess(
 
   const isSysAdmin =
     can(auth, "platform.tenant.manage") ||
+    can(auth, "*") ||
     employee?.role?.code === "SYS_ADMIN" ||
     employee?.role?.roleNo === 1001;
 
@@ -83,7 +84,11 @@ export async function requirePurchaseApiAccess(
 
   const assigned = employee
     ? await prisma.employeeVessel.findMany({
-        where: { employeeId: employee.id },
+        where: {
+          employeeId: employee.id,
+          signOffDate: null,
+          vessel: { deletedAt: null, status: "active" },
+        },
         select: { vesselId: true },
       })
     : [];
@@ -94,7 +99,8 @@ export async function requirePurchaseApiAccess(
       userId: payload.userId,
       employeeId: employee?.id ?? null,
       accessLevel,
-      canSeeAllVessels: isSysAdmin || accessLevel >= 50,
+      // Fleet-wide purchase visibility is admin-only; everyone else is vessel-assigned.
+      canSeeAllVessels: isSysAdmin,
       assignedVesselIds: assigned.map((a) => a.vesselId),
     },
   };

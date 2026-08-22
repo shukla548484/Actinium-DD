@@ -246,6 +246,7 @@ export async function getProjectsWorkbench(): Promise<ProjectsWorkbenchDto> {
 
   const ddWhere: Prisma.DryDockProjectWhereInput = {
     ...notDeleted,
+    archivedAt: null,
     ...dryDockProjectScopeWhere(vesselIds),
   };
 
@@ -302,9 +303,10 @@ export async function getProjectsWorkbench(): Promise<ProjectsWorkbenchDto> {
     prisma.project.findMany({
       where: {
         ...notDeleted,
+        archivedAt: null,
         ...projectScopeWhere(scope),
         status: { in: ["draft", "tendering", "comparing"] },
-        dryDockProjects: { none: { ...notDeleted } },
+        dryDockProjects: { none: { ...notDeleted, archivedAt: null } },
       },
       orderBy: { updatedAt: "desc" },
       take: 40,

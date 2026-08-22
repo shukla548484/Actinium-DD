@@ -23,6 +23,8 @@ type SearchableSelectProps = {
   menuClassName?: string;
   id?: string;
   disabled?: boolean;
+  /** Allow typing a value that is not in `items` (combo). */
+  allowCustom?: boolean;
 };
 
 export function SearchableSelect({
@@ -35,6 +37,7 @@ export function SearchableSelect({
   menuClassName,
   id,
   disabled,
+  allowCustom = false,
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -44,6 +47,16 @@ export function SearchableSelect({
   const panelRef = useRef<HTMLDivElement>(null);
 
   const selected = items.find((item) => item.value === value);
+  const displayLabel = selected?.label ?? (allowCustom && value ? value : null);
+  const customQuery = query.trim();
+  const showCustomOption =
+    allowCustom &&
+    customQuery.length > 0 &&
+    !items.some(
+      (item) =>
+        item.value.toLowerCase() === customQuery.toLowerCase() ||
+        item.label.toLowerCase() === customQuery.toLowerCase(),
+    );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -58,10 +71,11 @@ export function SearchableSelect({
     const el = triggerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
+    const maxWidth = Math.min(window.innerWidth - 16, 576);
     setMenuPos({
       top: rect.bottom + 4,
-      left: rect.left,
-      width: Math.max(rect.width, 288),
+      left: Math.min(rect.left, window.innerWidth - Math.min(Math.max(rect.width, 320), maxWidth) - 8),
+      width: Math.min(Math.max(rect.width, 320), maxWidth),
     });
   }, []);
 
@@ -125,33 +139,57 @@ export function SearchableSelect({
                 setOpen(false);
                 setQuery("");
               }
+              if (e.key === "Enter" && allowCustom && customQuery) {
+                e.preventDefault();
+                const exact = filtered.find(
+                  (item) =>
+                    item.label.toLowerCase() === customQuery.toLowerCase() ||
+                    item.value.toLowerCase() === customQuery.toLowerCase(),
+                );
+                selectOption(exact?.value ?? customQuery);
+              }
             }}
           />
         </div>
         <ul className="max-h-56 overflow-y-auto p-1">
-          {filtered.length === 0 ? (
+          {filtered.length === 0 && !showCustomOption ? (
             <li className="px-2 py-2 text-sm text-muted-foreground">No matches</li>
           ) : (
-            filtered.map((item) => {
-              const isSelected = item.value === value;
-              return (
-                <li key={item.key ?? item.value}>
+            <>
+              {filtered.map((item) => {
+                const isSelected = item.value === value;
+                return (
+                  <li key={item.key ?? item.value}>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={isSelected}
+                      className={cn(
+                        "flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground",
+                        isSelected && "bg-accent/60",
+                      )}
+                      onClick={() => selectOption(item.value)}
+                    >
+                      <span className="whitespace-nowrap">{item.label}</span>
+                      {isSelected ? <CheckIcon className="size-4 shrink-0" /> : null}
+                    </button>
+                  </li>
+                );
+              })}
+              {showCustomOption ? (
+                <li>
                   <button
                     type="button"
                     role="option"
-                    aria-selected={isSelected}
-                    className={cn(
-                      "flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground",
-                      isSelected && "bg-accent/60",
-                    )}
-                    onClick={() => selectOption(item.value)}
+                    aria-selected={value === customQuery}
+                    className="flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                    onClick={() => selectOption(customQuery)}
                   >
-                    <span className="truncate">{item.label}</span>
-                    {isSelected ? <CheckIcon className="size-4 shrink-0" /> : null}
+                    Use “{customQuery}”
                   </button>
                 </li>
-              );
-            })
+              ) : null}
+            </>
           )}
         </ul>
       </div>
@@ -173,11 +211,11 @@ export function SearchableSelect({
           }
         }}
         className={cn(
-          "flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border border-input bg-transparent px-2.5 text-sm transition-colors outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30 dark:hover:bg-input/50",
-          !selected && "text-muted-foreground",
+          "flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border border-input bg-input-fill px-2.5 text-sm transition-colors outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-input/50",
+          !displayLabel && "text-muted-foreground",
         )}
       >
-        <span className="truncate text-left">{selected?.label ?? placeholder}</span>
+        <span className="truncate text-left">{displayLabel ?? placeholder}</span>
         <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" />
       </button>
 

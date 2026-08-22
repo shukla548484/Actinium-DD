@@ -8,48 +8,50 @@ import {
   PROJECT_INPUT_LINK_ICONS,
   PROJECT_MODULE_ICONS,
 } from "@/lib/navigation/projectModuleIcons";
-import type { WorkspaceModuleCard } from "@/lib/superintendent/engine/workspaceSummary";
+import {
+  fallbackWorkspaceNavModules,
+  WORKSPACE_NAV_MODULE_IDS,
+  type WorkspaceModuleCard,
+} from "@/lib/superintendent/engine/workspaceNav";
 
 type Props = {
   dryDockProjectId: string;
 };
 
+async function fetchWorkspaceModules(dryDockProjectId: string): Promise<WorkspaceModuleCard[]> {
+  try {
+    const r = await fetch(`/api/superintendent/projects/${dryDockProjectId}/workspace`);
+    if (!r.ok) return fallbackWorkspaceNavModules(dryDockProjectId);
+    const contentType = r.headers.get("content-type") ?? "";
+    if (!contentType.includes("application/json")) {
+      return fallbackWorkspaceNavModules(dryDockProjectId);
+    }
+    const data = (await r.json()) as { workspace?: { modules?: WorkspaceModuleCard[] } };
+    const modules = data.workspace?.modules ?? [];
+    if (modules.length === 0) return fallbackWorkspaceNavModules(dryDockProjectId);
+    return modules;
+  } catch {
+    return fallbackWorkspaceNavModules(dryDockProjectId);
+  }
+}
+
 export function ProjectWorkspaceNav({ dryDockProjectId }: Props) {
   const pathname = usePathname();
-  const [modules, setModules] = useState<WorkspaceModuleCard[]>([]);
+  const [modules, setModules] = useState<WorkspaceModuleCard[]>(() =>
+    fallbackWorkspaceNavModules(dryDockProjectId),
+  );
 
   useEffect(() => {
-    void fetch(`/api/superintendent/projects/${dryDockProjectId}/workspace`)
-      .then((r) => r.json())
-      .then((d: { workspace?: { modules: WorkspaceModuleCard[] } }) => {
-        setModules(d.workspace?.modules ?? []);
-      });
+    setModules(fallbackWorkspaceNavModules(dryDockProjectId));
+    void fetchWorkspaceModules(dryDockProjectId).then(setModules);
   }, [dryDockProjectId]);
 
   const dashboardHref = `/superintendent/projects/${dryDockProjectId}`;
   const isDashboard = pathname === dashboardHref;
+  const onInputSurface = pathname.includes("/inputs/");
 
   const primary = modules.filter((m) =>
-    [
-      "scope",
-      "jobs",
-      "budget",
-      "timeline",
-      "workshops",
-      "survey",
-      "permits",
-      "procurement",
-      "inspections",
-      "approvals",
-      "daily_progress",
-      "rfq",
-      "documents",
-      "shipyard",
-      "sea_trial",
-      "resources",
-      "closeout",
-      "reports",
-    ].includes(m.id),
+    (WORKSPACE_NAV_MODULE_IDS as readonly string[]).includes(m.id),
   );
 
   const inputLinks = [
@@ -127,20 +129,22 @@ export function ProjectWorkspaceNav({ dryDockProjectId }: Props) {
           />
         );
       })}
-      {inputLinks.map((link) => {
-        const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
-        return (
-          <NavItemLink
-            key={link.href}
-            href={link.href}
-            label={link.label}
-            icon={link.icon}
-            active={active}
-            size="xs"
-            className="shrink-0 rounded-full px-3 py-1.5"
-          />
-        );
-      })}
+      {onInputSurface
+        ? inputLinks.map((link) => {
+            const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
+            return (
+              <NavItemLink
+                key={link.href}
+                href={link.href}
+                label={link.label}
+                icon={link.icon}
+                active={active}
+                size="xs"
+                className="shrink-0 rounded-full px-3 py-1.5"
+              />
+            );
+          })
+        : null}
     </nav>
   );
 }

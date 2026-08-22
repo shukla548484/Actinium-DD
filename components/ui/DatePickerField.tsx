@@ -96,10 +96,9 @@ export function DatePickerField({
           disabled={disabled}
           aria-required={required}
           className={cn(
-            "flex h-8 w-full items-center gap-2 rounded-lg border border-input bg-transparent px-2.5 text-sm transition-colors outline-none select-none",
+            "flex h-8 w-full items-center gap-2 rounded-lg border border-input bg-input-fill px-2.5 text-sm transition-colors outline-none select-none",
             "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
             "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
-            "dark:bg-input/30",
             !selected && "text-muted-foreground",
           )}
         >

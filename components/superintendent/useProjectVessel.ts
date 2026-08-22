@@ -7,6 +7,7 @@ export type ProjectVessel = {
   name: string;
   code: string;
   imoNumber: string | null;
+  vesselType?: string | null;
 };
 
 export function useProjectVessel(dryDockProjectId: string) {

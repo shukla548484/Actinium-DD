@@ -14,7 +14,7 @@ import {
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const denied = await requireAdminApiAccess();
+  const denied = await requireAdminApiAccess(request);
   if (denied) return denied;
 
   const { searchParams } = new URL(request.url);
@@ -41,7 +41,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const denied = await requireAdminApiAccess();
+  const denied = await requireAdminApiAccess(request);
   if (denied) return denied;
 
   const parsed = parseBody(companyCreateSchema, await request.json());

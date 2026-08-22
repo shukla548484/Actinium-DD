@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,26 +9,36 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { LabeledSelect } from "@/components/ui/LabeledSelect";
 import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
+import { ShipyardQuotationLanguageBar } from "@/components/shipyard/ShipyardQuotationLanguageBar";
+import { useShipyardLanguage } from "@/components/shipyard/ShipyardLanguageProvider";
 import { notify } from "@/lib/notify";
 import {
   SHIPYARD_DOCK_CYCLE_LABELS,
-  SHIPYARD_QUOTE_JOB_CATEGORY_LABELS,
   SHIPYARD_QUOTE_JOB_CATEGORY_ORDER,
 } from "@/lib/shipyard/quotationCategories";
 import { SHIPYARD_TARIFF_GROUP_LABELS } from "@/lib/shipyard/tariffDefaults";
+import {
+  shipyardQuoteUi,
+  type ShipyardQuoteLocale,
+  type ShipyardQuoteUiKey,
+} from "@/lib/i18n/shipyardQuotationUi";
+import { formatFxRate } from "@/lib/fx/rates";
 import { mapSelectItems } from "@/lib/ui/labeledSelect";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 type QuoteLine = {
   quantity: number;
   unit: string;
   unitRate: number | null;
   amount: number | null;
+  unitRateUsd: number | null;
+  amountUsd: number | null;
   notes: string | null;
 };
 
 type RequestJob = {
   id: string;
-  quoteCategory: keyof typeof SHIPYARD_QUOTE_JOB_CATEGORY_LABELS;
+  quoteCategory: (typeof SHIPYARD_QUOTE_JOB_CATEGORY_ORDER)[number];
   jobCode: string | null;
   title: string;
   category: string;
@@ -69,6 +79,11 @@ type QuotationDetail = {
   dueAt: string | null;
   notes: string | null;
   currency: string;
+  localCurrency: string | null;
+  quoteCurrency: string;
+  exchangeRateLocalPerUsd: number | null;
+  exchangeRateSource: string | null;
+  dryDockProjectId: string | null;
   vessel: {
     name: string;
     code: string;
@@ -98,7 +113,7 @@ type QuotationDetail = {
     currency: string;
     ratesJson: unknown;
   } | null;
-  invites: { id: string; token: string; status: string }[];
+  invites: { id: string; token?: string; status: string }[];
 };
 
 type LineDraft = {
@@ -114,12 +129,24 @@ type Props = {
   token?: string;
 };
 
+const CAT_KEY: Record<(typeof SHIPYARD_QUOTE_JOB_CATEGORY_ORDER)[number], ShipyardQuoteUiKey> = {
+  deck: "catDeck",
+  machinery: "catMachinery",
+  hull_walls_overboard: "catHull",
+  painting: "catPainting",
+  other: "catOther",
+};
+
 function fmtDate(iso: string | null | undefined) {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString();
 }
 
 export function QuotationWorkspace({ mode, requestId, token }: Props) {
+  const shellLang = useShipyardLanguage();
+  const [tokenLocale, setTokenLocale] = useState<ShipyardQuoteLocale>("en");
+  const locale = mode === "token" ? tokenLocale : shellLang.locale;
+  const dual = mode === "token" ? tokenLocale !== "en" : shellLang.prefs.mode === "dual";
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [detail, setDetail] = useState<QuotationDetail | null>(null);
@@ -129,6 +156,24 @@ export function QuotationWorkspace({ mode, requestId, token }: Props) {
   const [lineDrafts, setLineDrafts] = useState<Record<string, LineDraft>>({});
   const [rateDrafts, setRateDrafts] = useState<Record<string, string>>({});
   const [inviteId, setInviteId] = useState<string | null>(null);
+
+  const t = useCallback((key: ShipyardQuoteUiKey) => shipyardQuoteUi(locale, key), [locale]);
+  const label = useCallback(
+    (key: ShipyardQuoteUiKey) => {
+      if (mode !== "token") return shellLang.label(key);
+      const primary = shipyardQuoteUi(locale, key);
+      if (!dual) return primary;
+      const english = shipyardQuoteUi("en", key);
+      if (english === primary) return primary;
+      return (
+        <span className="inline-flex flex-col leading-tight">
+          <span>{primary}</span>
+          <span className="text-[10px] font-normal text-muted-foreground">{english}</span>
+        </span>
+      );
+    },
+    [dual, locale, mode, shellLang],
+  );
 
   const apiBase =
     mode === "token"
@@ -169,18 +214,14 @@ export function QuotationWorkspace({ mode, requestId, token }: Props) {
       }
       hydrate(data.request);
       setTariffs(data.tariffs ?? []);
-      const def = data.tariffs?.find((t) => t.isDefault) ?? data.tariffs?.[0];
+      const def = data.tariffs?.find((x) => x.isDefault) ?? data.tariffs?.[0];
       setScheduleId(def?.id ?? "");
       if (def) {
         const rates: Record<string, string> = {};
         for (const r of def.rates) rates[r.id] = String(r.unitRate);
         setRateDrafts(rates);
       }
-      setInviteId(
-        data.inviteId ??
-          data.request.invites[0]?.id ??
-          null,
-      );
+      setInviteId(data.inviteId ?? data.request.invites[0]?.id ?? null);
     } finally {
       setLoading(false);
     }
@@ -202,56 +243,80 @@ export function QuotationWorkspace({ mode, requestId, token }: Props) {
 
   const scheduleItems = mapSelectItems(
     tariffs,
-    (t) => t.id,
-    (t) => `${t.name}${t.isDefault ? " (default)" : ""}`,
+    (x) => x.id,
+    (x) => `${x.name}${x.isDefault ? " (default)" : ""}`,
   );
 
-  const activeSchedule = tariffs.find((t) => t.id === scheduleId) ?? null;
+  const activeSchedule = tariffs.find((x) => x.id === scheduleId) ?? null;
 
-  async function saveLines() {
+  async function persistLines(): Promise<boolean> {
+    if (!detail || locked) return true;
+    const lines = Object.entries(lineDrafts).map(([requestJobId, d]) => ({
+      requestJobId,
+      quantity: Number(d.quantity) || 1,
+      unit: d.unit || "ls",
+      unitRate: d.unitRate.trim() === "" ? null : Number(d.unitRate),
+      notes: d.notes || null,
+    }));
+    const res = await fetch(apiBase, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "save_lines", lines }),
+    });
+    const data = (await res.json()) as { error?: string; request?: QuotationDetail };
+    if (!res.ok || !data.request) {
+      notify.error(data.error ?? t("saveFailed"));
+      return false;
+    }
+    hydrate(data.request);
+    return true;
+  }
+
+  async function persistTerms(): Promise<boolean> {
+    if (!detail || locked) return true;
+    const res = await fetch(apiBase, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "save_terms", body: termsBody }),
+    });
+    const data = (await res.json()) as { error?: string; request?: QuotationDetail };
+    if (!res.ok || !data.request) {
+      notify.error(data.error ?? t("saveFailed"));
+      return false;
+    }
+    hydrate(data.request);
+    return true;
+  }
+
+  async function saveDraft() {
     if (!detail || locked) return;
     setSaving(true);
     try {
-      const lines = Object.entries(lineDrafts).map(([requestJobId, d]) => ({
-        requestJobId,
-        quantity: Number(d.quantity) || 1,
-        unit: d.unit || "ls",
-        unitRate: d.unitRate.trim() === "" ? null : Number(d.unitRate),
-        notes: d.notes || null,
-      }));
-      const res = await fetch(apiBase, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "save_lines", lines }),
-      });
-      const data = (await res.json()) as { error?: string; request?: QuotationDetail };
-      if (!res.ok || !data.request) {
-        notify.error(data.error ?? "Failed to save lines");
-        return;
-      }
-      hydrate(data.request);
-      notify.success("Job quotes saved");
+      const okLines = await persistLines();
+      if (!okLines) return;
+      const okTerms = await persistTerms();
+      if (!okTerms) return;
+      notify.success(t("savedDraft"));
     } finally {
       setSaving(false);
     }
   }
 
-  async function saveTerms() {
+  async function saveLinesOnly() {
     if (!detail || locked) return;
     setSaving(true);
     try {
-      const res = await fetch(apiBase, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "save_terms", body: termsBody }),
-      });
-      const data = (await res.json()) as { error?: string; request?: QuotationDetail };
-      if (!res.ok || !data.request) {
-        notify.error(data.error ?? "Failed to save terms");
-        return;
-      }
-      hydrate(data.request);
-      notify.success("Terms saved");
+      if (await persistLines()) notify.success(t("savedLines"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function saveTermsOnly() {
+    if (!detail || locked) return;
+    setSaving(true);
+    try {
+      if (await persistTerms()) notify.success(t("savedTerms"));
     } finally {
       setSaving(false);
     }
@@ -279,12 +344,41 @@ export function QuotationWorkspace({ mode, requestId, token }: Props) {
       });
       const data = (await res.json()) as { error?: string; request?: QuotationDetail };
       if (!res.ok || !data.request) {
-        notify.error(data.error ?? "Failed to apply tariff");
+        notify.error(data.error ?? t("saveFailed"));
         return;
       }
       hydrate(data.request);
-      notify.success("Tariff snapshot applied to quote");
+      notify.success(t("tariffApplied"));
       await load();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function copyTariff() {
+    if (!scheduleId || mode !== "session") return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/shipyard/tariffs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "copy", scheduleId }),
+      });
+      const data = (await res.json()) as {
+        error?: string;
+        schedule?: TariffSchedule;
+        schedules?: TariffSchedule[];
+      };
+      if (!res.ok || !data.schedule) {
+        notify.error(data.error ?? t("saveFailed"));
+        return;
+      }
+      setTariffs(data.schedules ?? [...tariffs, data.schedule]);
+      setScheduleId(data.schedule.id);
+      const rates: Record<string, string> = {};
+      for (const r of data.schedule.rates) rates[r.id] = String(r.unitRate);
+      setRateDrafts(rates);
+      notify.success(t("tariffCopied"));
     } finally {
       setSaving(false);
     }
@@ -294,8 +388,10 @@ export function QuotationWorkspace({ mode, requestId, token }: Props) {
     if (!detail || locked) return;
     setSaving(true);
     try {
-      await saveLines();
-      await saveTerms();
+      const okLines = await persistLines();
+      if (!okLines) return;
+      const okTerms = await persistTerms();
+      if (!okTerms) return;
       const res = await fetch(apiBase, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -304,24 +400,28 @@ export function QuotationWorkspace({ mode, requestId, token }: Props) {
           ...(inviteId ? { inviteId } : {}),
         }),
       });
-      const data = (await res.json()) as { error?: string; request?: QuotationDetail; message?: string };
+      const data = (await res.json()) as {
+        error?: string;
+        request?: QuotationDetail;
+        message?: string;
+      };
       if (!res.ok || !data.request) {
-        notify.error(data.error ?? "Submit failed");
+        notify.error(data.error ?? t("submitFailed"));
         return;
       }
       hydrate(data.request);
-      notify.success(data.message ?? "Quote submitted");
+      notify.success(data.message ?? t("submitted"));
     } finally {
       setSaving(false);
     }
   }
 
   if (loading) {
-    return <ActiniumLoadingState label="Loading quotation…" size="md" minHeight={180} />;
+    return <ActiniumLoadingState label={t("loading")} size="md" minHeight={180} />;
   }
 
   if (!detail) {
-    return <p className="text-sm text-destructive">Quotation not found.</p>;
+    return <p className="text-sm text-destructive">{t("notFound")}</p>;
   }
 
   const snapshotRates = Array.isArray(detail.tariffSnapshot?.ratesJson)
@@ -336,6 +436,12 @@ export function QuotationWorkspace({ mode, requestId, token }: Props) {
 
   return (
     <div className="space-y-4">
+      {mode === "token" ? (
+        <ShipyardQuotationLanguageBar
+          onChange={(_prefs, active) => setTokenLocale(active)}
+        />
+      ) : null}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="font-mono text-xs text-muted-foreground">{detail.referenceCode}</p>
@@ -343,56 +449,117 @@ export function QuotationWorkspace({ mode, requestId, token }: Props) {
             {detail.vessel.name}{" "}
             <span className="text-muted-foreground">({detail.vessel.code})</span>
           </h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {detail.exchangeRateLocalPerUsd
+              ? formatFxRate(
+                  detail.exchangeRateLocalPerUsd,
+                  detail.localCurrency ?? "KRW",
+                )
+              : null}
+            {detail.exchangeRateSource ? ` · ${detail.exchangeRateSource}` : null}
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Badge>{detail.status}</Badge>
           {!locked ? (
+            <div className="flex items-center gap-2 rounded-md border px-2 py-1">
+              <span className="text-xs text-muted-foreground">Quote in</span>
+              <ToggleGroup
+                value={[detail.quoteCurrency || "USD"]}
+                onValueChange={(values) => {
+                  const next = values[values.length - 1];
+                  if (!next || locked) return;
+                  void (async () => {
+                    setSaving(true);
+                    try {
+                      const res = await fetch(apiBase, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          action: "set_currency",
+                          quoteCurrency: next,
+                          localCurrency: detail.localCurrency ?? "KRW",
+                        }),
+                      });
+                      const data = (await res.json()) as {
+                        error?: string;
+                        request?: QuotationDetail;
+                      };
+                      if (!res.ok || !data.request) {
+                        notify.error(data.error ?? t("saveFailed"));
+                        return;
+                      }
+                      hydrate(data.request);
+                    } finally {
+                      setSaving(false);
+                    }
+                  })();
+                }}
+                spacing={0}
+                variant="outline"
+                size="sm"
+              >
+                <ToggleGroupItem value="USD" className="text-xs">
+                  USD
+                </ToggleGroupItem>
+                <ToggleGroupItem
+                  value={(detail.localCurrency || "KRW").toUpperCase()}
+                  className="text-xs"
+                >
+                  {(detail.localCurrency || "KRW").toUpperCase()}
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+          ) : (
+            <Badge variant="outline">Quoted in {detail.quoteCurrency || detail.currency}</Badge>
+          )}
+          {!locked ? (
             <>
-              <Button variant="outline" disabled={saving} onClick={() => void saveLines()}>
-                Save draft
+              <Button variant="outline" disabled={saving} onClick={() => void saveDraft()}>
+                {label("saveDraft")}
               </Button>
               <Button disabled={saving} onClick={() => void submitQuote()}>
-                Submit quote
+                {label("submitQuote")}
               </Button>
             </>
           ) : (
-            <p className="text-sm text-muted-foreground">Quote locked after submission.</p>
+            <p className="text-sm text-muted-foreground">{t("quoteLocked")}</p>
           )}
         </div>
       </div>
 
       <Tabs defaultValue="vessel">
         <TabsList variant="line" className="w-full justify-start overflow-x-auto">
-          <TabsTrigger value="vessel">Vessel</TabsTrigger>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
-          <TabsTrigger value="jobs">Jobs quotation</TabsTrigger>
-          <TabsTrigger value="terms">Terms and conditions</TabsTrigger>
-          <TabsTrigger value="tariff">Tariff</TabsTrigger>
+          <TabsTrigger value="vessel">{label("tabVessel")}</TabsTrigger>
+          <TabsTrigger value="timeline">{label("tabTimeline")}</TabsTrigger>
+          <TabsTrigger value="jobs">{label("tabJobs")}</TabsTrigger>
+          <TabsTrigger value="terms">{label("tabTerms")}</TabsTrigger>
+          <TabsTrigger value="tariff">{label("tabTariff")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="vessel" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Vessel particulars</CardTitle>
+              <CardTitle>{label("vesselParticulars")}</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
-              <Field label="Name" value={detail.vessel.name} />
-              <Field label="Code" value={detail.vessel.code} />
-              <Field label="IMO" value={detail.vessel.imoNumber} />
-              <Field label="Type" value={detail.vessel.vesselType} />
-              <Field label="Flag" value={detail.vessel.flag} />
-              <Field label="Call sign" value={detail.vessel.callSign} />
+            <CardContent className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+              <Field label={label("name")} value={detail.vessel.name} />
+              <Field label={label("code")} value={detail.vessel.code} />
+              <Field label={label("imo")} value={detail.vessel.imoNumber} />
+              <Field label={label("type")} value={detail.vessel.vesselType} />
+              <Field label={label("flag")} value={detail.vessel.flag} />
+              <Field label={label("callSign")} value={detail.vessel.callSign} />
               <Field
-                label="Gross tonnage"
+                label={label("grossTonnage")}
                 value={detail.vessel.grossTonnage != null ? String(detail.vessel.grossTonnage) : null}
               />
               <Field
-                label="Year built"
+                label={label("yearBuilt")}
                 value={detail.vessel.yearBuilt != null ? String(detail.vessel.yearBuilt) : null}
               />
-              <Field label="Class" value={detail.vessel.classSociety} />
-              <Field label="Last dry dock" value={fmtDate(detail.vessel.lastDryDockDate)} />
-              <Field label="Next dry dock due" value={fmtDate(detail.vessel.nextDryDockDue)} />
+              <Field label={label("classSociety")} value={detail.vessel.classSociety} />
+              <Field label={label("lastDryDock")} value={fmtDate(detail.vessel.lastDryDockDate)} />
+              <Field label={label("nextDryDockDue")} value={fmtDate(detail.vessel.nextDryDockDue)} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -400,43 +567,47 @@ export function QuotationWorkspace({ mode, requestId, token }: Props) {
         <TabsContent value="timeline" className="mt-4 space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Dry-dock window</CardTitle>
+              <CardTitle>{label("dryDockWindow")}</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+            <CardContent className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
               <Field
-                label="Dock cycle"
+                label={label("dockCycle")}
                 value={SHIPYARD_DOCK_CYCLE_LABELS[detail.dockCycle] ?? detail.dockCycle}
               />
-              <Field label="Planned start" value={fmtDate(detail.plannedStart)} />
-              <Field label="Planned end" value={fmtDate(detail.plannedEnd)} />
+              <Field label={label("plannedStart")} value={fmtDate(detail.plannedStart)} />
+              <Field label={label("plannedEnd")} value={fmtDate(detail.plannedEnd)} />
               <Field
-                label="Dry dock days"
+                label={label("dryDockDays")}
                 value={detail.dryDockDays != null ? String(detail.dryDockDays) : null}
               />
               <Field
-                label="Shipyard days"
+                label={label("shipyardDays")}
                 value={detail.shipyardDays != null ? String(detail.shipyardDays) : null}
               />
               <Field
-                label="CPR days"
+                label={label("cprDays")}
                 value={detail.cprDays != null ? String(detail.cprDays) : null}
               />
-              <Field label="Quote due" value={fmtDate(detail.dueAt)} />
-              <Field label="Notes" value={detail.notes} />
+              <Field label={label("quoteDue")} value={fmtDate(detail.dueAt)} />
+              <Field label={label("notes")} value={detail.notes} />
             </CardContent>
           </Card>
           {detail.dryDockProject ? (
             <Card>
               <CardHeader>
                 <CardTitle>
-                  Project {detail.dryDockProject.referenceCode} — {detail.dryDockProject.name}
+                  {t("project")} {detail.dryDockProject.referenceCode} —{" "}
+                  {detail.dryDockProject.name}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <div className="grid gap-3 sm:grid-cols-3">
-                  <Field label="Port" value={detail.dryDockProject.portLocation} />
-                  <Field label="Start" value={fmtDate(detail.dryDockProject.plannedStart)} />
-                  <Field label="End" value={fmtDate(detail.dryDockProject.plannedEnd)} />
+                  <Field label={label("port")} value={detail.dryDockProject.portLocation} />
+                  <Field
+                    label={label("start")}
+                    value={fmtDate(detail.dryDockProject.plannedStart)}
+                  />
+                  <Field label={label("end")} value={fmtDate(detail.dryDockProject.plannedEnd)} />
                 </div>
                 {detail.dryDockProject.milestones.length > 0 ? (
                   <ul className="space-y-1 border-t pt-3">
@@ -450,7 +621,7 @@ export function QuotationWorkspace({ mode, requestId, token }: Props) {
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-muted-foreground">No milestones on linked project.</p>
+                  <p className="text-muted-foreground">{t("noMilestones")}</p>
                 )}
               </CardContent>
             </Card>
@@ -464,13 +635,13 @@ export function QuotationWorkspace({ mode, requestId, token }: Props) {
             return (
               <Card key={cat}>
                 <CardHeader>
-                  <CardTitle>{SHIPYARD_QUOTE_JOB_CATEGORY_LABELS[cat]}</CardTitle>
+                  <CardTitle>{label(CAT_KEY[cat])}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {jobs.map((job) => {
                     const draft = lineDrafts[job.id];
                     return (
-                      <div key={job.id} className="rounded-md border p-3 space-y-2">
+                      <div key={job.id} className="space-y-2 rounded-md border p-3">
                         <div className="flex flex-wrap justify-between gap-2">
                           <div>
                             <p className="font-medium">{job.title}</p>
@@ -480,16 +651,27 @@ export function QuotationWorkspace({ mode, requestId, token }: Props) {
                                 .join(" · ")}
                             </p>
                           </div>
-                          <p className="text-xs text-muted-foreground">{detail.currency}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {detail.quoteCurrency || detail.currency}
+                            {job.quoteLine?.unitRateUsd != null &&
+                            (detail.quoteCurrency || "USD") !== "USD"
+                              ? ` · ≈ ${job.quoteLine.unitRateUsd.toFixed(2)} USD`
+                              : job.quoteLine?.amount != null &&
+                                  (detail.quoteCurrency || "USD") === "USD" &&
+                                  detail.localCurrency &&
+                                  detail.exchangeRateLocalPerUsd
+                                ? ` · ≈ ${(job.quoteLine.amount * detail.exchangeRateLocalPerUsd).toFixed(0)} ${detail.localCurrency}`
+                                : ""}
+                          </p>
                         </div>
                         {job.description ? (
-                          <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                          <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                             {job.description}
                           </p>
                         ) : null}
                         <div className="grid gap-2 sm:grid-cols-4">
                           <div>
-                            <p className="mb-1 text-xs font-medium">Qty</p>
+                            <p className="mb-1 text-xs font-medium">{label("qty")}</p>
                             <Input
                               disabled={locked}
                               value={draft?.quantity ?? "1"}
@@ -502,7 +684,7 @@ export function QuotationWorkspace({ mode, requestId, token }: Props) {
                             />
                           </div>
                           <div>
-                            <p className="mb-1 text-xs font-medium">Unit</p>
+                            <p className="mb-1 text-xs font-medium">{label("unit")}</p>
                             <Input
                               disabled={locked}
                               value={draft?.unit ?? "ls"}
@@ -515,7 +697,7 @@ export function QuotationWorkspace({ mode, requestId, token }: Props) {
                             />
                           </div>
                           <div>
-                            <p className="mb-1 text-xs font-medium">Unit rate</p>
+                            <p className="mb-1 text-xs font-medium">{label("unitRate")}</p>
                             <Input
                               type="number"
                               disabled={locked}
@@ -529,7 +711,7 @@ export function QuotationWorkspace({ mode, requestId, token }: Props) {
                             />
                           </div>
                           <div>
-                            <p className="mb-1 text-xs font-medium">Notes</p>
+                            <p className="mb-1 text-xs font-medium">{label("lineNotes")}</p>
                             <Input
                               disabled={locked}
                               value={draft?.notes ?? ""}
@@ -550,8 +732,8 @@ export function QuotationWorkspace({ mode, requestId, token }: Props) {
             );
           })}
           {!locked ? (
-            <Button disabled={saving} onClick={() => void saveLines()}>
-              Save job quotes
+            <Button disabled={saving} onClick={() => void saveLinesOnly()}>
+              {label("saveJobQuotes")}
             </Button>
           ) : null}
         </TabsContent>
@@ -562,11 +744,11 @@ export function QuotationWorkspace({ mode, requestId, token }: Props) {
             disabled={locked}
             value={termsBody}
             onChange={(e) => setTermsBody(e.target.value)}
-            placeholder="Paste yard terms and conditions…"
+            placeholder={t("pasteTerms")}
           />
           {!locked ? (
-            <Button disabled={saving} onClick={() => void saveTerms()}>
-              Save terms
+            <Button disabled={saving} onClick={() => void saveTermsOnly()}>
+              {label("saveTerms")}
             </Button>
           ) : null}
         </TabsContent>
@@ -574,21 +756,21 @@ export function QuotationWorkspace({ mode, requestId, token }: Props) {
         <TabsContent value="tariff" className="mt-4 space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Yard tariff schedule</CardTitle>
+              <CardTitle>{label("tariffSchedule")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="max-w-md space-y-2">
-                <p className="text-sm font-medium">Schedule</p>
+                <p className="text-sm font-medium">{label("schedule")}</p>
                 <LabeledSelect
                   items={
                     scheduleItems.length
                       ? scheduleItems
-                      : [{ value: "", label: "No schedules" }]
+                      : [{ value: "", label: t("noSchedules") }]
                   }
                   value={scheduleId}
                   onValueChange={(id) => {
                     setScheduleId(id);
-                    const s = tariffs.find((t) => t.id === id);
+                    const s = tariffs.find((x) => x.id === id);
                     if (s) {
                       const rates: Record<string, string> = {};
                       for (const r of s.rates) rates[r.id] = String(r.unitRate);
@@ -621,7 +803,9 @@ export function QuotationWorkspace({ mode, requestId, token }: Props) {
                         >
                           <div>
                             <p className="text-sm">{rate.label}</p>
-                            <p className="text-xs text-muted-foreground">Unit: {rate.unit}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {t("unit")}: {rate.unit}
+                            </p>
                           </div>
                           <Input
                             type="number"
@@ -642,9 +826,20 @@ export function QuotationWorkspace({ mode, requestId, token }: Props) {
               ) : null}
 
               {!locked ? (
-                <Button disabled={saving || !scheduleId} onClick={() => void applyTariff()}>
-                  {mode === "session" ? "Save rates & snapshot to quote" : "Snapshot tariff to quote"}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  {mode === "session" ? (
+                    <Button
+                      variant="outline"
+                      disabled={saving || !scheduleId}
+                      onClick={() => void copyTariff()}
+                    >
+                      {label("copySchedule")}
+                    </Button>
+                  ) : null}
+                  <Button disabled={saving || !scheduleId} onClick={() => void applyTariff()}>
+                    {label(mode === "session" ? "saveRatesSnapshot" : "snapshotTariff")}
+                  </Button>
+                </div>
               ) : null}
             </CardContent>
           </Card>
@@ -652,11 +847,14 @@ export function QuotationWorkspace({ mode, requestId, token }: Props) {
           {snapshotRates.length > 0 ? (
             <Card>
               <CardHeader>
-                <CardTitle>Quote tariff snapshot</CardTitle>
+                <CardTitle>{label("quoteTariffSnapshot")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-1 text-sm">
                 {snapshotRates.map((r, idx) => (
-                  <div key={`${r.label}-${idx}`} className="flex justify-between gap-2 border-b py-1">
+                  <div
+                    key={`${r.label}-${idx}`}
+                    className="flex justify-between gap-2 border-b py-1"
+                  >
                     <span>
                       {r.label}{" "}
                       <span className="text-muted-foreground">({r.unit})</span>
@@ -675,7 +873,13 @@ export function QuotationWorkspace({ mode, requestId, token }: Props) {
   );
 }
 
-function Field({ label, value }: { label: string; value?: string | null }) {
+function Field({
+  label,
+  value,
+}: {
+  label: ReactNode;
+  value?: string | null;
+}) {
   return (
     <div>
       <p className="text-xs text-muted-foreground">{label}</p>

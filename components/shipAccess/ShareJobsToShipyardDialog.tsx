@@ -48,6 +48,8 @@ export function ShareJobsToShipyardDialog({
   const [yards, setYards] = useState<YardOption[]>([]);
   const [yardCompanyId, setYardCompanyId] = useState("");
   const [dockCycle, setDockCycle] = useState("other");
+  const [plannedStart, setPlannedStart] = useState("");
+  const [plannedEnd, setPlannedEnd] = useState("");
   const [dueAt, setDueAt] = useState("");
   const [notes, setNotes] = useState("");
   const [loadingYards, setLoadingYards] = useState(false);
@@ -61,6 +63,8 @@ export function ShareJobsToShipyardDialog({
     setMailto(null);
     setPortalPath(null);
     setReferenceCode(null);
+    setPlannedStart("");
+    setPlannedEnd("");
     setLoadingYards(true);
     void fetch("/api/ship-access/jobs/share-quotation")
       .then(async (res) => {
@@ -106,6 +110,8 @@ export function ShareJobsToShipyardDialog({
           vesselId,
           yardCompanyId,
           dockCycle,
+          plannedStart: plannedStart || null,
+          plannedEnd: plannedEnd || null,
           dueAt: dueAt || null,
           notes: notes || null,
         }),
@@ -116,6 +122,7 @@ export function ShareJobsToShipyardDialog({
         mailto?: string | null;
         portalPath?: string;
         request?: { referenceCode: string };
+        email?: { sent: boolean; reason?: string; detail?: string };
       };
       if (!res.ok) {
         notify.error(data.error ?? "Failed to share jobs");
@@ -125,11 +132,30 @@ export function ShareJobsToShipyardDialog({
       setMailto(data.mailto ?? null);
       setPortalPath(data.portalPath ?? null);
       setReferenceCode(data.request?.referenceCode ?? null);
+      if (data.email?.sent) {
+        notify.success("Invite email sent to yard contact");
+      } else if (data.email?.reason === "no_provider") {
+        notify.info("No email provider configured — use mailto or copy the invite link");
+      } else if (data.email?.reason === "no_email") {
+        notify.warning("Yard has no contact email — copy the invite link");
+      } else if (data.email?.reason === "send_failed") {
+        notify.warning(data.email.detail ?? "Email send failed — use mailto or copy the link");
+      }
       onShared?.();
     } finally {
       setSubmitting(false);
     }
-  }, [dockCycle, dueAt, jobIds, notes, onShared, vesselId, yardCompanyId]);
+  }, [
+    dockCycle,
+    dueAt,
+    jobIds,
+    notes,
+    onShared,
+    plannedEnd,
+    plannedStart,
+    vesselId,
+    yardCompanyId,
+  ]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -197,6 +223,24 @@ export function ShareJobsToShipyardDialog({
                 onValueChange={setDockCycle}
                 className="w-full"
               />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Planned dock start</p>
+                <Input
+                  type="date"
+                  value={plannedStart}
+                  onChange={(e) => setPlannedStart(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Planned dock end</p>
+                <Input
+                  type="date"
+                  value={plannedEnd}
+                  onChange={(e) => setPlannedEnd(e.target.value)}
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <p className="text-sm font-medium">Quote due date</p>

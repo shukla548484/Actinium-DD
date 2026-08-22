@@ -35,7 +35,7 @@ export function mapJobToQuoteCategory(input: {
     .join(" ")
     .toLowerCase();
 
-  if (/paint|coating|blast| antifoul|epoxy/.test(hay)) return "painting";
+  if (/paint|coating|blast|antifoul|epoxy/.test(hay)) return "painting";
   if (/deck|hatch|mooring|winch|crane|cargo gear|life.?boat|gangway/.test(hay)) return "deck";
   if (
     /hull|steel|wall|overboard|sea.?chest|shell|plate|tank.?boundary|rudder|anchor.?chain/.test(

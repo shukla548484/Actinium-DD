@@ -173,6 +173,7 @@ model Vessel {
   projects          Project[]        @relation("ProjectVessel")
   dryDockProjects   DryDockProject[]
   vesselJobs        DdVesselJob[]
+  simpleJobs        DdSimpleJob[]
   vesselDefects     VesselDefect[]
   vesselRequisitions VesselRequisition[]
   purchaseRequisitions PurchaseRequisition[]
@@ -187,6 +188,8 @@ model Vessel {
 
   nextDryDockDue    DateTime?        @map("next_dry_dock_due")
   lastDryDockDate   DateTime?        @map("last_dry_dock_date")
+  /// Last completed intermediate survey date (class cycle planning).
+  lastIntermediateSurveyDate DateTime? @map("last_intermediate_survey_date")
   classSociety      String?          @map("class_society")
   readinessScore    Int?             @map("readiness_score")
 
@@ -473,6 +476,11 @@ model Project {
   cprDays         Int?           @map("cpr_days")
   status          ProjectStatus  @default(draft)
   notes           String?
+  /// Optional Plan-3 preferred shipyard names (free text, up to 3 used in UI).
+  preferredShipyards String[]    @default([]) @map("preferred_shipyards")
+  /// User archive — hidden from normal lists; only Admin may hard-delete (deletedAt).
+  archivedAt      DateTime?      @map("archived_at")
+  archivedByUserId String?       @map("archived_by_user_id")
   scopeLocales    ScopeLocale[]  @default([en, zh, ja]) @map("scope_locales")
   originNode      SyncOriginNode @default(office) @map("origin_node")
   officeChangedAt DateTime       @default(now()) @map("office_changed_at")
@@ -490,12 +498,14 @@ model Project {
   vessel            Vessel?           @relation("ProjectVessel", fields: [vesselId], references: [id], onDelete: SetNull)
   dryDockProjects   DryDockProject[]  @relation("DryDockTenderLink")
   yardWorkProject   YardWorkProject?
+  currencyConversions ProjectCurrencyConversion[]
 
   @@index([organizationId])
   @@index([companyId])
   @@index([vesselId])
   @@index([officeChangedAt])
   @@index([deletedAt])
+  @@index([archivedAt])
   @@map("projects")
 }
 
@@ -1459,6 +1469,9 @@ model DryDockProject {
   lastShipyardSyncAt     DateTime?         @map("last_shipyard_sync_at")
   notes           String?
   deletedAt       DateTime?                @map("deleted_at")
+  /// User archive — hidden from normal lists; only Admin may hard-delete (deletedAt).
+  archivedAt      DateTime?                @map("archived_at")
+  archivedByUserId String?                 @map("archived_by_user_id")
   createdAt       DateTime                 @default(now()) @map("created_at")
   updatedAt       DateTime                 @updatedAt @map("updated_at")
 
@@ -1484,12 +1497,37 @@ model DryDockProject {
   vesselRequisitionsTarget     VesselRequisition[] @relation("VesselRequisitionTarget")
   vesselRequisitionsIntegrated VesselRequisition[] @relation("VesselRequisitionIntegrated")
   shipyardQuotationRequests    ShipyardQuotationRequest[]
+  currencyConversion           ProjectCurrencyConversion?
+  importedDefects              DdProjectDefect[]
 
   @@index([vesselId])
   @@index([status])
   @@index([projectType])
   @@index([deletedAt])
+  @@index([archivedAt])
   @@map("dry_dock_projects")
+}
+
+/// Superintendent Excel-imported defects for a dry-dock project (no photos).
+model DdProjectDefect {
+  id                    String    @id @default(cuid())
+  dryDockProjectId      String    @map("dry_dock_project_id")
+  department            String
+  defectDetails         String    @map("defect_details") @db.Text
+  machineryAssociated   String?   @map("machinery_associated")
+  requisitionNumber     String?   @map("requisition_number")
+  sortOrder             Int       @default(0) @map("sort_order")
+  importedFromFile      String?   @map("imported_from_file")
+  createdByUserId       String?   @map("created_by_user_id")
+  deletedAt             DateTime? @map("deleted_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  dryDockProject DryDockProject @relation(fields: [dryDockProjectId], references: [id], onDelete: Cascade)
+
+  @@index([dryDockProjectId, sortOrder])
+  @@index([deletedAt])
+  @@map("dd_project_defects")
 }
 
 model DdJob {
@@ -2001,6 +2039,8 @@ model DdChecklistItem {
   completedAt       DateTime? @map("completed_at")
   assignedTo        String?  @map("assigned_to")
   notes             String?
+  /// Structured Class Status Report AI extraction + user confirmation.
+  classStatusAnalysis Json?  @map("class_status_analysis")
   sortOrder         Int      @default(0) @map("sort_order")
   deletedAt         DateTime? @map("deleted_at")
   createdAt         DateTime @default(now()) @map("created_at")
@@ -3224,6 +3264,14 @@ model ShipyardQuotationRequest {
   notes              String?                        @db.Text
   requestedByName    String?                        @map("requested_by_name")
   currency           String                         @default("USD")
+  /// Yard/local currency code for dual quoting (e.g. KRW, CNY). Null = USD-only.
+  localCurrency      String?                        @map("local_currency")
+  /// Currency the yard entered rates in: USD or the localCurrency code.
+  quoteCurrency      String                         @default("USD") @map("quote_currency")
+  /// Local currency units per 1 USD at quote time (snapshot).
+  exchangeRateLocalPerUsd Float?                    @map("exchange_rate_local_per_usd")
+  /// project_manual | market_30d_avg | manual
+  exchangeRateSource String?                        @map("exchange_rate_source")
   deletedAt          DateTime?                      @map("deleted_at")
   createdAt          DateTime                       @default(now()) @map("created_at")
   updatedAt          DateTime                       @updatedAt @map("updated_at")
@@ -3297,6 +3345,9 @@ model ShipyardQuotationLine {
   unit          String   @default("ls")
   unitRate      Float?   @map("unit_rate")
   amount        Float?
+  /// Parallel USD amount when quoteCurrency is local (or mirror when USD).
+  unitRateUsd   Float?   @map("unit_rate_usd")
+  amountUsd     Float?   @map("amount_usd")
   currency      String   @default("USD")
   notes         String?  @db.Text
   createdAt     DateTime @default(now()) @map("created_at")
@@ -3370,4 +3421,123 @@ model ShipyardQuotationTariffSnapshot {
   schedule ShipyardTariffSchedule?  @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
 
   @@map("shipyard_quotation_tariff_snapshots")
+}
+
+/// Simple dry-dock Jobs (template v1) — separate from library DdVesselJob wizard.
+enum DdSimpleJobStatus {
+  draft
+  submitted
+  approved
+  rejected
+  cancelled
+}
+
+enum DdSimpleJobFamily {
+  paint
+}
+
+model DdSimpleJob {
+  id                   String             @id @default(cuid())
+  vesselId             String             @map("vessel_id")
+  /// Catalog family, e.g. paint
+  family               DdSimpleJobFamily  @default(paint)
+  /// Catalog job type code, e.g. hull_paint
+  jobType              String             @map("job_type")
+  title                String
+  notes                String?            @db.Text
+  priority             DdJobPriority      @default(medium)
+  status               DdSimpleJobStatus  @default(draft)
+  createdByEmployeeId  String?            @map("created_by_employee_id")
+  createdByName        String?            @map("created_by_name")
+  submittedAt          DateTime?          @map("submitted_at")
+  approvedAt           DateTime?          @map("approved_at")
+  approvedByName       String?            @map("approved_by_name")
+  approvedByEmployeeId String?            @map("approved_by_employee_id")
+  rejectedAt           DateTime?          @map("rejected_at")
+  rejectedByName       String?            @map("rejected_by_name")
+  rejectionReason      String?            @map("rejection_reason") @db.Text
+  cancelledAt          DateTime?          @map("cancelled_at")
+  cancelledByName      String?            @map("cancelled_by_name")
+  deletedAt            DateTime?          @map("deleted_at")
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+
+  vessel    Vessel                 @relation(fields: [vesselId], references: [id], onDelete: Cascade)
+  prepLines DdSimpleJobPrepLine[]
+  coatLines DdSimpleJobCoatLine[]
+
+  @@index([vesselId, status])
+  @@index([family, jobType])
+  @@index([deletedAt])
+  @@map("dd_simple_jobs")
+}
+
+/// Cost driver: area × prep grade (Sa1/Sa2/…) × m²
+model DdSimpleJobPrepLine {
+  id             String   @id @default(cuid())
+  jobId          String   @map("job_id")
+  /// Zone code: topside, boot-top, vertical-bottom, flat-bottom, …
+  areaCode       String   @map("area_code")
+  areaLabel      String?  @map("area_label")
+  /// Prep method code: sa1, sa2, sa2.5, hydroblasting, cleaning, …
+  prepMethodCode String   @map("prep_method_code")
+  prepMethodLabel String? @map("prep_method_label")
+  areaSqm        Float    @map("area_sqm")
+  notes          String?
+  sortOrder      Int      @default(0) @map("sort_order")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  job DdSimpleJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@map("dd_simple_job_prep_lines")
+}
+
+/// Coating system per area (Primer / Binder / Finish + optional DFT)
+model DdSimpleJobCoatLine {
+  id           String   @id @default(cuid())
+  jobId        String   @map("job_id")
+  areaCode     String   @map("area_code")
+  areaLabel    String?  @map("area_label")
+  primerCoats  Int      @default(0) @map("primer_coats")
+  binderCoats  Int      @default(0) @map("binder_coats")
+  finishCoats  Int      @default(0) @map("finish_coats")
+  dftRequired  Boolean  @default(false) @map("dft_required")
+  dftUm        Float?   @map("dft_um")
+  notes        String?
+  sortOrder    Int      @default(0) @map("sort_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  job DdSimpleJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@map("dd_simple_job_coat_lines")
+}
+
+/// Per-project FX: local currency units per 1 USD (Purchase-defined; market fallback).
+model ProjectCurrencyConversion {
+  id                     String   @id @default(cuid())
+  dryDockProjectId       String?  @unique @map("dry_dock_project_id")
+  projectId              String?  @unique @map("project_id")
+  localCurrency          String   @map("local_currency")
+  /// How many local currency units equal 1 USD.
+  localPerUsd            Float    @map("local_per_usd")
+  /// manual | market_30d_avg
+  source                 String   @default("manual")
+  marketAvgLocalPerUsd   Float?   @map("market_avg_local_per_usd")
+  marketFetchedAt        DateTime? @map("market_fetched_at")
+  notes                  String?
+  updatedByName          String?  @map("updated_by_name")
+  deletedAt              DateTime? @map("deleted_at")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  dryDockProject DryDockProject? @relation(fields: [dryDockProjectId], references: [id], onDelete: Cascade)
+  project        Project?        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([localCurrency])
+  @@index([deletedAt])
+  @@map("project_currency_conversions")
 }

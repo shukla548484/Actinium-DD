@@ -68,11 +68,11 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
         if (data?.user) {
           const user = data.user as SessionUser;
           setSessionUser(user);
-          const userType = user.rbacUserType ?? (user.isVesselCrew ? "vessel" : "office");
-          if (userType === "vessel") {
+          const nextUserType = user.rbacUserType ?? (user.isVesselCrew ? "vessel" : "office");
+          if (nextUserType === "vessel") {
             setPortalNavItems(buildCrewTopNavItems(user.assignedPageKeys ?? []));
           } else {
-            const base = buildTopNavForUserType(userType);
+            const base = buildTopNavForUserType(nextUserType);
             setPortalNavItems(
               filterTopNavByAssignments(base, {
                 unrestricted: user.moduleAccessUnrestricted === true,
@@ -84,7 +84,9 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
         }
       })
       .catch(() => {});
-  }, [isYardPortal, isLogin, isPortalHub, pathname]);
+    // Load once per shell mount — do not refetch on every pathname change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional stable session hydrate
+  }, [isYardPortal, isLogin, isPortalHub]);
 
   const userType = useMemo<RbacUserType>(() => {
     if (sessionUser?.rbacUserType) return sessionUser.rbacUserType;

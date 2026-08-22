@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 type NavItemLinkProps = {
   href: string;
-  label: string;
+  label: React.ReactNode;
   icon: LucideIcon;
   active?: boolean;
   title?: string;
@@ -43,14 +43,14 @@ export function NavItemLink({
       )}
     >
       <Icon className={cn(iconClass, "shrink-0 opacity-80")} aria-hidden />
-      <span className="truncate">{label}</span>
+      <span className="min-w-0 flex-1 truncate">{label}</span>
     </Link>
   );
 }
 
 type TopNavSubmenuLinkProps = {
   href: string;
-  label: string;
+  label: React.ReactNode;
   icon: LucideIcon;
   active?: boolean;
   /** Parent owns routing — this node unmounts when the dropdown closes. */
@@ -58,7 +58,7 @@ type TopNavSubmenuLinkProps = {
   className?: string;
 };
 
-/** Top bar dropdown item — single-line label; parent handles routing. */
+/** Top bar dropdown item — parent handles routing. */
 export function TopNavSubmenuLink({
   href,
   label,
@@ -72,7 +72,7 @@ export function TopNavSubmenuLink({
       href={href}
       role="menuitem"
       className={cn(
-        "flex cursor-pointer items-center gap-2.5 px-4 py-2 text-sm text-popover-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
+        "flex cursor-pointer items-start gap-2.5 px-4 py-2 text-sm text-popover-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
         active && "bg-accent/50 font-medium",
         className,
       )}
@@ -84,8 +84,8 @@ export function TopNavSubmenuLink({
         onNavigate(href);
       }}
     >
-      <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-      <span className="truncate">{label}</span>
+      <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+      <span className="min-w-0 flex-1">{label}</span>
     </a>
   );
 }

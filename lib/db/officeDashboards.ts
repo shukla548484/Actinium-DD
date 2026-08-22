@@ -8,11 +8,16 @@ export async function getFleetDashboardStats() {
       prisma.dryDockProject.count({
         where: {
           ...notDeleted,
+          archivedAt: null,
           status: { in: ["execution", "in_progress", "docking", "mobilization"] },
         },
       }),
       prisma.dryDockProject.count({
-        where: { ...notDeleted, status: { in: ["planning", "draft", "budgeting"] } },
+        where: {
+          ...notDeleted,
+          archivedAt: null,
+          status: { in: ["planning", "draft", "budgeting"] },
+        },
       }),
       prisma.employee.count({ where: { ...notDeleted, status: "active" } }),
       prisma.employeeVessel.count({ where: { signOffDate: null } }),
@@ -29,7 +34,7 @@ export async function getFleetDashboardStats() {
 
 export async function getExecutiveBudgetSummary() {
   const projects = await prisma.dryDockProject.findMany({
-    where: { ...notDeleted, status: { not: "cancelled" } },
+    where: { ...notDeleted, archivedAt: null, status: { not: "cancelled" } },
     select: {
       id: true,
       name: true,

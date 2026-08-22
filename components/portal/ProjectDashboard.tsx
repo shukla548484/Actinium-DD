@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { BackButton } from "@/components/layout/BackButton";
 import { HybridComparisonMatrix } from "@/components/portal/HybridComparisonMatrix";
 import { CategoryEditor } from "@/components/portal/CategoryEditor";
@@ -37,7 +38,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { ProjectDetail, ProjectStatus } from "@/lib/tender/types";
 
@@ -53,8 +54,31 @@ export function ProjectDashboard({ project: initial }: Props) {
   const [tab, setTab] = useState<Tab>("overview");
   const [refreshKey, setRefreshKey] = useState(0);
   const [editing, setEditing] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [canDelete, setCanDelete] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    void fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((data) => {
+        const role = data?.user?.roleCode ?? "";
+        const unrestricted = Boolean(data?.user?.moduleAccessUnrestricted);
+        setUserId(data?.user?.userId ?? null);
+        setCanDelete(
+          unrestricted ||
+            role === "SYS_ADMIN" ||
+            role === "COMP_ADMIN",
+        );
+      })
+      .catch(() => {
+        setCanDelete(false);
+        setUserId(null);
+      });
+  }, []);
 
   async function refresh() {
     const res = await fetch(`/api/projects/${project.id}`);
@@ -63,6 +87,31 @@ export function ProjectDashboard({ project: initial }: Props) {
       setProject(data.project);
       setRefreshKey((k) => k + 1);
     }
+  }
+
+  async function handleArchive() {
+    setArchiving(true);
+    const res = await fetch(`/api/projects/${project.id}/archive`, { method: "POST" });
+    setArchiving(false);
+    setArchiveOpen(false);
+    if (res.ok) {
+      router.push("/projects/archived");
+      router.refresh();
+    }
+  }
+
+  async function handleUnarchive() {
+    setArchiving(true);
+    const res = await fetch(`/api/projects/${project.id}/archive`, { method: "DELETE" });
+    setArchiving(false);
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      window.alert(data.error ?? "Unarchive failed");
+      return;
+    }
+    await refresh();
+    router.push(`/projects/${project.id}`);
+    router.refresh();
   }
 
   async function handleDelete() {
@@ -74,6 +123,14 @@ export function ProjectDashboard({ project: initial }: Props) {
       router.push("/projects");
     }
   }
+
+  const isArchived = Boolean(project.archivedAt);
+  const canUnarchive =
+    isArchived &&
+    (canDelete ||
+      (userId != null &&
+        project.archivedByUserId != null &&
+        project.archivedByUserId === userId));
 
   const tabs: { id: Tab; label: string; count?: number }[] = [
     { id: "overview", label: "Overview" },
@@ -91,26 +148,88 @@ export function ProjectDashboard({ project: initial }: Props) {
           <p className="text-sm text-muted-foreground">
             {project.vesselName ?? "No vessel"} · {project.currency} ·{" "}
             <StatusBadge status={project.status} />
+            {isArchived ? (
+              <>
+                {" "}
+                · <Badge variant="secondary">Archived</Badge>
+              </>
+            ) : null}
           </p>
         </div>
         <div className="flex gap-2">
-          <BackButton fallbackHref="/projects" label="All projects" />
-          <Button
-            variant="destructive"
-            onClick={() => setDeleteOpen(true)}
-            disabled={deleting}
-          >
-            {deleting ? "Deleting…" : "Delete"}
-          </Button>
+          <BackButton
+            fallbackHref={isArchived ? "/projects/archived" : "/projects"}
+            label={isArchived ? "Archived" : "All projects"}
+          />
+          {!isArchived ? (
+            <Button
+              variant="outline"
+              onClick={() => setArchiveOpen(true)}
+              disabled={archiving}
+            >
+              {archiving ? "Archiving…" : "Archive"}
+            </Button>
+          ) : canUnarchive ? (
+            <Button
+              variant="outline"
+              onClick={() => void handleUnarchive()}
+              disabled={archiving}
+            >
+              {archiving ? "Unarchiving…" : "Unarchive"}
+            </Button>
+          ) : null}
+          {canDelete ? (
+            <Button
+              variant="destructive"
+              onClick={() => setDeleteOpen(true)}
+              disabled={deleting}
+            >
+              {deleting ? "Deleting…" : "Delete"}
+            </Button>
+          ) : null}
         </div>
       </header>
+
+      {isArchived ? (
+        <Alert>
+          <AlertDescription>
+            This project is archived. It is hidden from normal lists and only shown under{" "}
+            <Link href="/projects/archived" className="underline">
+              Archived
+            </Link>
+            .
+            {canUnarchive
+              ? " You can unarchive it to restore it to active lists."
+              : " Only the user who archived it, or an administrator, can unarchive it."}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      <AlertDialog open={archiveOpen} onOpenChange={setArchiveOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive project?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The project will move to your Archived section and disappear from normal
+              project lists. Only an administrator can permanently delete it.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void handleArchive()} disabled={archiving}>
+              {archiving ? "Archiving…" : "Archive"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete project?</AlertDialogTitle>
             <AlertDialogDescription>
-              Delete this project and all its data? This cannot be undone.
+              Permanently delete this project and all its data? This cannot be undone.
+              Prefer Archive for most cases.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

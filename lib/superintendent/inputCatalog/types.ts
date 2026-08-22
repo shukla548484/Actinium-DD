@@ -26,8 +26,11 @@ export type InputFieldType =
   | "number"
   | "date"
   | "select"
+  | "multiselect"
   | "boolean"
-  | "photos_note";
+  | "photos_note"
+  | "photos"
+  | "files";
 
 export type InputFieldDef = {
   key: string;

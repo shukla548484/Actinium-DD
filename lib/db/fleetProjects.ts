@@ -19,6 +19,7 @@ export async function listFleetProjects(vesselId?: string): Promise<Project[]> {
   const rows = await prisma.project.findMany({
     where: {
       ...notDeleted,
+      archivedAt: null,
       ...(vesselId ? { vesselId } : {}),
     },
     orderBy: { updatedAt: "desc" },

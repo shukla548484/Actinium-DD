@@ -18,18 +18,39 @@ export async function GET(
   const { searchParams } = new URL(request.url);
   const mode = searchParams.get("mode") ?? "current";
   const bucket = searchParams.get("bucket") ?? undefined;
+  const buckets = searchParams
+    .get("buckets")
+    ?.split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 
   const categories = await ensureProjectCategories(projectId);
+  const selectedCategories =
+    buckets && buckets.length > 0
+      ? categories.filter((category) => buckets.includes(category.slug))
+      : categories;
+  if (buckets && buckets.length > 0 && selectedCategories.length === 0) {
+    return NextResponse.json({ error: "No matching categories selected." }, { status: 400 });
+  }
 
   let buffer: Buffer;
   let filename: string;
 
   if (mode === "empty") {
-    buffer = buildEmptySpecTemplateWorkbook(categories);
-    filename = `${project.referenceCode ?? project.id}-spec-template.xlsx`;
+    buffer = buildEmptySpecTemplateWorkbook(selectedCategories);
+    const suffix =
+      selectedCategories.length === 1
+        ? selectedCategories[0]?.slug
+        : `${selectedCategories.length}-categories`;
+    filename = `${project.referenceCode ?? project.id}-spec-template-${suffix}.xlsx`;
   } else {
     const lines = await listSpecLines(projectId);
-    const filtered = bucket ? lines.filter((l) => l.bucket === bucket) : lines;
+    const filtered =
+      buckets && buckets.length > 0
+        ? lines.filter((line) => buckets.includes(line.bucket))
+        : bucket
+          ? lines.filter((line) => line.bucket === bucket)
+          : lines;
     buffer = buildSpecTemplateWorkbook(filtered, categories);
     filename = bucket
       ? `${project.referenceCode ?? project.id}-spec-${bucket}.xlsx`

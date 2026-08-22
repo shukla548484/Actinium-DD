@@ -21,10 +21,13 @@ export function CombinedInputReadinessPanel({ dryDockProjectId, compact }: Props
     void fetch(
       `/api/superintendent/projects/${dryDockProjectId}/inputs/readiness?combined=true`,
     )
-      .then((r) => r.json())
-      .then((d: { combinedReadiness?: CombinedInputReadinessReport }) =>
-        setData(d.combinedReadiness ?? null),
-      );
+      .then(async (r) => {
+        if (!r.ok) return null;
+        const d = (await r.json()) as { combinedReadiness?: CombinedInputReadinessReport };
+        return d.combinedReadiness ?? null;
+      })
+      .then((combined) => setData(combined))
+      .catch(() => setData(null));
   }, [dryDockProjectId]);
 
   if (!data || data.overall.totalSections === 0) return null;

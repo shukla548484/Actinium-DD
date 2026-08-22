@@ -20,6 +20,7 @@ export async function GET(request: Request) {
 
   const tenderWhere = {
     ...notDeleted,
+    archivedAt: null,
     ...(vesselId ? { vesselId } : {}),
     ...(vesselIds && !vesselId ? { vesselId: { in: vesselIds } } : {}),
   };

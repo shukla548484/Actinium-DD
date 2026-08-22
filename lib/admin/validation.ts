@@ -5,6 +5,22 @@ import { PHONE_E164_REGEX } from "@/lib/admin/phone";
 
 export const entityStatusSchema = z.enum(["active", "wait", "inactive"]);
 
+const optionalIsoDate = z
+  .union([z.string(), z.null(), z.undefined()])
+  .transform((value, ctx) => {
+    if (value == null || value === "") return null;
+    if (typeof value !== "string") {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid date" });
+      return z.NEVER;
+    }
+    const day = value.trim().slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Use YYYY-MM-DD date" });
+      return z.NEVER;
+    }
+    return day;
+  });
+
 export const companyCategorySchema = z.enum([
   "shipyard",
   "ship_management",
@@ -27,9 +43,11 @@ export const companyCreateSchema = z.object({
 
 export const companyUpdateSchema = companyCreateSchema.partial();
 
-export const vesselCreateSchema = z.object({
+const vesselFieldsSchema = z.object({
   companyId: z.string().min(1, "Company is required"),
   name: z.string().min(2, "Vessel name is required"),
+  /** manual = user-entered code; auto = server generates unique AAA-BBB */
+  codeMode: z.enum(["manual", "auto"]).optional().default("auto"),
   code: z.string().optional(),
   imoNumber: z.string().nullable().optional(),
   flag: z.string().nullable().optional(),
@@ -37,10 +55,26 @@ export const vesselCreateSchema = z.object({
   callSign: z.string().nullable().optional(),
   grossTonnage: z.number().nullable().optional(),
   yearBuilt: z.number().int().min(1900).max(2100).nullable().optional(),
+  lastDryDockDate: optionalIsoDate.optional(),
+  lastIntermediateSurveyDate: optionalIsoDate.optional(),
+  nextDryDockDue: optionalIsoDate.optional(),
   status: entityStatusSchema.optional(),
 });
 
-export const vesselUpdateSchema = vesselCreateSchema.partial().omit({ companyId: true }).extend({
+export const vesselCreateSchema = vesselFieldsSchema.superRefine((data, ctx) => {
+  if (data.codeMode === "manual") {
+    const code = data.code?.trim() ?? "";
+    if (!code) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Vessel code is required for manual entry",
+        path: ["code"],
+      });
+    }
+  }
+});
+
+export const vesselUpdateSchema = vesselFieldsSchema.partial().omit({ companyId: true }).extend({
   companyId: z.string().optional(),
 });
 

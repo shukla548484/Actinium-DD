@@ -13,6 +13,10 @@ import {
 } from "@/lib/superintendent/childRouteScope";
 import { assertDryDockProjectInScope } from "@/lib/superintendent/scope";
 import { ddChecklistItemCreateSchema, parseBody } from "@/lib/superintendent/validation";
+import {
+  hasCompletedClassStatusUpload,
+  isClassStatusChecklistTitle,
+} from "@/lib/superintendent/classStatusAnalysis";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -44,9 +48,34 @@ export async function GET(request: Request) {
     }),
   ]);
 
+  const idsToSync = checklistItems
+    .filter(
+      (item) =>
+        !item.isCompleted &&
+        isClassStatusChecklistTitle(item.title) &&
+        hasCompletedClassStatusUpload(item.classStatusAnalysis),
+    )
+    .map((item) => item.id);
+
+  let syncedCompletedCount = completedCount;
+  if (idsToSync.length > 0) {
+    const now = new Date();
+    await prisma.ddChecklistItem.updateMany({
+      where: { id: { in: idsToSync } },
+      data: { isCompleted: true, completedAt: now },
+    });
+    for (const item of checklistItems) {
+      if (idsToSync.includes(item.id)) {
+        item.isCompleted = true;
+        item.completedAt = now;
+      }
+    }
+    syncedCompletedCount += idsToSync.length;
+  }
+
   return NextResponse.json({
     ...paginatedResult(checklistItems, total, page, limit),
-    completedCount,
+    completedCount: syncedCompletedCount,
   });
 }
 

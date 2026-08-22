@@ -53,7 +53,7 @@ export type TemplateRfqStep = {
  */
 export const STANDARD_PRE_DOCK_CHECKLIST: TemplateChecklistItem[] = [
   // Planning
-  { title: "Pre-dock class documentation", category: "Planning" },
+  { title: "Class status report upload", category: "Planning" },
   { title: "Survey status & outstanding recommendations reviewed", category: "Planning" },
   { title: "Previous bottom survey records reviewed", category: "Planning" },
   { title: "Docking plan approved", category: "Planning" },
@@ -236,6 +236,7 @@ export const PROJECT_TEMPLATES: Record<DryDockProjectType, ProjectTemplate> = {
       { title: "Intermediate survey scope agreed", category: "Planning" },
       ...STANDARD_PRE_DOCK_CHECKLIST.filter(
         (item) =>
+          item.title !== "Class status report upload" &&
           item.title !== "Pre-dock class documentation" &&
           item.title !== "Previous bottom survey records reviewed",
       ),

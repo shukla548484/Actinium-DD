@@ -41,7 +41,7 @@ const notDeleted = { deletedAt: null };
 
 export async function listProjects(): Promise<Project[]> {
   const rows = await prisma.project.findMany({
-    where: notDeleted,
+    where: { ...notDeleted, archivedAt: null },
     orderBy: { updatedAt: "desc" },
   });
   return rows.map(mapProject);
@@ -80,56 +80,90 @@ export async function createProject(input: {
   dryDockDays?: number;
   cprDays?: number;
   notes?: string;
+  preferredShipyards?: string[];
   scopeLocales?: ScopeLocale[];
 }): Promise<ProjectDetail> {
   const fromMaster = await buildProjectSpecFromMaster("pending");
   const specTemplate = fromMaster ?? buildDefaultSpecLines("pending");
 
-  const project = await prisma.project.create({
-    data: {
-      name: input.name,
-      vesselName: input.vesselName ?? null,
-      vesselId: input.vesselId ?? null,
-      referenceCode: input.referenceCode ?? null,
-      currency: input.currency ?? "USD",
-      shipyardDays: input.shipyardDays ?? null,
-      dryDockDays: input.dryDockDays ?? null,
-      cprDays: input.cprDays ?? null,
-      notes: input.notes ?? null,
-      originNode: "office",
-      officeChangedAt: new Date(),
-      scopeLocales: (input.scopeLocales ?? ["en", "zh", "ja"]).map(toPrismaScopeLocale),
-      specLines: {
-        create: specTemplate.map((line) => ({
-          bucket: line.bucket,
-          sortOrder: line.sortOrder,
-          lineCode: line.lineCode,
-          descriptionEn: line.descriptions.en,
-          descriptionZh: line.descriptions.zh,
-          descriptionJa: line.descriptions.ja,
-          unit: line.unit,
-          defaultQty: line.defaultQty,
-          scopeDays: line.scopeDays ?? null,
-          scopeAreaM2: line.scopeAreaM2 ?? null,
-          scopeNotes: line.scopeNotes ?? null,
-          ownerLocked: line.ownerLocked ?? true,
-          allowDiscount: line.allowDiscount ?? true,
-          maxDiscountPct: line.maxDiscountPct ?? null,
-          referenceUnitRate: line.referenceUnitRate ?? null,
-          calcRule: line.calcRule,
-          calcParams: line.calcParams as Prisma.InputJsonValue,
-          serviceDefId: line.serviceDefId,
-          isOptional: line.isOptional,
-          originNode: "office",
-          officeChangedAt: new Date(),
-        })),
+  const { assertUniqueProjectName } = await import("@/lib/projects/uniqueName");
+  await assertUniqueProjectName(input.name);
+
+  const preferredShipyards = (input.preferredShipyards ?? [])
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, 3);
+
+  const baseData = {
+    name: input.name,
+    vesselName: input.vesselName ?? null,
+    ...(input.vesselId ? { vessel: { connect: { id: input.vesselId } } } : {}),
+    referenceCode: input.referenceCode ?? null,
+    currency: input.currency ?? "USD",
+    shipyardDays: input.shipyardDays ?? null,
+    dryDockDays: input.dryDockDays ?? null,
+    cprDays: input.cprDays ?? null,
+    notes: input.notes ?? null,
+    originNode: "office" as const,
+    officeChangedAt: new Date(),
+    scopeLocales: (input.scopeLocales ?? ["en", "zh", "ja"]).map(toPrismaScopeLocale),
+    specLines: {
+      create: specTemplate.map((line) => ({
+        bucket: line.bucket,
+        sortOrder: line.sortOrder,
+        lineCode: line.lineCode,
+        descriptionEn: line.descriptions.en,
+        descriptionZh: line.descriptions.zh,
+        descriptionJa: line.descriptions.ja,
+        unit: line.unit,
+        defaultQty: line.defaultQty,
+        scopeDays: line.scopeDays ?? null,
+        scopeAreaM2: line.scopeAreaM2 ?? null,
+        scopeNotes: line.scopeNotes ?? null,
+        ownerLocked: line.ownerLocked ?? true,
+        allowDiscount: line.allowDiscount ?? true,
+        maxDiscountPct: line.maxDiscountPct ?? null,
+        referenceUnitRate: line.referenceUnitRate ?? null,
+        calcRule: line.calcRule,
+        calcParams: line.calcParams as Prisma.InputJsonValue,
+        serviceDefId: line.serviceDefId,
+        isOptional: line.isOptional,
+        originNode: "office" as const,
+        officeChangedAt: new Date(),
+      })),
+    },
+  };
+
+  let project;
+  try {
+    project = await prisma.project.create({
+      data: { ...baseData, preferredShipyards },
+      include: {
+        specLines: { orderBy: { sortOrder: "asc" } },
+        yardInvites: true,
       },
-    },
-    include: {
-      specLines: { orderBy: { sortOrder: "asc" } },
-      yardInvites: true,
-    },
-  });
+    });
+  } catch (err) {
+    // Stale Prisma client may not know preferredShipyards yet — create then patch via SQL.
+    const message = err instanceof Error ? err.message : "";
+    if (!/preferredShipyards|preferred_shipyards/i.test(message)) throw err;
+
+    project = await prisma.project.create({
+      data: baseData,
+      include: {
+        specLines: { orderBy: { sortOrder: "asc" } },
+        yardInvites: true,
+      },
+    });
+
+    if (preferredShipyards.length > 0) {
+      await prisma.$executeRaw`
+        UPDATE projects
+        SET preferred_shipyards = ${preferredShipyards}::text[]
+        WHERE id = ${project.id}
+      `;
+    }
+  }
 
   await seedStandardCategories(project.id);
   const categories = await listProjectCategories(project.id);
@@ -163,6 +197,11 @@ export async function updateProject(
 ): Promise<Project | null> {
   const existing = await getProject(id);
   if (!existing) return null;
+
+  if (patch.name?.trim()) {
+    const { assertUniqueProjectName } = await import("@/lib/projects/uniqueName");
+    await assertUniqueProjectName(patch.name, { excludeProjectId: id });
+  }
 
   const row = await prisma.project.update({
     where: { id },

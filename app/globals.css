@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "../styles/dd-theme.css";
 @import "../styles/dd-layout.css";
+@import "../styles/color-themes.css";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
@@ -25,6 +26,7 @@
   --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
   --color-input: var(--input);
+  --color-input-fill: var(--input-fill);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
   --color-accent-foreground: var(--accent-foreground);
@@ -58,75 +60,79 @@ body {
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  /* Slate backgrounds · cool blue chrome · warm message accents (see dd-theme.css) */
+  --background: var(--dd-bg-1);
+  --foreground: var(--dd-bg-8);
+  --card: #ffffff;
+  --card-foreground: var(--dd-bg-8);
+  --popover: #ffffff;
+  --popover-foreground: var(--dd-bg-8);
+  --primary: var(--dd-accent-blue-deep);
+  --primary-foreground: #f8fafc;
+  --secondary: var(--dd-accent-blue-soft);
+  --secondary-foreground: var(--dd-accent-navy);
+  --muted: var(--dd-bg-2);
+  --muted-foreground: var(--dd-bg-6);
+  --accent: var(--dd-accent-indigo-soft);
+  --accent-foreground: var(--dd-accent-navy);
+  --destructive: var(--dd-msg-crimson);
+  --border: color-mix(in oklab, var(--dd-accent-blue) 28%, var(--dd-bg-3));
+  /* Field chrome: slate --dd-bg-5 (#adb5bd), not --dd-bg-3 which matches mosaic/card fills. */
+  --input: var(--dd-bg-5);
+  --input-fill: #ffffff;
+  --ring: var(--dd-accent-indigo);
+  --chart-1: var(--dd-accent-cyan);
+  --chart-2: var(--dd-accent-blue);
+  --chart-3: var(--dd-accent-indigo);
+  --chart-4: var(--dd-msg-orange);
+  --chart-5: var(--dd-msg-crimson);
   --radius: 0.625rem;
-  --sidebar: #111111;
+  --sidebar: var(--dd-bg-8);
   --sidebar-foreground: #fafafa;
-  --sidebar-primary: #e11d48;
+  --sidebar-primary: var(--dd-accent-sky);
   --sidebar-primary-foreground: #fafafa;
-  --sidebar-accent: #262626;
+  --sidebar-accent: var(--dd-bg-7);
   --sidebar-accent-foreground: #fafafa;
-  --sidebar-border: #3f3f46;
-  --sidebar-ring: #f97316;
+  --sidebar-border: var(--dd-bg-7);
+  --sidebar-ring: var(--dd-accent-cyan);
   --date-picker-cell-size: 2.75rem;
   --date-picker-popover-width: 22rem;
   --date-picker-min-width: 20rem;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: var(--dd-bg-8);
+  --foreground: var(--dd-bg-1);
+  --card: var(--dd-bg-7);
+  --card-foreground: var(--dd-bg-1);
+  --popover: var(--dd-bg-7);
+  --popover-foreground: var(--dd-bg-1);
+  --primary: var(--dd-accent-sky);
+  --primary-foreground: var(--dd-bg-8);
+  --secondary: color-mix(in oklab, var(--dd-accent-indigo) 35%, var(--dd-bg-7));
+  --secondary-foreground: var(--dd-bg-1);
+  --muted: var(--dd-bg-7);
+  --muted-foreground: var(--dd-bg-4);
+  --accent: color-mix(in oklab, var(--dd-accent-blue) 30%, var(--dd-bg-7));
+  --accent-foreground: var(--dd-bg-1);
+  --destructive: var(--dd-msg-coral);
+  --border: color-mix(in oklab, var(--dd-accent-sky) 28%, transparent);
+  --input: var(--dd-bg-5);
+  --input-fill: color-mix(in oklab, var(--dd-bg-8) 78%, var(--dd-bg-1));
+  --ring: var(--dd-accent-cyan);
+  --chart-1: var(--dd-accent-cyan);
+  --chart-2: var(--dd-accent-sky);
+  --chart-3: var(--dd-accent-indigo);
+  --chart-4: var(--dd-msg-orange);
+  --chart-5: var(--dd-msg-crimson);
+  --sidebar: var(--dd-bg-8);
+  --sidebar-foreground: var(--dd-bg-1);
+  --sidebar-primary: var(--dd-accent-cyan);
+  --sidebar-primary-foreground: var(--dd-bg-8);
+  --sidebar-accent: var(--dd-bg-7);
+  --sidebar-accent-foreground: var(--dd-bg-1);
+  --sidebar-border: var(--dd-bg-7);
+  --sidebar-ring: var(--dd-accent-sky);
 }
 
 @layer base {
@@ -141,6 +147,15 @@ body {
     @apply bg-background text-foreground;
     min-height: 100%;
     min-height: -webkit-fill-available;
+  }
+
+  /* Native checkbox/radio that skip shared Checkbox still pick up the slate field color. */
+  input[type="checkbox"],
+  input[type="radio"] {
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--dd-accent-indigo);
+    color: var(--input);
   }
 }
 
@@ -236,6 +251,144 @@ body {
 
 .actinium-loader-overlay-enter {
   animation: actinium-loader-fade-in 0.2s ease-out forwards;
+}
+
+/* Cards: slate fills (sheet 1) + cool dual-tone borders (sheet 2) */
+.dd-card-dual-border {
+  --dd-card-fill: var(--dd-mosaic-fill-5);
+  --dd-card-border-a: var(--dd-mosaic-border-3a);
+  --dd-card-border-b: var(--dd-mosaic-border-3b);
+  --dd-card-glow-a: color-mix(in oklab, var(--dd-accent-sky) 20%, transparent);
+  --dd-card-glow-b: color-mix(in oklab, var(--dd-accent-indigo) 16%, transparent);
+  --card: var(--dd-card-fill);
+
+  border: 1.5px solid transparent;
+  background:
+    linear-gradient(var(--dd-card-fill), var(--dd-card-fill)) padding-box,
+    linear-gradient(
+      var(--dd-card-border-angle, 135deg),
+      var(--dd-card-border-a),
+      var(--dd-card-border-b)
+    )
+      border-box;
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--dd-accent-blue) 12%, transparent),
+    -6px -4px 18px -8px var(--dd-card-glow-a),
+    6px 4px 18px -8px var(--dd-card-glow-b),
+    0 1px 2px color-mix(in oklab, var(--foreground) 4%, transparent);
+}
+
+*:has(> [data-slot="card"]) > [data-slot="card"]:nth-child(5n + 1),
+*:has(> * > [data-slot="card"]) > *:nth-child(5n + 1) > [data-slot="card"] {
+  --dd-card-fill: var(--dd-mosaic-fill-1);
+  --dd-card-border-a: var(--dd-mosaic-border-1a);
+  --dd-card-border-b: var(--dd-mosaic-border-1b);
+  --dd-card-glow-a: color-mix(in oklab, var(--dd-accent-cyan) 22%, transparent);
+  --dd-card-glow-b: color-mix(in oklab, var(--dd-accent-sky) 18%, transparent);
+  --card: var(--dd-card-fill);
+}
+
+*:has(> [data-slot="card"]) > [data-slot="card"]:nth-child(5n + 2),
+*:has(> * > [data-slot="card"]) > *:nth-child(5n + 2) > [data-slot="card"] {
+  --dd-card-fill: var(--dd-mosaic-fill-2);
+  --dd-card-border-a: var(--dd-mosaic-border-2a);
+  --dd-card-border-b: var(--dd-mosaic-border-2b);
+  --dd-card-glow-a: color-mix(in oklab, var(--dd-accent-sky) 22%, transparent);
+  --dd-card-glow-b: color-mix(in oklab, var(--dd-accent-blue) 18%, transparent);
+  --card: var(--dd-card-fill);
+}
+
+*:has(> [data-slot="card"]) > [data-slot="card"]:nth-child(5n + 3),
+*:has(> * > [data-slot="card"]) > *:nth-child(5n + 3) > [data-slot="card"] {
+  --dd-card-fill: var(--dd-mosaic-fill-3);
+  --dd-card-border-a: var(--dd-mosaic-border-3a);
+  --dd-card-border-b: var(--dd-mosaic-border-3b);
+  --dd-card-glow-a: color-mix(in oklab, var(--dd-accent-blue) 22%, transparent);
+  --dd-card-glow-b: color-mix(in oklab, var(--dd-accent-indigo) 18%, transparent);
+  --card: var(--dd-card-fill);
+}
+
+*:has(> [data-slot="card"]) > [data-slot="card"]:nth-child(5n + 4),
+*:has(> * > [data-slot="card"]) > *:nth-child(5n + 4) > [data-slot="card"] {
+  --dd-card-fill: var(--dd-mosaic-fill-4);
+  --dd-card-border-a: var(--dd-mosaic-border-4a);
+  --dd-card-border-b: var(--dd-mosaic-border-4b);
+  --dd-card-glow-a: color-mix(in oklab, var(--dd-accent-indigo) 22%, transparent);
+  --dd-card-glow-b: color-mix(in oklab, var(--dd-accent-violet) 18%, transparent);
+  --card: var(--dd-card-fill);
+}
+
+*:has(> [data-slot="card"]) > [data-slot="card"]:nth-child(5n + 5),
+*:has(> * > [data-slot="card"]) > *:nth-child(5n + 5) > [data-slot="card"] {
+  --dd-card-fill: var(--dd-mosaic-fill-5);
+  --dd-card-border-a: var(--dd-mosaic-border-5a);
+  --dd-card-border-b: var(--dd-mosaic-border-5b);
+  --dd-card-glow-a: color-mix(in oklab, var(--dd-accent-teal) 22%, transparent);
+  --dd-card-glow-b: color-mix(in oklab, var(--dd-accent-cyan) 18%, transparent);
+  --card: var(--dd-card-fill);
+}
+
+.dd-card-dual-border.border-dashed {
+  border-color: color-mix(in oklab, var(--dd-card-border-a) 55%, var(--border));
+  background: var(--dd-card-fill);
+  background-image: none;
+  box-shadow:
+    -4px -2px 14px -10px var(--dd-card-glow-a),
+    4px 2px 14px -10px var(--dd-card-glow-b);
+}
+
+/* Tables: 2-color zebra stripes (slate sheet) + cool blue borders */
+[data-slot="table-body"] > tr:nth-child(odd) {
+  background-color: var(--dd-bg-1);
+}
+[data-slot="table-body"] > tr:nth-child(even) {
+  background-color: var(--dd-bg-2);
+}
+
+[data-slot="table-body"] > tr:hover {
+  background-color: color-mix(in oklab, var(--dd-accent-sky-soft) 55%, white) !important;
+}
+
+[data-slot="table-header"] > tr {
+  background: linear-gradient(
+    90deg,
+    var(--dd-bg-2),
+    color-mix(in oklab, var(--dd-accent-blue-soft) 50%, var(--dd-bg-2)),
+    var(--dd-bg-3)
+  );
+  border-bottom: 2px solid color-mix(in oklab, var(--dd-accent-blue) 45%, var(--border));
+}
+
+[data-slot="table-row"] {
+  border-bottom-color: color-mix(in oklab, var(--dd-accent-indigo) 22%, var(--border));
+}
+
+tbody > tr:nth-child(odd):not([data-slot]) {
+  background-color: var(--dd-bg-1);
+}
+tbody > tr:nth-child(even):not([data-slot]) {
+  background-color: var(--dd-bg-2);
+}
+
+.dark .dd-card-dual-border {
+  --dd-mosaic-fill-1: color-mix(in oklab, var(--dd-bg-7) 88%, var(--dd-accent-cyan));
+  --dd-mosaic-fill-2: color-mix(in oklab, var(--dd-bg-7) 90%, var(--dd-accent-sky));
+  --dd-mosaic-fill-3: color-mix(in oklab, var(--dd-bg-7) 90%, var(--dd-accent-blue));
+  --dd-mosaic-fill-4: color-mix(in oklab, var(--dd-bg-7) 90%, var(--dd-accent-indigo));
+  --dd-mosaic-fill-5: var(--dd-bg-7);
+  --dd-card-glow-a: color-mix(in oklab, var(--dd-accent-cyan) 28%, transparent);
+  --dd-card-glow-b: color-mix(in oklab, var(--dd-accent-indigo) 24%, transparent);
+}
+
+.dark [data-slot="table-body"] > tr:nth-child(odd) {
+  background-color: var(--dd-bg-8);
+}
+.dark [data-slot="table-body"] > tr:nth-child(even) {
+  background-color: var(--dd-bg-7);
+}
+
+.dark [data-slot="table-body"] > tr:hover {
+  background-color: color-mix(in oklab, var(--dd-accent-blue) 28%, var(--dd-bg-7)) !important;
 }
 
 @keyframes app-notify-shrink {

@@ -21,7 +21,7 @@ type RouteCtx = { params: Promise<{ id: string }> };
 async function loadProject(id: string) {
   const project = await prisma.dryDockProject.findFirst({
     where: { id, ...notDeleted },
-    select: { id: true, projectType: true },
+    select: { id: true, projectType: true, vessel: { select: { vesselType: true } } },
   });
   return project;
 }
@@ -48,6 +48,7 @@ export async function GET(request: Request, ctx: RouteCtx) {
 
   return NextResponse.json({
     projectType: project.projectType,
+    vesselType: project.vessel?.vesselType ?? null,
     catalog,
     submissions,
     readiness,

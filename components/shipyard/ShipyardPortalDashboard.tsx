@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import {
   Card,
@@ -8,12 +10,14 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ShipyardKpiGrid } from "@/components/shipyard/ShipyardKpiGrid";
-import type { ShipyardPortalDashboard } from "@/lib/shipyard/portalDashboardTypes";
+import { useShipyardLanguage } from "@/components/shipyard/ShipyardLanguageProvider";
+import type { ShipyardPortalDashboard as DashboardData } from "@/lib/shipyard/portalDashboardTypes";
 import { JOB_STATUS_LABELS } from "@/lib/shipyard/types";
+import type { ShipyardQuoteUiKey } from "@/lib/i18n/shipyardQuotationUi";
 
 const TOP_KPIS: {
   key: keyof Pick<
-    ShipyardPortalDashboard,
+    DashboardData,
     | "currentProjects"
     | "projectsWaitingRfq"
     | "runningToday"
@@ -21,16 +25,16 @@ const TOP_KPIS: {
     | "workersToday"
     | "equipmentUtilizationPct"
   >;
-  label: string;
+  labelKey: ShipyardQuoteUiKey;
   suffix?: string;
   href?: string;
 }[] = [
-  { key: "currentProjects", label: "Current projects", href: "/shipyard/projects" },
-  { key: "projectsWaitingRfq", label: "Projects waiting RFQ", href: "/shipyard/rfq" },
-  { key: "runningToday", label: "Running today" },
-  { key: "delayedJobs", label: "Delayed jobs" },
-  { key: "workersToday", label: "Workers today" },
-  { key: "equipmentUtilizationPct", label: "Equipment utilization", suffix: "%" },
+  { key: "currentProjects", labelKey: "kpiCurrentProjects", href: "/shipyard/projects" },
+  { key: "projectsWaitingRfq", labelKey: "kpiProjectsWaitingRfq", href: "/shipyard/rfq" },
+  { key: "runningToday", labelKey: "kpiRunningToday" },
+  { key: "delayedJobs", labelKey: "kpiDelayedJobs" },
+  { key: "workersToday", labelKey: "kpiWorkersToday" },
+  { key: "equipmentUtilizationPct", labelKey: "kpiEquipmentUtilization", suffix: "%" },
 ];
 
 function ProgressBar({ value }: { value: number }) {
@@ -44,11 +48,13 @@ function ProgressBar({ value }: { value: number }) {
   );
 }
 
-export function ShipyardPortalDashboard({ data }: { data: ShipyardPortalDashboard }) {
+export function ShipyardPortalDashboard({ data }: { data: DashboardData }) {
+  const { t, label } = useShipyardLanguage();
+
   return (
     <div className="space-y-6">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        {TOP_KPIS.map(({ key, label, suffix, href }) => (
+        {TOP_KPIS.map(({ key, labelKey, suffix, href }) => (
           <Card key={key}>
             <CardHeader className="pb-2">
               <CardTitle className="text-2xl font-semibold tabular-nums">
@@ -58,10 +64,10 @@ export function ShipyardPortalDashboard({ data }: { data: ShipyardPortalDashboar
               <CardDescription>
                 {href ? (
                   <Link href={href} className="text-primary hover:underline">
-                    {label}
+                    {label(labelKey)}
                   </Link>
                 ) : (
-                  label
+                  label(labelKey)
                 )}
               </CardDescription>
             </CardHeader>
@@ -74,12 +80,12 @@ export function ShipyardPortalDashboard({ data }: { data: ShipyardPortalDashboar
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Projects timeline</CardTitle>
-            <CardDescription>Planned start and finish for active execution projects</CardDescription>
+            <CardTitle>{label("projectsTimeline")}</CardTitle>
+            <CardDescription>{label("projectsTimelineDesc")}</CardDescription>
           </CardHeader>
           <div className="space-y-3 px-6 pb-6">
             {data.timeline.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No scheduled projects yet.</p>
+              <p className="text-sm text-muted-foreground">{t("noScheduledProjects")}</p>
             ) : (
               data.timeline.map((item) => (
                 <div key={item.projectId} className="rounded-md border p-3 text-sm">
@@ -107,12 +113,12 @@ export function ShipyardPortalDashboard({ data }: { data: ShipyardPortalDashboar
 
         <Card>
           <CardHeader>
-            <CardTitle>Today&apos;s critical jobs</CardTitle>
-            <CardDescription>Critical path items due or active today</CardDescription>
+            <CardTitle>{label("criticalJobsToday")}</CardTitle>
+            <CardDescription>{label("criticalJobsTodayDesc")}</CardDescription>
           </CardHeader>
           <div className="space-y-2 px-6 pb-6">
             {data.criticalJobsToday.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No critical jobs flagged for today.</p>
+              <p className="text-sm text-muted-foreground">{t("noCriticalJobs")}</p>
             ) : (
               data.criticalJobsToday.map((job) => (
                 <div
@@ -140,15 +146,15 @@ export function ShipyardPortalDashboard({ data }: { data: ShipyardPortalDashboar
 
       <Card>
         <CardHeader>
-          <CardTitle>Project progress</CardTitle>
-          <CardDescription>Average job completion by execution project</CardDescription>
+          <CardTitle>{label("projectProgress")}</CardTitle>
+          <CardDescription>{label("projectProgressDesc")}</CardDescription>
         </CardHeader>
         <div className="space-y-4 px-6 pb-6">
           {data.projectProgress.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Initialize execution from{" "}
+              {t("noExecutionProjectsPrefix")}{" "}
               <Link href="/shipyard/awarded" className="text-primary hover:underline">
-                Awarded projects
+                {t("awardedProjects")}
               </Link>
               .
             </p>
@@ -161,7 +167,7 @@ export function ShipyardPortalDashboard({ data }: { data: ShipyardPortalDashboar
                 </div>
                 <ProgressBar value={p.progressPct} />
                 <p className="text-xs text-muted-foreground">
-                  {p.vesselName ?? "—"} · {p.jobCount} job(s)
+                  {p.vesselName ?? "—"} · {t("jobsCount").replace("{n}", String(p.jobCount))}
                 </p>
               </div>
             ))
@@ -172,42 +178,42 @@ export function ShipyardPortalDashboard({ data }: { data: ShipyardPortalDashboar
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Variation orders</CardTitle>
-            <CardDescription>Commercial change register summary</CardDescription>
+            <CardTitle>{label("variationOrders")}</CardTitle>
+            <CardDescription>{label("variationOrdersDesc")}</CardDescription>
           </CardHeader>
           <div className="grid grid-cols-3 gap-3 px-6 pb-6 text-center">
             <div>
               <p className="text-2xl font-semibold tabular-nums">{data.variationSummary.pending}</p>
-              <p className="text-xs text-muted-foreground">Pending</p>
+              <p className="text-xs text-muted-foreground">{label("pending")}</p>
             </div>
             <div>
               <p className="text-2xl font-semibold tabular-nums">{data.variationSummary.approved}</p>
-              <p className="text-xs text-muted-foreground">Approved</p>
+              <p className="text-xs text-muted-foreground">{label("approved")}</p>
             </div>
             <div>
               <p className="text-2xl font-semibold tabular-nums">{data.variationSummary.rejected}</p>
-              <p className="text-xs text-muted-foreground">Rejected</p>
+              <p className="text-xs text-muted-foreground">{label("rejected")}</p>
             </div>
           </div>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Invoices</CardTitle>
-            <CardDescription>Dry dock billing register (office-linked)</CardDescription>
+            <CardTitle>{label("invoices")}</CardTitle>
+            <CardDescription>{label("invoicesDesc")}</CardDescription>
           </CardHeader>
           <div className="grid grid-cols-3 gap-3 px-6 pb-6 text-center">
             <div>
               <p className="text-2xl font-semibold tabular-nums">{data.invoiceSummary.pending}</p>
-              <p className="text-xs text-muted-foreground">Pending</p>
+              <p className="text-xs text-muted-foreground">{label("pending")}</p>
             </div>
             <div>
               <p className="text-2xl font-semibold tabular-nums">{data.invoiceSummary.paid}</p>
-              <p className="text-xs text-muted-foreground">Paid</p>
+              <p className="text-xs text-muted-foreground">{label("paid")}</p>
             </div>
             <div>
               <p className="text-2xl font-semibold tabular-nums">{data.invoiceSummary.overdue}</p>
-              <p className="text-xs text-muted-foreground">Overdue</p>
+              <p className="text-xs text-muted-foreground">{label("overdue")}</p>
             </div>
           </div>
         </Card>
@@ -215,13 +221,13 @@ export function ShipyardPortalDashboard({ data }: { data: ShipyardPortalDashboar
 
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" render={<Link href="/shipyard/rfq" />} nativeButton={false}>
-          RFQ inbox
+          {label("rfqInbox")}
         </Button>
         <Button variant="outline" render={<Link href="/shipyard/profile" />} nativeButton={false}>
-          Yard profile
+          {label("yardProfile")}
         </Button>
         <Button variant="outline" render={<Link href="/shipyard/execution/progress" />} nativeButton={false}>
-          Daily progress
+          {label("dailyProgress")}
         </Button>
       </div>
     </div>

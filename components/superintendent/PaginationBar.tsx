@@ -7,19 +7,22 @@ export function PaginationBar({
   totalPages,
   total,
   onPageChange,
+  summary,
 }: {
   page: number;
   totalPages: number;
   total: number;
   onPageChange: (page: number) => void;
+  /** When set, replaces the default “N records · Page X of Y” label. */
+  summary?: string;
 }) {
   if (totalPages <= 1 && total === 0) return null;
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
       <span className="text-sm text-muted-foreground">
-        {total} record{total === 1 ? "" : "s"}
-        {totalPages > 1 ? ` · Page ${page} of ${totalPages}` : ""}
+        {summary ??
+          `${total} record${total === 1 ? "" : "s"}${totalPages > 1 ? ` · Page ${page} of ${totalPages}` : ""}`}
       </span>
       {totalPages > 1 ? (
         <div className="flex items-center gap-2">

@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
+import { getOfficeAuthContext } from "@/lib/auth/officePageAccess";
 import { requireSuperintendentApiAccess } from "@/lib/auth/superintendentAccess";
+import { getSessionUserId } from "@/lib/auth/session";
+import { denyProjectDeleteUnlessAdmin } from "@/lib/projects/archive";
 import { findDryDockProject, notDeleted } from "@/lib/superintendent/helpers";
 import { assertDryDockProjectInScope, assertVesselInScope } from "@/lib/superintendent/scope";
 import {
@@ -23,7 +26,7 @@ export async function GET(_request: Request, ctx: RouteCtx) {
   const project = await prisma.dryDockProject.findFirst({
     where: { id, ...notDeleted },
     include: {
-      vessel: { select: { id: true, name: true, code: true, imoNumber: true } },
+      vessel: { select: { id: true, name: true, code: true, imoNumber: true, vesselType: true } },
       tenderProject: { select: { id: true, name: true } },
       _count: {
         select: {
@@ -80,20 +83,41 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
     }
   }
 
-  const project = await prisma.dryDockProject.update({
-    where: { id },
-    data: parsed.data,
-    include: {
-      vessel: { select: { id: true, name: true, code: true } },
-    },
-  });
+  const userId = await getSessionUserId();
+  const nextStatus = parsed.data.status;
+  const archiveSync =
+    nextStatus === "archived"
+      ? {
+          archivedAt: existing.archivedAt ?? new Date(),
+          archivedByUserId: existing.archivedByUserId ?? userId,
+        }
+      : nextStatus !== undefined && existing.archivedAt
+        ? { archivedAt: null, archivedByUserId: null }
+        : {};
 
-  return NextResponse.json({ project });
+  try {
+    const project = await prisma.dryDockProject.update({
+      where: { id },
+      data: { ...parsed.data, ...archiveSync },
+      include: {
+        vessel: { select: { id: true, name: true, code: true } },
+      },
+    });
+
+    return NextResponse.json({ project });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to update project";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
 export async function DELETE(_request: Request, ctx: RouteCtx) {
   const denied = await requireSuperintendentApiAccess();
   if (denied) return denied;
+
+  const auth = await getOfficeAuthContext();
+  const adminDenied = denyProjectDeleteUnlessAdmin(auth);
+  if (adminDenied) return adminDenied;
 
   const { id } = await ctx.params;
   const existing = await findDryDockProject(id);

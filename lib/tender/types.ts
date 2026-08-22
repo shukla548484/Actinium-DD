@@ -50,10 +50,13 @@ export interface Project {
   cprDays: number | null;
   status: ProjectStatus;
   notes: string | null;
+  preferredShipyards: string[];
   /** Locales enabled for scope display on the yard portal. */
   scopeLocales: import("@/lib/i18n/scope").ScopeLocale[];
   originNode: import("@/lib/sync/constants").SyncOriginNode;
   officeChangedAt: string;
+  archivedAt: string | null;
+  archivedByUserId: string | null;
   deletedAt: string | null;
   createdAt: string;
   updatedAt: string;

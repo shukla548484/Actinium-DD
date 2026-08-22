@@ -7,7 +7,7 @@ import { createVessel, listVessels } from "@/lib/db/vessels";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const denied = await requireAdminApiAccess();
+  const denied = await requireAdminApiAccess(request);
   if (denied) return denied;
 
   const { searchParams } = new URL(request.url);
@@ -23,12 +23,18 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const denied = await requireAdminApiAccess();
+  const denied = await requireAdminApiAccess(request);
   if (denied) return denied;
 
   const parsed = parseBody(vesselCreateSchema, await request.json());
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
 
-  const vessel = await createVessel(parsed.data);
-  return NextResponse.json({ vessel }, { status: 201 });
+  try {
+    const vessel = await createVessel(parsed.data);
+    return NextResponse.json({ vessel }, { status: 201 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to create vessel";
+    const status = /already used/i.test(message) ? 409 : 400;
+    return NextResponse.json({ error: message }, { status });
+  }
 }

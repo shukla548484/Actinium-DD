@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { LabeledOption } from "@/lib/ui/labeledSelect";
+import { cn } from "@/lib/utils";
 
 type LabeledSelectProps = {
   items: readonly LabeledOption[];
@@ -36,7 +37,7 @@ export function LabeledSelect({
       onValueChange={(v) => onValueChange(v ?? "")}
       disabled={disabled}
     >
-      <SelectTrigger className={className} id={id} disabled={disabled}>
+      <SelectTrigger className={cn("w-full min-w-[12rem]", className)} id={id} disabled={disabled}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>

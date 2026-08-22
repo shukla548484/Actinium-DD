@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Anchor,
+  Briefcase,
   Building2,
   ClipboardList,
   Compass,
@@ -11,6 +12,7 @@ import {
   ShoppingCart,
 } from "lucide-react";
 import { adminNavItems } from "@/lib/navigation/adminNavItems";
+import { officeNavItems } from "@/lib/navigation/officeNavItems";
 import { purchaseNavItems } from "@/lib/navigation/purchaseNavItems";
 import { shipAccessNavItems } from "@/lib/navigation/shipAccessNavItems";
 import { shipyardNavChildren } from "@/lib/navigation/shipyardNavItems";
@@ -23,6 +25,7 @@ export type TopNavId =
   | "shipAccess"
   | "purchase"
   | "company"
+  | "office"
   | "superintendent"
   | "tasks";
 
@@ -74,6 +77,7 @@ export const topNavItems: TopNavItem[] = [
     children: [
       { href: "/projects", label: "All projects", icon: List },
       { href: "/projects/new", label: "New project", icon: PlusCircle },
+      { href: "/projects/archived", label: "Archived", icon: ClipboardList },
     ],
   },
   {
@@ -131,6 +135,20 @@ export const topNavItems: TopNavItem[] = [
       })),
   },
   {
+    id: "office",
+    label: "Office departments",
+    href: "/office/executive",
+    description: "Executive, fleet, HSEQ, crewing, accounts",
+    icon: Briefcase,
+    tier: "priority",
+    children: officeNavItems.map((item) => ({
+      href: item.href,
+      label: item.label,
+      description: item.description,
+      icon: item.icon,
+    })),
+  },
+  {
     id: "superintendent",
     label: "Tech Superintendent",
     href: "/superintendent",
@@ -159,11 +177,13 @@ export function resolveActiveNavId(pathname: string): TopNavId {
   if (pathname.startsWith("/superintendent")) return "superintendent";
   if (pathname.startsWith("/shipyard")) return "shipyard";
   if (pathname.startsWith("/purchase")) return "purchase";
+  if (pathname.startsWith("/office")) return "office";
   if (pathname.startsWith("/admin/companies") || pathname.startsWith("/admin/vessels")) {
     return "company";
   }
   if (pathname.startsWith("/admin")) return "admin";
   if (pathname === "/projects/new") return "jobs";
+  if (pathname === "/projects/archived") return "jobs";
   if (pathname.startsWith("/projects")) return "jobs";
   return "company";
 }

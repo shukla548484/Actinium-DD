@@ -18,6 +18,13 @@ export default async function ProjectsPage() {
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
+              render={<Link href="/projects/archived" />}
+              nativeButton={false}
+            >
+              Archived
+            </Button>
+            <Button
+              variant="outline"
               render={<Link href="/superintendent/projects" />}
               nativeButton={false}
             >

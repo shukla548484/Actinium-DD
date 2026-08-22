@@ -13,6 +13,24 @@ import {
   INPUT_READINESS_PAGE_KEYS,
 } from "@/lib/superintendent/inputCatalog";
 import type { InputPageKey } from "@/lib/superintendent/inputCatalog/types";
+import { validateSafetyEquipmentCounts } from "@/lib/superintendent/safetyEquipmentCounts";
+import { validateHullCondition } from "@/lib/superintendent/hullCondition";
+import { validateTankCondition } from "@/lib/superintendent/tankCondition";
+import { validateTailshaftCondition } from "@/lib/superintendent/tailshaftCondition";
+import { validateRudderCondition } from "@/lib/superintendent/rudderCondition";
+import { validatePaintingCoating } from "@/lib/superintendent/paintingCoating";
+import { sanitizeSeaValveValues, validateSeaValves } from "@/lib/superintendent/seaValves";
+import {
+  PROPELLER_COATING_JOB_CATEGORY,
+  PROPELLER_COATING_JOB_TAG,
+  PROPELLER_COATING_JOB_TITLE,
+  buildPropellerCoatingJobDescription,
+  parsePropellerCoatingJob,
+  propellerCoatingCreatesJob,
+  validatePropellerCondition,
+} from "@/lib/superintendent/propellerCondition";
+import { createDdJob, updateDdJob } from "@/lib/db/superintendent/jobs";
+import { syncDryDockProjectProgress } from "@/lib/db/superintendent/projectProgress";
 
 export type InputSubmissionDto = {
   id: string;
@@ -134,12 +152,162 @@ function validateRequiredFields(
 
   for (const field of def.fields) {
     if (!field.required) continue;
+    if (field.key === "lsaCounts" || field.key === "ffaCounts") continue;
+    if (sectionKey === "sea_valves" && field.key === "valves") continue;
+    if (
+      sectionKey === "vessel_defects" &&
+      (field.type === "photos" ||
+        field.type === "photos_note" ||
+        field.key === "openDefects" ||
+        field.key === "machineryStatus")
+    ) {
+      continue;
+    }
+    if (
+      sectionKey === "hull_condition" ||
+      sectionKey === "tank_condition" ||
+      sectionKey === "propeller" ||
+      sectionKey === "rudder" ||
+      sectionKey === "painting"
+    ) {
+      continue;
+    }
     const val = valuesJson[field.key];
+    if (field.type === "multiselect") {
+      if (!Array.isArray(val) || val.length === 0) return `${field.label} is required`;
+      continue;
+    }
+    if (field.type === "photos" || field.type === "files") {
+      if (!Array.isArray(val) || val.length === 0) return `${field.label} is required`;
+      continue;
+    }
     if (val === undefined || val === null || val === "") {
       return `${field.label} is required`;
     }
   }
+  if (sectionKey === "vessel_safety") {
+    return validateSafetyEquipmentCounts(valuesJson);
+  }
+  if (sectionKey === "hull_condition") {
+    return validateHullCondition(valuesJson);
+  }
+  if (sectionKey === "tank_condition") {
+    return validateTankCondition(valuesJson);
+  }
+  if (sectionKey === "tailshaft") {
+    return validateTailshaftCondition(valuesJson);
+  }
+  if (sectionKey === "propeller") {
+    return validatePropellerCondition(valuesJson);
+  }
+  if (sectionKey === "rudder") {
+    return validateRudderCondition(valuesJson);
+  }
+  if (sectionKey === "painting") {
+    return validatePaintingCoating(valuesJson);
+  }
+  if (sectionKey === "sea_valves") {
+    return validateSeaValves(valuesJson);
+  }
+  if (sectionKey === "vessel_defects") {
+    const imported = Number(valuesJson.importedDefectCount);
+    const open =
+      typeof valuesJson.openDefects === "string" ? valuesJson.openDefects.trim() : "";
+    if (!(imported > 0) && !open) {
+      return "Add at least one defect (table or Excel) before submitting.";
+    }
+  }
   return null;
+}
+
+function storedPropellerCoatingJobId(valuesJson: Record<string, unknown>, linkedJobId: string | null) {
+  const fromValues = valuesJson.siliconePaintJobId;
+  if (typeof fromValues === "string" && fromValues.trim()) return fromValues.trim();
+  return linkedJobId;
+}
+
+async function findExistingPropellerCoatingJob(dryDockProjectId: string, storedId: string | null) {
+  if (storedId) {
+    const byId = await prisma.ddJob.findFirst({
+      where: { id: storedId, dryDockProjectId, ...notDeleted },
+      select: { id: true, description: true },
+    });
+    if (byId) return byId;
+  }
+
+  const byTitle = await prisma.ddJob.findFirst({
+    where: {
+      dryDockProjectId,
+      title: PROPELLER_COATING_JOB_TITLE,
+      category: PROPELLER_COATING_JOB_CATEGORY,
+      ...notDeleted,
+    },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, description: true },
+  });
+  if (byTitle) return byTitle;
+
+  return prisma.ddJob.findFirst({
+    where: {
+      dryDockProjectId,
+      description: { contains: PROPELLER_COATING_JOB_TAG },
+      ...notDeleted,
+    },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, description: true },
+  });
+}
+
+/**
+ * On submit, seed "Propeller silicone / anti-friction coating" when coating is not "none".
+ * Idempotent via siliconePaintJobId / linkedJobId / title+category / description tag.
+ * If later unchecked, leave the existing job: it may already be quoted or in progress, and
+ * DdJobStatus has no cancelled state.
+ */
+async function persistPropellerCoatingJob(
+  row: Prisma.DdInputSubmissionGetPayload<object>,
+  valuesJson: Record<string, unknown>,
+): Promise<Prisma.DdInputSubmissionGetPayload<object>> {
+  const coating = parsePropellerCoatingJob(valuesJson.coatingJob);
+  if (!coating || !propellerCoatingCreatesJob(coating)) {
+    // Leave any existing job: it may already be quoted, and DdJobStatus has no cancelled value.
+    return row;
+  }
+
+  const storedId = storedPropellerCoatingJobId(valuesJson, row.linkedJobId);
+  let job = await findExistingPropellerCoatingJob(row.dryDockProjectId, storedId);
+  const description = buildPropellerCoatingJobDescription(coating);
+
+  if (!job) {
+    const created = await createDdJob({
+      dryDockProjectId: row.dryDockProjectId,
+      title: PROPELLER_COATING_JOB_TITLE,
+      category: PROPELLER_COATING_JOB_CATEGORY,
+      workshop: "Hull",
+      description,
+      status: "planned",
+      priority: "medium",
+    });
+    job = { id: created.id, description: created.description };
+    await syncDryDockProjectProgress(row.dryDockProjectId);
+  } else if (job.description !== description) {
+    const updated = await updateDdJob(job.id, { description });
+    job = { id: updated.id, description: updated.description };
+  }
+
+  const nextValues = { ...valuesJson, siliconePaintJobId: job.id };
+  const existingValues = (row.valuesJson as Record<string, unknown> | null) ?? {};
+  if (row.linkedJobId === job.id && existingValues.siliconePaintJobId === job.id) {
+    return row;
+  }
+
+  return prisma.ddInputSubmission.update({
+    where: { id: row.id },
+    data: {
+      linkedJobId: job.id,
+      valuesJson: nextValues as Prisma.InputJsonValue,
+    },
+  });
 }
 
 export async function upsertInputSubmission(input: {
@@ -153,9 +321,32 @@ export async function upsertInputSubmission(input: {
   const def = getInputSectionDef(input.sectionKey);
   if (!def) throw new Error(`Unknown input section: ${input.sectionKey}`);
 
+  let valuesJson =
+    input.sectionKey === "sea_valves"
+      ? sanitizeSeaValveValues(input.valuesJson)
+      : input.valuesJson;
+
+  if (input.sectionKey === "vessel_defects") {
+    const { listProjectDefects, summarizeImportedDefectsForVesselInput } = await import(
+      "./projectDefects"
+    );
+    const defects = await listProjectDefects(input.dryDockProjectId);
+    if (defects.length > 0) {
+      const summary = summarizeImportedDefectsForVesselInput(defects);
+      const existingMachinery =
+        typeof valuesJson.machineryStatus === "string" ? valuesJson.machineryStatus.trim() : "";
+      valuesJson = {
+        ...valuesJson,
+        openDefects: summary.openDefects,
+        importedDefectCount: summary.importedDefectCount,
+        machineryStatus: existingMachinery || summary.machineryStatus,
+      };
+    }
+  }
+
   const status = input.status ?? "draft";
   if (status === "submitted" || status === "reviewed" || status === "approved") {
-    const err = validateRequiredFields(input.sectionKey, input.valuesJson);
+    const err = validateRequiredFields(input.sectionKey, valuesJson);
     if (err) throw new Error(err);
   }
 
@@ -173,26 +364,32 @@ export async function upsertInputSubmission(input: {
     status !== "draft" && !existing?.enteredAt ? now : existing?.enteredAt ?? null;
 
   if (existing) {
-    const row = await prisma.ddInputSubmission.update({
+    let row = await prisma.ddInputSubmission.update({
       where: { id: existing.id },
       data: {
-        valuesJson: input.valuesJson as Prisma.InputJsonValue,
+        valuesJson: valuesJson as Prisma.InputJsonValue,
         status,
         enteredByRole: input.enteredByRole,
         enteredByName: input.enteredByName?.trim() || existing.enteredByName,
         enteredAt,
       },
     });
+    if (
+      input.sectionKey === "propeller" &&
+      (status === "submitted" || status === "reviewed" || status === "approved")
+    ) {
+      row = await persistPropellerCoatingJob(row, valuesJson);
+    }
     return mapSubmission(row);
   }
 
-  const row = await prisma.ddInputSubmission.create({
+  let row = await prisma.ddInputSubmission.create({
     data: {
       dryDockProjectId: input.dryDockProjectId,
       sectionKey: input.sectionKey,
       pageKey: def.pageKey,
       moduleId: def.moduleId,
-      valuesJson: input.valuesJson as Prisma.InputJsonValue,
+      valuesJson: valuesJson as Prisma.InputJsonValue,
       status,
       enteredByRole: input.enteredByRole,
       enteredByName: input.enteredByName?.trim() || null,
@@ -201,6 +398,12 @@ export async function upsertInputSubmission(input: {
       attachmentRequired: def.attachmentRequired ?? false,
     },
   });
+  if (
+    input.sectionKey === "propeller" &&
+    (status === "submitted" || status === "reviewed" || status === "approved")
+  ) {
+    row = await persistPropellerCoatingJob(row, valuesJson);
+  }
   return mapSubmission(row);
 }
 
@@ -274,6 +477,30 @@ export type InputReadinessReport = {
   }[];
 };
 
+async function countImportedProjectDefects(dryDockProjectId: string): Promise<number> {
+  const countFn = prisma.ddProjectDefect?.count?.bind(prisma.ddProjectDefect);
+  if (typeof countFn !== "function") return 0;
+  try {
+    return await countFn({ where: { dryDockProjectId, ...notDeleted } });
+  } catch (error) {
+    console.error("[inputs] Failed to count imported project defects", error);
+    return 0;
+  }
+}
+
+function overlayVesselDefectsStatus(
+  status: DdInputSubmissionStatus | "missing",
+  importedDefectCount: number,
+): DdInputSubmissionStatus | "missing" {
+  if (
+    importedDefectCount > 0 &&
+    (status === "missing" || status === "draft" || status === "rejected")
+  ) {
+    return "submitted";
+  }
+  return status;
+}
+
 export async function buildInputReadiness(
   dryDockProjectId: string,
   projectType: DryDockProjectType,
@@ -283,14 +510,22 @@ export async function buildInputReadiness(
   const mandatory = getMandatorySectionsForProjectType(projectType, pageKey);
   const submissions = await listActiveInputSubmissions(dryDockProjectId, pageKey);
   const byKey = new Map(submissions.map((s) => [s.sectionKey, s]));
+  const importedDefectCount = catalog.some((def) => def.key === "vessel_defects")
+    ? await countImportedProjectDefects(dryDockProjectId)
+    : 0;
 
   const sections = catalog.map((def) => {
     const sub = byKey.get(def.key);
+    const rawStatus = sub?.status ?? ("missing" as const);
+    const status =
+      def.key === "vessel_defects"
+        ? overlayVesselDefectsStatus(rawStatus, importedDefectCount)
+        : rawStatus;
     return {
       sectionKey: def.key,
       label: def.label,
       mandatory: def.mandatory ?? false,
-      status: sub?.status ?? ("missing" as const),
+      status,
       submissionId: sub?.id ?? null,
     };
   });
