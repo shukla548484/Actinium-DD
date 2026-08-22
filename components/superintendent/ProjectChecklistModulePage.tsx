@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
+import { ProgressBar } from "@/components/ui/progress-bar";
 
 type ChecklistItem = {
   id: string;
@@ -56,12 +57,7 @@ export function ProjectChecklistModulePage({ moduleKey, embedded }: Props) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-2 overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-primary transition-all"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
+          <ProgressBar value={pct} />
         </CardContent>
       </Card>
 

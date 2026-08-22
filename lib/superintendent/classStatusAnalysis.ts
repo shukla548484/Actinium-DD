@@ -292,6 +292,120 @@ function daysBetween(a: string, b: string): number | null {
   return Math.round((db.getTime() - da.getTime()) / 86_400_000);
 }
 
+const DATE_RANGE_SPLIT = /\s*(?:→|->|–|—|\bto\b|\band\b)\s*/i;
+
+const DATE_RANGE_CAPTURE =
+  /(?:between\s+)?(\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}|\d{4}-\d{2}-\d{2}).{0,32}?(?:→|->|–|—|\bto\b|\band\b).{0,32}?(\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}|\d{4}-\d{2}-\d{2})/i;
+
+/** IRS-style note: "Intermediate Survey to be carried out between 12/09/2026 and 12/03/2027". */
+export function extractIntermediateSurveyWindowFromText(text: string): {
+  rangeStart: string | null;
+  rangeEnd: string | null;
+} {
+  const normalized = text.replace(/\s+/g, " ");
+  const patterns = [
+    /intermediate\s+survey[\s\S]{0,400}?between\s+(\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{4})\s+and\s+(\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{4})/i,
+    /intermediate\s+survey[\s\S]{0,400}?(\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{4})\s+to\s+(\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{4})/i,
+  ];
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    if (!match) continue;
+    const rangeStart = parseFlexibleDate(match[1]);
+    const rangeEnd = parseFlexibleDate(match[2]);
+    if (rangeStart && rangeEnd) return { rangeStart, rangeEnd };
+  }
+  return { rangeStart: null, rangeEnd: null };
+}
+
+function intermediateWindowScore(rangeStart: string | null, rangeEnd: string | null): number {
+  if (!rangeStart || !rangeEnd) return 0;
+  const days = daysBetween(rangeStart, rangeEnd);
+  if (days == null || days <= 0) return 0;
+  // Class intermediate survey windows are typically ~6 months (±3 months from anniversary).
+  if (days >= 150 && days <= 220) return 10;
+  if (days >= 120 && days <= 250) return 6;
+  if (days < 120) return 1;
+  return 3;
+}
+
+function pickBetterRangeEnd(
+  kind: ClassStatusSurveyKind,
+  rangeStart: string | null,
+  endA: string | null,
+  endB: string | null,
+): string | null {
+  if (!endA) return endB;
+  if (!endB) return endA;
+  if (kind !== "intermediate_survey") return endA;
+  const scoreA = intermediateWindowScore(rangeStart, endA);
+  const scoreB = intermediateWindowScore(rangeStart, endB);
+  if (scoreB > scoreA) return endB;
+  if (scoreA > scoreB) return endA;
+  const daysA = daysBetween(rangeStart, endA);
+  const daysB = daysBetween(rangeStart, endB);
+  if (daysA != null && daysB != null && daysB > daysA) return endB;
+  return endA;
+}
+
+function refineIntermediateSurveyItem(
+  item: ClassStatusSurveyScheduleItem,
+  localText: string | null,
+): ClassStatusSurveyScheduleItem {
+  if (item.kind !== "intermediate_survey") return item;
+
+  const fromReportText = localText ? extractIntermediateSurveyWindowFromText(localText) : {
+    rangeStart: null,
+    rangeEnd: null,
+  };
+
+  let rangeStart = item.rangeStart;
+  let rangeEnd = pickBetterRangeEnd(
+    item.kind,
+    rangeStart,
+    item.rangeEnd,
+    fromReportText.rangeEnd,
+  );
+  rangeStart = rangeStart ?? fromReportText.rangeStart;
+
+  if (fromReportText.rangeStart && fromReportText.rangeEnd) {
+    rangeStart = fromReportText.rangeStart;
+    rangeEnd = fromReportText.rangeEnd;
+  } else if (rangeStart && rangeEnd) {
+    const currentScore = intermediateWindowScore(rangeStart, rangeEnd);
+    const textScore = intermediateWindowScore(
+      fromReportText.rangeStart,
+      fromReportText.rangeEnd,
+    );
+    if (textScore > currentScore) {
+      rangeStart = fromReportText.rangeStart ?? rangeStart;
+      rangeEnd = fromReportText.rangeEnd ?? rangeEnd;
+    }
+  }
+
+  if (rangeStart && rangeEnd && intermediateWindowScore(rangeStart, rangeEnd) <= 1) {
+    const altEnd = pickBetterRangeEnd(item.kind, rangeStart, rangeEnd, item.dueDate);
+    if (altEnd && intermediateWindowScore(rangeStart, altEnd) > intermediateWindowScore(rangeStart, rangeEnd)) {
+      rangeEnd = altEnd;
+    }
+  }
+
+  const dueDate =
+    rangeEnd && rangeStart && intermediateWindowScore(rangeStart, rangeEnd) >= 6
+      ? rangeEnd
+      : item.dueDate;
+
+  return {
+    ...item,
+    rangeStart,
+    rangeEnd,
+    dueDate,
+    rangeLabel:
+      rangeStart || rangeEnd
+        ? [rangeStart, rangeEnd].filter(Boolean).join(" → ")
+        : item.rangeLabel,
+  };
+}
+
 function isIoppName(name: string): boolean {
   const n = name.toLowerCase();
   return (
@@ -556,7 +670,12 @@ function pickBetterSurveyItem(
     assignedDate: better.assignedDate ?? other.assignedDate,
     dueDate: better.dueDate ?? other.dueDate,
     rangeStart: better.rangeStart ?? other.rangeStart,
-    rangeEnd: better.rangeEnd ?? other.rangeEnd,
+    rangeEnd: pickBetterRangeEnd(
+      better.kind,
+      better.rangeStart ?? other.rangeStart ?? null,
+      better.rangeEnd,
+      other.rangeEnd,
+    ),
     rangeLabel: better.rangeLabel ?? other.rangeLabel,
     status: better.status ?? other.status,
     notes: better.notes ?? other.notes,
@@ -610,7 +729,7 @@ function normalizeSurveyScheduleItems(
       rangeRaw != null && String(rangeRaw).trim() ? String(rangeRaw).trim() : null;
 
     if (!rangeStart && !rangeEnd && rangeLabel) {
-      const parts = rangeLabel.split(/\s*(?:→|->|–|—|to|\/)\s*/i).filter(Boolean);
+      const parts = rangeLabel.split(DATE_RANGE_SPLIT).filter(Boolean);
       if (parts.length >= 2) {
         rangeStart = parseFlexibleDate(parts[0]) ?? rangeStart;
         rangeEnd = parseFlexibleDate(parts[parts.length - 1]) ?? rangeEnd;
@@ -649,7 +768,6 @@ function normalizeSurveyScheduleItems(
   );
 }
 
-/** Heuristic extract of survey schedule rows from local PDF text. */
 export function extractSurveyScheduleFromLocalText(
   text: string,
 ): ClassStatusSurveyScheduleItem[] {
@@ -662,36 +780,50 @@ export function extractSurveyScheduleFromLocalText(
   const dateToken =
     /(\d{4}-\d{2}-\d{2}|\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}|\d{1,2}\s+[A-Za-z]{3,9}\s+\d{2,4}|[A-Za-z]{3,9}\s+\d{1,2},?\s+\d{2,4})/g;
 
+  const issWindow = extractIntermediateSurveyWindowFromText(text);
+
   const out: ClassStatusSurveyScheduleItem[] = [];
 
   for (const def of SURVEY_KIND_DEFS) {
     let bestBlock = "";
     for (let i = 0; i < lines.length; i++) {
       if (!def.match.test(lines[i])) continue;
-      const block = [lines[i], lines[i + 1] ?? "", lines[i + 2] ?? ""].join(" ");
+      const block = [lines[i], lines[i + 1] ?? "", lines[i + 2] ?? "", lines[i + 3] ?? ""].join(
+        " ",
+      );
       if (block.length > bestBlock.length) bestBlock = block;
     }
-    if (!bestBlock) continue;
+    if (!bestBlock && def.kind !== "intermediate_survey") continue;
 
     const dates = [...bestBlock.matchAll(dateToken)]
       .map((m) => parseFlexibleDate(m[1]))
       .filter((d): d is string => Boolean(d));
 
     const statusMatch = bestBlock.match(/\b(Over[\s-]?due|Due|Completed|Not\s+Due)\b/i);
-    const rangeMatch = bestBlock.match(
-      /(\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}|\d{4}-\d{2}-\d{2}).{0,12}?(?:→|->|–|—|to).{0,12}?(\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}|\d{4}-\d{2}-\d{2})/i,
-    );
+    const rangeMatch = bestBlock.match(DATE_RANGE_CAPTURE);
 
-    const rangeStart = rangeMatch ? parseFlexibleDate(rangeMatch[1]) : dates.length >= 3 ? dates[1] : null;
-    const rangeEnd = rangeMatch ? parseFlexibleDate(rangeMatch[2]) : dates.length >= 3 ? dates[2] : null;
+    let rangeStart = rangeMatch ? parseFlexibleDate(rangeMatch[1]) : dates.length >= 3 ? dates[1] : null;
+    let rangeEnd = rangeMatch ? parseFlexibleDate(rangeMatch[2]) : dates.length >= 3 ? dates[2] : null;
+
+    if (def.kind === "intermediate_survey" && issWindow.rangeStart && issWindow.rangeEnd) {
+      rangeStart = issWindow.rangeStart;
+      rangeEnd = issWindow.rangeEnd;
+    }
+
+    const dueDate =
+      def.kind === "intermediate_survey" && rangeEnd
+        ? rangeEnd
+        : dates[1] ?? dates[0] ?? null;
 
     out.push({
       id: newId(`local-${def.kind}`, 0),
       kind: def.kind,
       label: def.label,
-      assignedDate: dates[0] ?? null,
-      dueDate: dates[1] ?? dates[0] ?? null,
-      // Prefer explicit due as last standalone date when 2 dates and no range
+      assignedDate:
+        def.kind === "intermediate_survey" && rangeStart
+          ? rangeStart
+          : dates[0] ?? null,
+      dueDate,
       rangeStart,
       rangeEnd,
       rangeLabel:
@@ -700,17 +832,16 @@ export function extractSurveyScheduleFromLocalText(
           : null,
       status: normalizeSurveyStatus(statusMatch?.[1] ?? null),
       source: "local_text",
-      notes: null,
+      notes:
+        def.kind === "intermediate_survey" && issWindow.rangeStart
+          ? "Window from report note (between … and …)"
+          : null,
     });
   }
 
-  // Refine dueDate: if we have assigned + due pattern (first two dates) and range separate
-  return out.map((item) => {
-    if (item.assignedDate && item.dueDate && item.assignedDate === item.dueDate) {
-      return item;
-    }
-    return item;
-  });
+  return out.map((item) =>
+    item.kind === "intermediate_survey" ? refineIntermediateSurveyItem(item, text) : item,
+  );
 }
 
 function syncConvenienceFieldsFromSurveys(
@@ -736,6 +867,7 @@ export function applySurveyPlanningRules(
   certificates: ClassStatusCertificate[],
   planningFromModel: Partial<ClassStatusSurveyPlanning> | null,
   localSurveys: ClassStatusSurveyScheduleItem[] = [],
+  localText: string | null = null,
 ): ClassStatusSurveyPlanning {
   const iopp =
     certificates.find((c) => c.isIopp && c.issuedDate) ||
@@ -794,9 +926,13 @@ export function applySurveyPlanningRules(
     const best = pickBetterSurveyItem(openai, local);
     if (best) mergedByKind.set(kind, { ...best, label: surveyLabelForKind(kind) });
   }
-  const surveys = SURVEY_KIND_DEFS.map((d) => mergedByKind.get(d.kind)).filter(
-    (x): x is ClassStatusSurveyScheduleItem => Boolean(x),
-  );
+  const surveys = SURVEY_KIND_DEFS.map((d) => mergedByKind.get(d.kind))
+    .filter((x): x is ClassStatusSurveyScheduleItem => Boolean(x))
+    .map((survey) =>
+      survey.kind === "intermediate_survey"
+        ? refineIntermediateSurveyItem(survey, localText)
+        : survey,
+    );
 
   const convenience = syncConvenienceFieldsFromSurveys(surveys);
 
@@ -1073,12 +1209,16 @@ REPORT STRUCTURE (read thoroughly, page by page):
    - Continuous Survey Machinery (also CSM / Continuous Survey of Machinery)
    For EACH survey capture: assignedDate, dueDate, rangeDate (or rangeStart/rangeEnd), and status (Due / Overdue / Completed / Not due).
    Put them in surveyPlanning.surveys[]. Do NOT invent dates. Do NOT calculate Special/Intermediate from anniversary.
+   INTERMEDIATE SURVEY (critical): often has blank Assigned/Due columns and an italic note such as
+   "Intermediate Survey to be carried out between 12/09/2026 and 12/03/2027".
+   rangeStart = first date, rangeEnd = second date (latest). Do NOT use Annual Survey due date as rangeEnd.
 7) After certificates: due / overdue inspections & certificates → conditions kind "due_or_overdue".
 8) Conditions of Class → kind "coc"; Statutory conditions → "statutory"; Memorandum → "memorandum"; Additional information → "additional".
 9) Machinery list: name, last done, next due. If due within planned dry dock OR within next 12 months OR overdue → includeInDryDock=true with reason.
 
 DATE RULES:
 - Survey due dates for Special / Intermediate / Docking / CSM MUST come from the report survey schedule table columns (Assigned Date, Due Date, Range, Status). Never derive them as anniversary+2.5y / +5y.
+- Intermediate Survey window end is the LATER date in the "between … and …" note (typically ~6 months after window start). Never substitute Annual Survey due date (often 12/12/YYYY) as the intermediate window end.
 - Anniversary date = IOPP certificate ISSUED date (informational only). Put in surveyPlanning.anniversaryDate if found; do not use it to invent survey dues.
 - Every certificate requires annual endorsement: annual endorsement due ≈ issued date + 1 year (code will recompute; still list issued/expiry carefully).
 - Prefer ISO dates YYYY-MM-DD when possible.
@@ -1139,6 +1279,7 @@ function parsedToAnalysis(
     dryDockStart: string | null;
     dryDockEnd: string | null;
     localSurveys?: ClassStatusSurveyScheduleItem[];
+    localText?: string | null;
   },
 ): ClassStatusAnalysis {
   const vesselRaw =
@@ -1167,6 +1308,7 @@ function parsedToAnalysis(
     certificatesFixed,
     planningRaw,
     meta.localSurveys ?? [],
+    meta.localText ?? null,
   );
   const referenceDate =
     parseFlexibleDate(vesselRaw.reportGeneratedOn) ||
@@ -1535,6 +1677,7 @@ export async function analyzeClassStatusReport(input: {
         dryDockStart,
         dryDockEnd,
         localSurveys,
+        localText: localExtract,
       });
     } catch (pdfErr) {
       if (localCharCount < 40) {
@@ -1559,6 +1702,7 @@ export async function analyzeClassStatusReport(input: {
         dryDockStart,
         dryDockEnd,
         localSurveys,
+        localText: localExtract,
       });
       const failNote =
         pdfErr instanceof Error ? pdfErr.message.slice(0, 160) : "PDF online read failed";
@@ -1597,6 +1741,7 @@ export async function analyzeClassStatusReport(input: {
     dryDockStart,
     dryDockEnd,
     localSurveys,
+    localText: localExtract,
   });
 }
 

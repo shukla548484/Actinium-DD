@@ -21,6 +21,8 @@ import {
 import type { DryDockProjectStatus } from "@prisma/client";
 import { useMemo } from "react";
 import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
+import { ProgressBar } from "@/components/ui/progress-bar";
+import { Slider } from "@/components/ui/slider";
 export const dynamic = "force-dynamic";
 
 type ProjectForm = {
@@ -57,6 +59,7 @@ export default function EditProjectPage() {
   const [plannedEnd, setPlannedEnd] = useState("");
   const [actualStart, setActualStart] = useState("");
   const [actualEnd, setActualEnd] = useState("");
+  const [progressPct, setProgressPct] = useState(0);
   const statusItems = useMemo(() => {
     const current = status as DryDockProjectStatus;
     const allowed = DD_STATUS_TRANSITIONS[current] ?? [];
@@ -83,6 +86,7 @@ export default function EditProjectPage() {
           setPlannedEnd(toDateInput(p.plannedEnd));
           setActualStart(toDateInput(p.actualStart));
           setActualEnd(toDateInput(p.actualEnd));
+          setProgressPct(p.progressPct ?? 0);
         }
       })
       .finally(() => setLoading(false));
@@ -131,7 +135,7 @@ export default function EditProjectPage() {
                 budgetTotal: form.get("budgetTotal") ? Number(form.get("budgetTotal")) : null,
                 quotedTotal: form.get("quotedTotal") ? Number(form.get("quotedTotal")) : null,
                 actualTotal: form.get("actualTotal") ? Number(form.get("actualTotal")) : null,
-                progressPct: form.get("progressPct") ? Number(form.get("progressPct")) : null,
+                progressPct,
                 notes: (form.get("notes") as string) || null,
               });
             }}
@@ -213,9 +217,29 @@ export default function EditProjectPage() {
                 <Input id="actualTotal" name="actualTotal" type="number" defaultValue={project.actualTotal ?? ""} />
               </div>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-3">
               <Label htmlFor="progressPct">Progress %</Label>
-              <Input id="progressPct" name="progressPct" type="number" min={0} max={100} defaultValue={project.progressPct ?? ""} />
+              <ProgressBar value={progressPct} />
+              <Slider
+                value={[progressPct]}
+                onValueChange={(value) => setProgressPct(value[0] ?? 0)}
+                min={0}
+                max={100}
+                step={1}
+              />
+              <Input
+                id="progressPct"
+                name="progressPct"
+                type="number"
+                min={0}
+                max={100}
+                value={progressPct}
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  setProgressPct(Number.isFinite(next) ? Math.max(0, Math.min(100, next)) : 0);
+                }}
+                className="w-24"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="notes">Notes</Label>

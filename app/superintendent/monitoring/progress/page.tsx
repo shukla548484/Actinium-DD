@@ -6,6 +6,7 @@ import { PageHeader, PageShell } from "@/components/layout/PageShell";
 import { TableCard } from "@/components/layout/TableCard";
 import { fmtPct } from "@/lib/superintendent/formatters";
 import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import {
   Table,
   TableBody,
@@ -78,12 +79,7 @@ export default function ProgressTrackerPage() {
                     <TableCell>{p.status.replace(/_/g, " ")}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <div className="h-2 w-24 rounded-full bg-muted">
-                          <div
-                            className="h-2 rounded-full bg-primary"
-                            style={{ width: `${p.progressPct ?? 0}%` }}
-                          />
-                        </div>
+                        <ProgressBar value={p.progressPct ?? 0} className="w-24" />
                         <span className="text-sm tabular-nums">{fmtPct(p.progressPct)}</span>
                       </div>
                     </TableCell>

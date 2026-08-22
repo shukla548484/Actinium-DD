@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { fmtDate, fmtMoney, fmtPct } from "@/lib/superintendent/formatters";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import type {
   ProjectsWorkbenchDto,
   WorkbenchProjectCard,
@@ -37,7 +38,7 @@ function matchesQuery(
   return parts.some((p) => p?.toLowerCase().includes(q));
 }
 
-function ProgressBar({ value }: { value: number }) {
+function ProjectProgress({ value }: { value: number }) {
   const pct = Math.max(0, Math.min(100, value));
   return (
     <div className="space-y-1">
@@ -45,12 +46,7 @@ function ProgressBar({ value }: { value: number }) {
         <span>Progress</span>
         <span className="font-medium text-foreground">{fmtPct(pct)}</span>
       </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-        <div
-          className="h-full rounded-full bg-primary transition-[width]"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
+      <ProgressBar value={pct} size="sm" />
     </div>
   );
 }
@@ -116,7 +112,7 @@ function ActiveProjectCard({ project }: { project: WorkbenchProjectCard }) {
           </Badge>
         </div>
 
-        <ProgressBar value={project.progressPct} />
+        <ProjectProgress value={project.progressPct} />
 
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="space-y-0.5 text-sm">
