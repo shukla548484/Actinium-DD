@@ -220,7 +220,7 @@ export const SPECIAL_SURVEY_VESSEL_SECTIONS: InputSectionDef[] = [
     key: "painting",
     label: "Painting & coating",
     description:
-      "Current scheme and DFT, then optional areas to include for the shipyard (hull zones, ballast tanks, cargo holds or tanks, sea chest, chain locker, main deck) with % for yard painting and primer / finish coats.",
+      "Current scheme and DFT, then optional areas for the shipyard. Hull: flat bottom, vertical bottom, boot top, and topside — each zone has its own treatments (SA1, SA2, HP wash, etc.), yard %, primer/finish coats, and paint system.",
     pageKey: "vessel",
     moduleId: "scope",
     enteredBy: "vessel",

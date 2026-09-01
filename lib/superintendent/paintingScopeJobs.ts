@@ -142,19 +142,37 @@ export function buildPaintingAreaJobDescription(
   if (areaId === "hull") {
     const zones = buildHullZoneLines(values);
     if (zones.length) lines.push(`Hull zones: ${zones.join("; ")}`);
-  } else if (entry.areaM2 != null) {
-    lines.push(`Area: ${fmtM2(entry.areaM2)}`);
-  }
-
-  lines.push(`Yard painting: ${entry.percentYard ?? 0}%`);
-  lines.push(
-    `Coats — primer: ${entry.primerCoats ?? 0}, finish: ${entry.finishCoats ?? 0}`,
-  );
-  if (entry.paintSystem) lines.push(`Paint system: ${entry.paintSystem}`);
-
-  if (areaId === "hull") {
+    for (const zone of PAINTING_HULL_ZONE_FIELDS) {
+      const scope = entry.hullZones[zone.key];
+      const treatments = scope.treatments.filter(
+        (row) => row.treatmentType.trim() || row.percentYard != null,
+      );
+      if (treatments.length) {
+        const bits = treatments.map(
+          (row) => `${row.treatmentType.trim() || "Treatment"}: ${row.percentYard ?? 0}%`,
+        );
+        lines.push(`${zone.label} treatments: ${bits.join("; ")}`);
+      }
+      if (scope.primerCoats != null || scope.finishCoats != null) {
+        lines.push(
+          `${zone.label} coats: primer ${scope.primerCoats ?? 0}, finish ${scope.finishCoats ?? 0}`,
+        );
+      }
+      if (scope.paintSystem.trim()) {
+        lines.push(`${zone.label} system: ${scope.paintSystem.trim()}`);
+      }
+    }
     const schemeLines = buildSchemeLines(values);
     lines.push(...schemeLines);
+  } else {
+    if (entry.areaM2 != null) {
+      lines.push(`Area: ${fmtM2(entry.areaM2)}`);
+    }
+    lines.push(`Yard painting: ${entry.percentYard ?? 0}%`);
+    lines.push(
+      `Coats — primer: ${entry.primerCoats ?? 0}, finish: ${entry.finishCoats ?? 0}`,
+    );
+    if (entry.paintSystem) lines.push(`Paint system: ${entry.paintSystem}`);
   }
 
   lines.push(paintingAreaJobTag(areaId));
