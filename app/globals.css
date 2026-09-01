@@ -159,6 +159,20 @@ body {
   }
 }
 
+@layer components {
+  /*
+   * Keep the last table row readable above horizontal scrollbars (shared Table + raw tables).
+   */
+  [data-slot="table-container"] {
+    padding-bottom: 10px;
+  }
+
+  .overflow-x-auto > table:last-child,
+  .overflow-auto > table:last-child {
+    margin-bottom: 10px;
+  }
+}
+
 .dropdown-scroll {
   scrollbar-width: thin;
   scrollbar-color: var(--sidebar-border) transparent;

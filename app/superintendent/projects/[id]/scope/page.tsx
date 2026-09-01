@@ -6,7 +6,10 @@ import { useCallback, useEffect, useState } from "react";
 import { PageHeader, PageShell } from "@/components/layout/PageShell";
 import { VesselJobBankPanel } from "@/components/superintendent/VesselJobBankPanel";
 import { VesselScopeIntegrationBanner } from "@/components/superintendent/VesselScopeIntegrationBanner";
-import { fmtMoney, fmtPct } from "@/lib/superintendent/formatters";
+import { fmtMoney, displayYardProgress } from "@/lib/superintendent/formatters";
+import { isPaintingInputJob } from "@/lib/superintendent/paintingScopeJobs";
+import { formatJobScopePreview, jobScopeIsDefined } from "@/lib/superintendent/scopeJobPreview";
+import { isSeaValveInputJob } from "@/lib/superintendent/seaValveScopeJobs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
@@ -94,49 +97,98 @@ export default function ProjectScopePage() {
           {loading ? (
             <ActiniumLoadingState label="Loading scope…" size="md" minHeight={100} />
           ) : (
-            <Table>
+            <Table className="table-fixed">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Workshop</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Progress</TableHead>
-                  <TableHead>Budget</TableHead>
+                  <TableHead className="w-[14%]">Title</TableHead>
+                  <TableHead className="w-[8%]">Category</TableHead>
+                  <TableHead className="w-[8%]">Workshop</TableHead>
+                  <TableHead className="w-[34%]">Scope summary</TableHead>
+                  <TableHead className="w-[8%]">Priority</TableHead>
+                  <TableHead className="w-[10%]">Status</TableHead>
+                  <TableHead className="w-[10%]">Yard progress</TableHead>
+                  <TableHead className="w-[8%]">Budget</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {jobs.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground">
                       No jobs in scope.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  jobs.map((job) => (
+                  jobs.map((job) => {
+                    const fromPaintingInput = isPaintingInputJob(job.description);
+                    const fromSeaValveInput = isSeaValveInputJob(job);
+                    const scopePreview = formatJobScopePreview(job);
+                    const scopeDefined = jobScopeIsDefined(job);
+                    const yardProgress = displayYardProgress(
+                      job.progressPct,
+                      job.status,
+                      scopeDefined,
+                    );
+                    return (
                     <TableRow key={job.id}>
-                      <TableCell>
+                      <TableCell className="whitespace-normal align-top">
                         <Link
                           href={`/superintendent/jobs/${job.id}/edit`}
                           className="font-medium text-primary hover:underline"
                         >
                           {job.title}
                         </Link>
+                        {fromPaintingInput ? (
+                          <p className="mt-0.5">
+                            <Link
+                              href={`/superintendent/projects/${id}/inputs/vessel/condition`}
+                              className="text-xs text-muted-foreground hover:text-primary hover:underline"
+                            >
+                              From Painting &amp; coating
+                            </Link>
+                          </p>
+                        ) : fromSeaValveInput ? (
+                          <p className="mt-0.5">
+                            <Link
+                              href={`/superintendent/projects/${id}/inputs/vessel/condition`}
+                              className="text-xs text-muted-foreground hover:text-primary hover:underline"
+                            >
+                              From Sea valves
+                            </Link>
+                          </p>
+                        ) : null}
                       </TableCell>
-                      <TableCell>{job.category}</TableCell>
-                      <TableCell className="text-muted-foreground">
+                      <TableCell className="align-top">{job.category}</TableCell>
+                      <TableCell className="whitespace-normal align-top text-muted-foreground">
                         {job.workshop?.trim() ||
                           (job.description?.startsWith("Workshop:")
                             ? job.description.replace(/^Workshop:\s*/, "")
                             : "—")}
                       </TableCell>
-                      <TableCell className="capitalize">{job.priority}</TableCell>
-                      <TableCell className="capitalize">{job.status.replace(/_/g, " ")}</TableCell>
-                      <TableCell>{fmtPct(job.progressPct)}</TableCell>
-                      <TableCell>{fmtMoney(job.budgetAmount)}</TableCell>
+                      <TableCell
+                        className="whitespace-normal align-top text-xs text-muted-foreground"
+                        title={scopePreview || undefined}
+                      >
+                        <p className="line-clamp-2 break-words">{scopePreview || "—"}</p>
+                      </TableCell>
+                      <TableCell className="align-top capitalize">{job.priority}</TableCell>
+                      <TableCell className="whitespace-normal align-top capitalize">
+                        {job.status.replace(/_/g, " ")}
+                      </TableCell>
+                      <TableCell className="align-top" title={yardProgress.hint}>
+                        <span
+                          className={
+                            yardProgress.label === "Scope set"
+                              ? "text-xs font-medium text-emerald-700 dark:text-emerald-400"
+                              : "tabular-nums text-sm"
+                          }
+                        >
+                          {yardProgress.label}
+                        </span>
+                      </TableCell>
+                      <TableCell className="align-top">{fmtMoney(job.budgetAmount)}</TableCell>
                     </TableRow>
-                  ))
+                    );
+                  })
                 )}
               </TableBody>
             </Table>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,7 @@ import { TailshaftConditionPanel } from "@/components/superintendent/TailshaftCo
 import { PropellerConditionPanel } from "@/components/superintendent/PropellerConditionPanel";
 import { RudderConditionPanel } from "@/components/superintendent/RudderConditionPanel";
 import { SeaValvesPanel } from "@/components/superintendent/SeaValvesPanel";
+import { SeaValveScopeJobLink } from "@/components/superintendent/SeaValveJobScopeSection";
 import { SearchableMultiSelect } from "@/components/ui/SearchableMultiSelect";
 import {
   validateSafetyEquipmentCounts,
@@ -36,7 +37,8 @@ import { validateTailshaftCondition } from "@/lib/superintendent/tailshaftCondit
 import { validatePropellerCondition } from "@/lib/superintendent/propellerCondition";
 import { validateRudderCondition } from "@/lib/superintendent/rudderCondition";
 import { sanitizeSeaValveValues, validateSeaValves } from "@/lib/superintendent/seaValves";
-import { validatePaintingCoating } from "@/lib/superintendent/paintingCoating";
+import { parseSeaValveJobId } from "@/lib/superintendent/seaValveScopeJobs";
+import { validatePaintingCoating, sanitizePaintingValues } from "@/lib/superintendent/paintingCoating";
 
 type Props = {
   section: InputSectionDef;
@@ -208,6 +210,11 @@ export function InputSectionForm({
   const [values, setValues] = useState<Record<string, unknown>>(
     () => (submission?.valuesJson as Record<string, unknown>) ?? {},
   );
+  const valuesRef = useRef(values);
+  useEffect(() => {
+    valuesRef.current = values;
+  }, [values]);
+  const errorRef = useRef<HTMLParagraphElement | null>(null);
   const [enteredByName, setEnteredByName] = useState(submission?.enteredByName ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -220,86 +227,128 @@ export function InputSectionForm({
     setValues((prev) => ({ ...prev, [key]: val }));
   }, []);
 
+  const patchValues = useCallback(
+    (updater: (prev: Record<string, unknown>) => Record<string, unknown>) => {
+      setValues(updater);
+    },
+    [],
+  );
+
+  const showError = (message: string) => {
+    setError(message);
+    queueMicrotask(() => {
+      errorRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+  };
+
   const save = async (status: "draft" | "submitted") => {
     setSaving(true);
     setError(null);
+    const latestValues = valuesRef.current;
     if (section.key === "vessel_defects" && status === "submitted" && defectCount === 0) {
       setSaving(false);
-      setError("Add at least one defect (table or Excel) before submitting.");
+      showError("Add at least one defect (table or Excel) before submitting.");
       return;
     }
     if (section.key === "vessel_safety" && status === "submitted") {
-      const countsError = validateSafetyEquipmentCounts(values);
+      const countsError = validateSafetyEquipmentCounts(latestValues);
       if (countsError) {
         setSaving(false);
-        setError(countsError);
+        showError(countsError);
         return;
       }
     }
     if (section.key === "hull_condition" && status === "submitted") {
-      const hullError = validateHullCondition(values);
+      const hullError = validateHullCondition(latestValues);
       if (hullError) {
         setSaving(false);
-        setError(hullError);
+        showError(hullError);
         return;
       }
     }
-    let payloadValues = values;
+    let payloadValues = latestValues;
     if (section.key === "tank_condition") {
-      const cargoSpaceKind = resolveCargoSpaceKind(values, vesselType);
+      const cargoSpaceKind = resolveCargoSpaceKind(latestValues, vesselType);
       if (cargoSpaceKind) {
-        payloadValues = { ...values, cargoSpaceKind };
+        payloadValues = { ...latestValues, cargoSpaceKind };
       }
       if (status === "submitted") {
         const tankError = validateTankCondition(payloadValues, vesselType);
         if (tankError) {
           setSaving(false);
-          setError(tankError);
+          showError(tankError);
           return;
         }
       }
     }
     if (section.key === "propeller" && status === "submitted") {
-      const propellerError = validatePropellerCondition(values);
+      const propellerError = validatePropellerCondition(latestValues);
       if (propellerError) {
         setSaving(false);
-        setError(propellerError);
+        showError(propellerError);
         return;
       }
     }
     if (section.key === "tailshaft" && status === "submitted") {
-      const tailshaftError = validateTailshaftCondition(values);
+      const tailshaftError = validateTailshaftCondition(latestValues);
       if (tailshaftError) {
         setSaving(false);
-        setError(tailshaftError);
+        showError(tailshaftError);
         return;
       }
     }
     if (section.key === "rudder" && status === "submitted") {
-      const rudderError = validateRudderCondition(values);
+      const rudderError = validateRudderCondition(latestValues);
       if (rudderError) {
         setSaving(false);
-        setError(rudderError);
+        showError(rudderError);
         return;
       }
     }
     if (section.key === "sea_valves") {
-      payloadValues = sanitizeSeaValveValues(values);
+      payloadValues = sanitizeSeaValveValues(latestValues);
       if (status === "submitted") {
         const seaValvesError = validateSeaValves(payloadValues);
         if (seaValvesError) {
           setSaving(false);
-          setError(seaValvesError);
+          showError(seaValvesError);
           return;
         }
       }
     }
-    if (section.key === "painting" && status === "submitted") {
-      const paintingError = validatePaintingCoating(values);
-      if (paintingError) {
-        setSaving(false);
-        setError(paintingError);
-        return;
+    if (section.key === "painting") {
+      payloadValues =
+        status === "submitted" ? sanitizePaintingValues(latestValues) : latestValues;
+      if (status === "submitted") {
+        const paintingError = validatePaintingCoating(payloadValues);
+        if (paintingError) {
+          // Persist progress as draft so entered paint data is not lost on a failed submit.
+          try {
+            const draftRes = await fetch(
+              `/api/superintendent/projects/${dryDockProjectId}/inputs/${section.key}`,
+              {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  sectionKey: section.key,
+                  valuesJson: latestValues,
+                  enteredByRole: role,
+                  enteredByName: enteredByName || null,
+                  status: "draft",
+                }),
+              },
+            );
+            const draftData = await draftRes.json();
+            if (draftRes.ok && draftData.submission) {
+              onSaved(draftData.submission as InputSubmissionDto);
+            }
+          } catch {
+            // Still surface the validation error below.
+          }
+          setSaving(false);
+          showError(`${paintingError} Your entries were saved as a draft.`);
+          return;
+        }
       }
     }
     try {
@@ -319,9 +368,16 @@ export function InputSectionForm({
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Save failed");
-      onSaved(data.submission as InputSubmissionDto);
+      const saved = data.submission as InputSubmissionDto;
+      if (section.key === "painting" && saved?.valuesJson) {
+        setValues((prev) => ({
+          ...prev,
+          paintingJobIds: saved.valuesJson.paintingJobIds ?? prev.paintingJobIds,
+        }));
+      }
+      onSaved(saved);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Save failed");
+      showError(e instanceof Error ? e.message : "Save failed");
     } finally {
       setSaving(false);
     }
@@ -380,7 +436,11 @@ export function InputSectionForm({
         )}
       </div>
 
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {error ? (
+        <p className="text-sm text-destructive" role="alert">
+          {error}
+        </p>
+      ) : null}
 
       {section.key === "vessel_defects" ? (
         <CurrentDefectsPanel
@@ -501,6 +561,10 @@ export function InputSectionForm({
             disabled={locked}
             onImported={onSaved}
           />
+          <SeaValveScopeJobLink
+            dryDockProjectId={dryDockProjectId}
+            jobId={parseSeaValveJobId(values) ?? submission?.linkedJobId ?? null}
+          />
         </div>
       ) : section.key === "painting" ? (
         <div className="space-y-4">
@@ -518,8 +582,10 @@ export function InputSectionForm({
           <PaintingCoatingPanel
             values={values}
             onChange={setField}
+            onPatchValues={patchValues}
             disabled={locked}
             vesselType={vesselType}
+            dryDockProjectId={dryDockProjectId}
           />
         </div>
       ) : section.key === "vessel_safety" ? (
@@ -724,6 +790,11 @@ export function InputSectionForm({
 
       {!locked ? (
         <div className="flex flex-wrap gap-2">
+          {error ? (
+            <p ref={errorRef} className="w-full text-sm text-destructive" role="alert">
+              {error}
+            </p>
+          ) : null}
           <Button type="button" variant="outline" disabled={saving} onClick={() => void save("draft")}>
             Save draft
           </Button>

@@ -18,7 +18,12 @@ import { validateHullCondition } from "@/lib/superintendent/hullCondition";
 import { validateTankCondition } from "@/lib/superintendent/tankCondition";
 import { validateTailshaftCondition } from "@/lib/superintendent/tailshaftCondition";
 import { validateRudderCondition } from "@/lib/superintendent/rudderCondition";
-import { validatePaintingCoating } from "@/lib/superintendent/paintingCoating";
+import { validatePaintingCoating, sanitizePaintingValues } from "@/lib/superintendent/paintingCoating";
+import { persistPaintingScopeJobs } from "@/lib/superintendent/paintingScopeJobs";
+import {
+  parseSeaValveJobId,
+  persistSeaValveScopeJob,
+} from "@/lib/superintendent/seaValveScopeJobs";
 import { sanitizeSeaValveValues, validateSeaValves } from "@/lib/superintendent/seaValves";
 import {
   PROPELLER_COATING_JOB_CATEGORY,
@@ -204,7 +209,7 @@ function validateRequiredFields(
     return validateRudderCondition(valuesJson);
   }
   if (sectionKey === "painting") {
-    return validatePaintingCoating(valuesJson);
+    return validatePaintingCoating(sanitizePaintingValues(valuesJson));
   }
   if (sectionKey === "sea_valves") {
     return validateSeaValves(valuesJson);
@@ -310,6 +315,68 @@ async function persistPropellerCoatingJob(
   });
 }
 
+/**
+ * Sync included painting areas to scope jobs (DdJob). Runs on draft and submit so
+ * Painting & coating and Scope of work stay aligned without duplicating entry.
+ */
+async function persistSeaValveInputScopeJob(
+  row: Prisma.DdInputSubmissionGetPayload<object>,
+  valuesJson: Record<string, unknown>,
+): Promise<Prisma.DdInputSubmissionGetPayload<object>> {
+  const jobId = await persistSeaValveScopeJob(
+    row.dryDockProjectId,
+    valuesJson,
+    row.linkedJobId,
+  );
+  if (!jobId) return row;
+
+  const existingValues = (row.valuesJson as Record<string, unknown> | null) ?? {};
+  const existingJobId = parseSeaValveJobId(existingValues);
+  const linkedJobId = row.linkedJobId ?? jobId;
+  const nextValues = { ...valuesJson, seaValveJobId: jobId };
+
+  if (existingJobId === jobId && row.linkedJobId === linkedJobId) {
+    return row;
+  }
+
+  return prisma.ddInputSubmission.update({
+    where: { id: row.id },
+    data: {
+      linkedJobId,
+      valuesJson: nextValues as Prisma.InputJsonValue,
+    },
+  });
+}
+
+async function persistPaintingInputScopeJobs(
+  row: Prisma.DdInputSubmissionGetPayload<object>,
+  valuesJson: Record<string, unknown>,
+): Promise<Prisma.DdInputSubmissionGetPayload<object>> {
+  const jobIds = await persistPaintingScopeJobs(row.dryDockProjectId, valuesJson);
+  const hasJobs = Object.keys(jobIds).length > 0;
+  if (!hasJobs) return row;
+
+  const existingValues = (row.valuesJson as Record<string, unknown> | null) ?? {};
+  const existingIds = existingValues.paintingJobIds;
+  const linkedJobId = jobIds.hull ?? row.linkedJobId ?? Object.values(jobIds)[0] ?? null;
+  const nextValues = { ...valuesJson, paintingJobIds: jobIds };
+
+  const idsUnchanged =
+    JSON.stringify(existingIds ?? {}) === JSON.stringify(jobIds) &&
+    row.linkedJobId === linkedJobId &&
+    existingValues.paintingJobIds != null;
+
+  if (idsUnchanged) return row;
+
+  return prisma.ddInputSubmission.update({
+    where: { id: row.id },
+    data: {
+      linkedJobId,
+      valuesJson: nextValues as Prisma.InputJsonValue,
+    },
+  });
+}
+
 export async function upsertInputSubmission(input: {
   dryDockProjectId: string;
   sectionKey: string;
@@ -345,6 +412,9 @@ export async function upsertInputSubmission(input: {
   }
 
   const status = input.status ?? "draft";
+  if (input.sectionKey === "painting" && (status === "submitted" || status === "reviewed" || status === "approved")) {
+    valuesJson = sanitizePaintingValues(valuesJson);
+  }
   if (status === "submitted" || status === "reviewed" || status === "approved") {
     const err = validateRequiredFields(input.sectionKey, valuesJson);
     if (err) throw new Error(err);
@@ -380,6 +450,12 @@ export async function upsertInputSubmission(input: {
     ) {
       row = await persistPropellerCoatingJob(row, valuesJson);
     }
+    if (input.sectionKey === "painting") {
+      row = await persistPaintingInputScopeJobs(row, valuesJson);
+    }
+    if (input.sectionKey === "sea_valves") {
+      row = await persistSeaValveInputScopeJob(row, valuesJson);
+    }
     return mapSubmission(row);
   }
 
@@ -403,6 +479,12 @@ export async function upsertInputSubmission(input: {
     (status === "submitted" || status === "reviewed" || status === "approved")
   ) {
     row = await persistPropellerCoatingJob(row, valuesJson);
+  }
+  if (input.sectionKey === "painting") {
+    row = await persistPaintingInputScopeJobs(row, valuesJson);
+  }
+  if (input.sectionKey === "sea_valves") {
+    row = await persistSeaValveInputScopeJob(row, valuesJson);
   }
   return mapSubmission(row);
 }

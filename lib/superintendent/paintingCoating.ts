@@ -35,7 +35,7 @@ export const PAINTING_AREA_DEFS: readonly PaintingAreaDef[] = [
   {
     id: "hull",
     label: "Hull",
-    hint: "Flat bottom, vertical bottom, boot top, and topside. One yard % and coat count for all hull zones.",
+    hint: "Flat bottom, vertical bottom, boot top, and topside (m²). Check Include to send hull painting to the yard.",
     hasZoneAreas: true,
     hasAreaM2: false,
   },
@@ -153,22 +153,15 @@ export function hullHasZoneArea(values: Record<string, unknown>): boolean {
   });
 }
 
-function hullExplicitlyExcluded(areasRaw: Record<string, unknown> | null): boolean {
-  if (!areasRaw) return false;
-  const hull = areasRaw.hull;
-  if (!isRecord(hull)) return false;
-  return parseIncluded(hull.included) === false;
-}
-
 export function parsePaintingAreas(values: Record<string, unknown>): PaintingAreasMap {
   const areasRaw = isRecord(values.areas) ? values.areas : null;
   const map = {} as PaintingAreasMap;
   for (const def of PAINTING_AREA_DEFS) {
     map[def.id] = parseEntry(areasRaw?.[def.id]);
   }
-  if (!hullExplicitlyExcluded(areasRaw) && hullHasZoneArea(values) && !map.hull.included) {
-    map.hull = { ...map.hull, included: true };
-  }
+  // Zone m² (flatBottomArea, …) stay independent for hull-paint compare.
+  // Do NOT auto-include hull for yard painting — that used to mark hull included
+  // with null %/coats and block "Submit for review" after users only entered areas.
   return map;
 }
 
@@ -223,12 +216,42 @@ function coatsMessage(label: string, kind: "primer" | "finish"): string {
   return `${label}: ${name} is required (whole number ≥ 0, 0 allowed)`;
 }
 
+/** Included with no yard-% / coats / area — leftover from older auto-include behavior. */
+function isEmptyIncludedShell(entry: PaintingAreaEntry): boolean {
+  return (
+    entry.included &&
+    entry.percentYard == null &&
+    entry.primerCoats == null &&
+    entry.finishCoats == null &&
+    entry.areaM2 == null &&
+    !entry.paintSystem
+  );
+}
+
+/** Drop empty included shells so Submit is not blocked by leftover auto-include rows. */
+export function sanitizePaintingValues(values: Record<string, unknown>): Record<string, unknown> {
+  const areas = parsePaintingAreas(values);
+  let changed = false;
+  for (const def of PAINTING_AREA_DEFS) {
+    if (!isEmptyIncludedShell(areas[def.id])) continue;
+    areas[def.id] = { ...areas[def.id], included: false };
+    changed = true;
+  }
+  if (!changed) return values;
+  return {
+    ...values,
+    areas: serializePaintingAreas(areas, { hullZonesPresent: hullHasZoneArea(values) }),
+  };
+}
+
 export function validatePaintingCoating(values: Record<string, unknown>): string | null {
   const areas = parsePaintingAreas(values);
 
   for (const def of PAINTING_AREA_DEFS) {
     const entry = areas[def.id];
     if (!entry.included) continue;
+    // Ignore empty included shells (legacy auto-include); sanitizePaintingValues clears them on save.
+    if (isEmptyIncludedShell(entry)) continue;
 
     if (entry.percentYard == null) {
       return `${def.label}: enter % of this area for yard painting (0–100, 0 allowed)`;

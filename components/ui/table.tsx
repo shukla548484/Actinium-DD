@@ -8,7 +8,7 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
     <div
       data-slot="table-container"
-      className="relative w-full overflow-x-auto"
+      className="relative w-full overflow-x-auto pb-2.5"
     >
       <table
         data-slot="table"
@@ -45,7 +45,7 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
       data-slot="table-footer"
       className={cn(
         "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
-        className
+        className,
       )}
       {...props}
     />

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,12 +15,17 @@ import {
   type PaintingAreaEntry,
   type PaintingAreaId,
 } from "@/lib/superintendent/paintingCoating";
+import { parsePaintingJobIds } from "@/lib/superintendent/paintingScopeJobs";
+import { PaintingScopeJobLinks } from "@/components/superintendent/PaintingScopeJobLinks";
 
 type Props = {
   values: Record<string, unknown>;
   onChange: (key: string, value: unknown) => void;
+  /** Atomic multi-key updates so nested `areas` patches cannot clobber each other. */
+  onPatchValues?: (updater: (prev: Record<string, unknown>) => Record<string, unknown>) => void;
   disabled?: boolean;
   vesselType?: string | null;
+  dryDockProjectId?: string;
 };
 
 function textValue(value: unknown): string {
@@ -36,28 +42,47 @@ function toNumberOrNull(raw: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-export function PaintingCoatingPanel({ values, onChange, disabled, vesselType }: Props) {
+export function PaintingCoatingPanel({
+  values,
+  onChange,
+  onPatchValues,
+  disabled,
+  vesselType,
+  dryDockProjectId,
+}: Props) {
   const areas = parsePaintingAreas(values);
   const visibleIds = visiblePaintingAreaIds(vesselType);
+  const jobIds = parsePaintingJobIds(values);
 
-  const writeAreas = (next: ReturnType<typeof parsePaintingAreas>, nextValues = values) => {
-    onChange("areas", serializePaintingAreas(next, { hullZonesPresent: hullHasZoneArea(nextValues) }));
+  const patchValues = (updater: (prev: Record<string, unknown>) => Record<string, unknown>) => {
+    if (onPatchValues) {
+      onPatchValues(updater);
+      return;
+    }
+    const next = updater({ ...values });
+    for (const [key, value] of Object.entries(next)) {
+      if (!Object.is(values[key], value)) onChange(key, value);
+    }
+  };
+
+  const writeAreasFrom = (prev: Record<string, unknown>, next: ReturnType<typeof parsePaintingAreas>) => {
+    return {
+      ...prev,
+      areas: serializePaintingAreas(next, { hullZonesPresent: hullHasZoneArea(prev) }),
+    };
   };
 
   const patchArea = (id: PaintingAreaId, patch: Partial<PaintingAreaEntry>) => {
-    const next = parsePaintingAreas(values);
-    next[id] = { ...next[id], ...patch };
-    writeAreas(next);
+    patchValues((prev) => {
+      const next = parsePaintingAreas(prev);
+      next[id] = { ...next[id], ...patch };
+      return writeAreasFrom(prev, next);
+    });
   };
 
   const onHullZoneChange = (key: string, raw: string) => {
     const nextVal = toNumberOrNull(raw);
-    onChange(key, nextVal);
-    const nextValues = { ...values, [key]: nextVal };
-    const nextAreas = parsePaintingAreas(nextValues);
-    if (hullHasZoneArea(nextValues) && nextAreas.hull.included) {
-      writeAreas(nextAreas, nextValues);
-    }
+    patchValues((prev) => ({ ...prev, [key]: nextVal }));
   };
 
   return (
@@ -173,12 +198,17 @@ export function PaintingCoatingPanel({ values, onChange, disabled, vesselType }:
                 entry={entry}
                 showAreaM2={def.hasAreaM2}
                 disabled={disabled}
+                scopeJobId={jobIds[id]}
                 onPatch={(patch) => patchArea(id, patch)}
               />
             ) : null}
           </div>
         );
       })}
+
+      {dryDockProjectId ? (
+        <PaintingScopeJobLinks values={values} dryDockProjectId={dryDockProjectId} />
+      ) : null}
     </div>
   );
 }
@@ -188,12 +218,14 @@ function IncludedAreaFields({
   entry,
   showAreaM2,
   disabled,
+  scopeJobId,
   onPatch,
 }: {
   id: PaintingAreaId;
   entry: PaintingAreaEntry;
   showAreaM2: boolean;
   disabled?: boolean;
+  scopeJobId?: string;
   onPatch: (patch: Partial<PaintingAreaEntry>) => void;
 }) {
   return (
@@ -276,6 +308,14 @@ function IncludedAreaFields({
           disabled={disabled}
         />
       </div>
+      {scopeJobId ? (
+        <p className="text-xs text-muted-foreground">
+          Scope job:{" "}
+          <Link href={`/superintendent/jobs/${scopeJobId}/edit`} className="text-primary hover:underline">
+            view / edit on Scope of work
+          </Link>
+        </p>
+      ) : null}
     </div>
   );
 }
