@@ -114,8 +114,33 @@ export default function VesselJobBankPage() {
               <TableBody>
                 {jobs.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground">
-                      No jobs in the bank.
+                    <TableCell colSpan={7} className="py-8 text-center">
+                      <p className="font-medium text-foreground">No ship-proposed jobs yet</p>
+                      <p className="mx-auto mt-1 max-w-lg text-sm text-muted-foreground">
+                        This page is an <span className="font-medium">inbox</span>, not the master
+                        job library. Newly registered vessels start empty until the ship creates
+                        jobs from the library and submits them for review.
+                      </p>
+                      <ol className="mx-auto mt-3 max-w-lg list-decimal space-y-1 px-6 text-left text-sm text-muted-foreground">
+                        <li>
+                          On <span className="font-medium">Ship Access</span>, open{" "}
+                          <span className="font-medium">Dry dock → Create job</span> and pick from
+                          the job library.
+                        </li>
+                        <li>Submit the job for superintendent review.</li>
+                        <li>
+                          It appears here — approve, then integrate into the project{" "}
+                          <span className="font-medium">Scope of work</span>.
+                        </li>
+                      </ol>
+                      <p className="mt-3 text-xs text-muted-foreground">
+                        Master catalog (admin):{" "}
+                        <Link href="/admin/job-library" className="text-primary hover:underline">
+                          Admin → Job library
+                        </Link>
+                        . Template jobs on a new project come from project type provisioning, not
+                        this bank.
+                      </p>
                     </TableCell>
                   </TableRow>
                 ) : (
