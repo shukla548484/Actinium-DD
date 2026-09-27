@@ -51,7 +51,7 @@ export function detectImageMimeFromBytes(bytes: Uint8Array): string | null {
 
 export function isProbablyImageFile(file: File): boolean {
   if (file.type.startsWith("image/")) return true;
-  return /\.(png|jpe?g|gif|webp|bmp|heic|heif|avif)$/i.test(file.name);
+  return /\.(png|jpe?g|jfif|gif|webp|bmp|heic|heif|avif|tiff?)$/i.test(file.name);
 }
 
 function peekDataUrlBytes(dataUrl: string, maxBytes = 64): Uint8Array | null {

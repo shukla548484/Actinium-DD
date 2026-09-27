@@ -7,7 +7,7 @@ import {
   PlusCircle,
   Ship,
 } from "lucide-react";
-import type { TopNavChild, TopNavItem } from "@/lib/navigation/topNavItems";
+import type { TopNavChild, TopNavItem, TopNavId } from "@/lib/navigation/topNavItems";
 
 export const crewNavChildren: TopNavChild[] = [
   {
@@ -55,14 +55,27 @@ export const crewTopNavItems: TopNavItem[] = [
   },
 ];
 
-import type { TopNavId } from "@/lib/navigation/topNavItems";
-
 export function resolveCrewActiveNavId(pathname: string): TopNavId {
-  if (pathname.startsWith("/ship-access/machinery-hours")) return "shipAccess";
-  if (pathname.startsWith("/ship-access/defects")) return "shipAccess";
-  if (pathname.startsWith("/ship-access/purchase")) return "shipAccess";
-  if (pathname.startsWith("/ship-access/jobs/new")) return "shipAccess";
-  if (pathname.startsWith("/ship-access/jobs")) return "shipAccess";
+  if (
+    pathname.startsWith("/ship-access/machinery") ||
+    pathname.startsWith("/ship-access/machinery-hours") ||
+    pathname.startsWith("/ship-access/pms")
+  ) {
+    return "shipAccessMachinery";
+  }
+  if (pathname.startsWith("/ship-access/dry-dock")) {
+    // Simple paint jobs live under dry-dock/simple-jobs but belong to Jobs menu.
+    if (pathname.startsWith("/ship-access/dry-dock/simple-jobs")) {
+      return "shipAccessJobs";
+    }
+    return "shipAccessDryDock";
+  }
+  if (pathname.startsWith("/ship-access/jobs")) {
+    return "shipAccessDryDock";
+  }
+  if (pathname.startsWith("/ship-access/defects") || pathname.startsWith("/ship-access/purchase")) {
+    return "shipAccessDefects";
+  }
   if (pathname.startsWith("/ship-access")) return "shipAccess";
   return "shipAccess";
 }

@@ -11,13 +11,18 @@ import {
   isDailyReportSectionKey,
 } from "@/lib/superintendent/dailyReportSections";
 import { prisma } from "@/lib/prisma";
+import { convertToBrowserJpeg } from "@/lib/superintendent/serverImagePreview";
+import {
+  convertReportDocumentToPdf,
+  isConvertibleReportDocument,
+} from "@/lib/superintendent/serverDocumentPreview";
 
 export const dynamic = "force-dynamic";
 
 function isImageUpload(file: File): boolean {
   return (
     file.type.startsWith("image/") ||
-    /\.(png|jpe?g|webp|gif|bmp|heic|heif)$/i.test(file.name)
+    /\.(png|jpe?g|jfif|webp|gif|bmp|heic|heif|avif|tiff?)$/i.test(file.name)
   );
 }
 
@@ -94,7 +99,7 @@ export async function POST(request: Request, ctx: RouteCtx) {
     const sameKindCount = pointAttachments.filter((item) => {
       const existingIsImage =
         item.mimeType?.startsWith("image/") ||
-        /\.(png|jpe?g|webp|gif|bmp|heic|heif)$/i.test(item.fileName);
+        /\.(png|jpe?g|jfif|webp|gif|bmp|heic|heif|avif|tiff?)$/i.test(item.fileName);
       return existingIsImage === imageUpload;
     }).length;
     const pointLimit = imageUpload
@@ -122,8 +127,45 @@ export async function POST(request: Request, ctx: RouteCtx) {
     );
   }
 
-  const bytes = Buffer.from(await file.arrayBuffer());
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const imageUpload = isImageUpload(file);
+  const originalBytes = Buffer.from(await file.arrayBuffer());
+  let bytes: Buffer<ArrayBufferLike> = originalBytes;
+  let savedFileName = file.name;
+  let savedMimeType = file.type || null;
+
+  if (imageUpload) {
+    try {
+      bytes = await convertToBrowserJpeg(originalBytes, file.name, 2200);
+      savedFileName = `${path.basename(file.name, path.extname(file.name)) || "photo"}.jpg`;
+      savedMimeType = "image/jpeg";
+    } catch (error) {
+      console.error("Daily report photo conversion failed", error);
+      return NextResponse.json(
+        { error: "This photo format could not be processed. Please use JPG, PNG, or HEIC." },
+        { status: 422 },
+      );
+    }
+  } else {
+    if (!isConvertibleReportDocument(file.name, file.type)) {
+      return NextResponse.json(
+        { error: "Only PDF, Word, and Excel report attachments are supported." },
+        { status: 415 },
+      );
+    }
+    try {
+      bytes = await convertReportDocumentToPdf(originalBytes, file.name);
+      savedFileName = `${path.basename(file.name, path.extname(file.name)) || "report"}.pdf`;
+      savedMimeType = "application/pdf";
+    } catch (error) {
+      console.error("Daily report document conversion failed", error);
+      return NextResponse.json(
+        { error: "The report attachment could not be converted to PDF." },
+        { status: 422 },
+      );
+    }
+  }
+
+  const safeName = savedFileName.replace(/[^a-zA-Z0-9._-]/g, "_");
   const dir = path.join(
     process.cwd(),
     "public",
@@ -145,9 +187,9 @@ export async function POST(request: Request, ctx: RouteCtx) {
       dailyReportId: reportId,
       sectionKey,
       pointId,
-      fileName: file.name,
+      fileName: savedFileName,
       fileUrl,
-      mimeType: file.type || null,
+      mimeType: savedMimeType,
       fileSize: bytes.length,
       caption,
     },

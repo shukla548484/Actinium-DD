@@ -6,18 +6,23 @@ import { assertShipVesselInScope, getSelectedShipVesselId } from "@/lib/shipAcce
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const denied = await requireShipAccessApiAccess(request);
-  if (denied) return denied;
+  try {
+    const denied = await requireShipAccessApiAccess(request);
+    if (denied) return denied;
 
-  const { searchParams } = new URL(request.url);
-  const vesselId = searchParams.get("vesselId") ?? (await getSelectedShipVesselId());
-  if (!vesselId) {
-    return NextResponse.json({ error: "No vessel in scope" }, { status: 400 });
+    const { searchParams } = new URL(request.url);
+    const vesselId = searchParams.get("vesselId") ?? (await getSelectedShipVesselId());
+    if (!vesselId) {
+      return NextResponse.json({ error: "No vessel in scope" }, { status: 400 });
+    }
+
+    const access = await assertShipVesselInScope(vesselId);
+    if (!access.ok) return access.response;
+
+    const dashboard = await getMachineryDashboard(vesselId);
+    return NextResponse.json({ dashboard });
+  } catch (err) {
+    console.error("[ship-access/machinery/dashboard] GET failed", err);
+    return NextResponse.json({ error: "Failed to load machinery dashboard" }, { status: 500 });
   }
-
-  const access = await assertShipVesselInScope(vesselId);
-  if (!access.ok) return access.response;
-
-  const dashboard = await getMachineryDashboard(vesselId);
-  return NextResponse.json({ dashboard });
 }

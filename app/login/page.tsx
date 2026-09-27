@@ -12,6 +12,10 @@ import type { RbacUserType } from "@prisma/client";
 import { Anchor, Eye, EyeOff, Languages, Lock, Ship, Shield } from "lucide-react";
 import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 import {
+  LOGIN_ID_INPUT_PATTERN,
+  sanitizeLoginIdInput,
+} from "@/lib/auth/loginIdNormalize";
+import {
   DEFAULT_SHIPYARD_QUOTE_LANG_PREFS,
   ensureShipyardQuoteLangPrefs,
   loadShipyardQuoteLangPrefs,
@@ -298,14 +302,12 @@ function LoginForm() {
                 dir="ltr"
                 inputMode="text"
                 value={loginId}
-                onChange={(e) =>
-                  setLoginId(e.target.value.toUpperCase().replace(/[^A-Z0-9.]/g, ""))
-                }
+                onChange={(e) => setLoginId(sanitizeLoginIdInput(e.target.value))}
                 placeholder={shipyardQuoteUi("en", "loginIdPlaceholder")}
                 autoCapitalize="characters"
                 autoCorrect="off"
                 spellCheck={false}
-                pattern="[A-Z0-9.]+"
+                pattern={LOGIN_ID_INPUT_PATTERN}
                 autoComplete="username"
                 className="h-11 uppercase"
                 required

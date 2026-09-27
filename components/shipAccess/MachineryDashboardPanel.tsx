@@ -8,6 +8,7 @@ import { fmtPct } from "@/lib/superintendent/formatters";
 import { conditionRatingLabel } from "@/lib/vessel/machinery/parameters";
 import type { MachineryAssetDto } from "@/lib/db/vesselMachineryAssets";
 import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
+import { readResponseJson } from "@/lib/http/readResponseJson";
 
 type DashboardData = {
   machineryHealthScore: number | null;
@@ -33,8 +34,8 @@ export function MachineryDashboardPanel({ vesselId, dryDockProjectId }: Props) {
   const loadDashboard = useCallback(() => {
     if (!vesselId) return Promise.resolve();
     return fetch(`/api/ship-access/machinery/dashboard?vesselId=${vesselId}`)
-      .then((r) => r.json())
-      .then((d: { dashboard?: DashboardData }) => setData(d.dashboard ?? null));
+      .then((r) => readResponseJson<{ dashboard?: DashboardData }>(r))
+      .then((d) => setData(d?.dashboard ?? null));
   }, [vesselId]);
 
   useEffect(() => {
@@ -55,13 +56,13 @@ export function MachineryDashboardPanel({ vesselId, dryDockProjectId }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ vesselId, dryDockProjectId }),
       });
-      const body = (await res.json()) as { proposed?: number; error?: string };
+      const body = await readResponseJson<{ proposed?: number; error?: string }>(res);
       if (!res.ok) {
-        setProposeMsg(body.error ?? "Could not propose overdue jobs.");
+        setProposeMsg(body?.error ?? "Could not propose overdue jobs.");
         return;
       }
       setProposeMsg(
-        body.proposed
+        body?.proposed
           ? `Created ${body.proposed} draft scope job${body.proposed === 1 ? "" : "s"}.`
           : "No new overdue maintenance jobs to propose.",
       );
@@ -89,7 +90,6 @@ export function MachineryDashboardPanel({ vesselId, dryDockProjectId }: Props) {
     { label: "Running hours due", value: String(data.runningHoursDue) },
     { label: "Critical deficiencies", value: String(data.criticalDeficiencies) },
     { label: "Monitor status", value: String(data.monitorCount) },
-    { label: "Registered assets", value: String(data.assetCount) },
   ];
 
   return (
@@ -103,6 +103,14 @@ export function MachineryDashboardPanel({ vesselId, dryDockProjectId }: Props) {
             </CardHeader>
           </Card>
         ))}
+        <Card className="transition-colors hover:border-primary/40">
+          <Link href="/ship-access/machinery/register" className="block focus:outline-none">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xl font-semibold tabular-nums">{data.assetCount}</CardTitle>
+              <CardDescription>Registered assets · Open register</CardDescription>
+            </CardHeader>
+          </Link>
+        </Card>
       </div>
 
       <Card>
@@ -141,7 +149,14 @@ export function MachineryDashboardPanel({ vesselId, dryDockProjectId }: Props) {
       ) : null}
 
       <div className="flex flex-wrap gap-2">
-        <Button render={<Link href="/ship-access/machinery/running-hours" />} nativeButton={false}>
+        <Button render={<Link href="/ship-access/machinery/register" />} nativeButton={false}>
+          Machinery register
+        </Button>
+        <Button
+          variant="outline"
+          render={<Link href="/ship-access/machinery/running-hours" />}
+          nativeButton={false}
+        >
           Running hours
         </Button>
         <Button

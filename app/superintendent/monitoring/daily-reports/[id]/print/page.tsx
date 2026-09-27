@@ -19,7 +19,6 @@ import { fmtDate, fmtPct } from "@/lib/superintendent/formatters";
 import {
   dailyReportFileKindLabel,
   isDailyReportImageAttachment,
-  isDailyReportPdfAttachment,
 } from "@/components/superintendent/DailyReportSectionPhotos";
 
 export const dynamic = "force-dynamic";
@@ -84,29 +83,84 @@ function AttachmentReferenceList({ attachments }: { attachments: ReportAttachmen
   );
 }
 
-function PdfReferencePages({ attachments }: { attachments: ReportAttachment[] }) {
-  const pdfs = attachments.filter(isDailyReportPdfAttachment);
-  if (pdfs.length === 0) return null;
+function DocumentAppendix({
+  reportId,
+  attachments,
+  pageCounts,
+  errors,
+}: {
+  reportId: string;
+  attachments: ReportAttachment[];
+  pageCounts: Record<string, number>;
+  errors: string[];
+}) {
+  if (attachments.length === 0) return null;
+
   return (
-    <div className="space-y-3">
-      {pdfs.map((item) => (
-        <section key={`pdf-${item.id}`} className="break-before-page space-y-2" style={{ breakBefore: "page" }}>
-          <h3 className="border-b pb-2 text-base font-semibold">
-            {item.caption?.trim() || item.fileName}
-          </h3>
-          <object
-            data={item.fileUrl}
-            type="application/pdf"
-            className="h-[780px] w-full rounded border print:h-[950px]"
-          >
-            <p className="text-sm text-muted-foreground">
-              PDF preview is not available. Open: <a href={item.fileUrl}>{item.fileName}</a>
-            </p>
-          </object>
-        </section>
-      ))}
+    <div>
+      {attachments.map((item) => {
+        const pages = pageCounts[item.id] ?? 0;
+        if (errors.includes(item.id)) {
+          return (
+            <section
+              key={`document-error-${item.id}`}
+              className="break-before-page space-y-2"
+              style={{ breakBefore: "page" }}
+            >
+              <h2 className="text-base font-semibold">
+                {item.caption?.trim() || item.fileName}
+              </h2>
+              <p className="text-sm text-destructive">
+                This attachment could not be converted to PDF pages.
+              </p>
+            </section>
+          );
+        }
+
+        return Array.from({ length: pages }, (_, index) => {
+          const page = index + 1;
+          return (
+            <section
+              key={`document-${item.id}-${page}`}
+              className="break-before-page"
+              style={{ breakBefore: "page" }}
+            >
+              <div className="mb-2 flex items-center justify-between border-b pb-2 text-xs">
+                <strong>{item.caption?.trim() || item.fileName}</strong>
+                <span className="text-muted-foreground">
+                  Attachment page {page} of {pages}
+                </span>
+              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`/api/superintendent/daily-reports/${reportId}/attachments/${item.id}/document-pages?page=${page}`}
+                alt={`${item.fileName}, page ${page}`}
+                className="mx-auto block max-h-[255mm] w-full object-contain"
+              />
+            </section>
+          );
+        });
+      })}
     </div>
   );
+}
+
+async function printAfterImagesLoad() {
+  const images = Array.from(document.images);
+  await Promise.all(
+    images.map(
+      (image) =>
+        new Promise<void>((resolve) => {
+          if (image.complete) {
+            resolve();
+            return;
+          }
+          image.addEventListener("load", () => resolve(), { once: true });
+          image.addEventListener("error", () => resolve(), { once: true });
+        }),
+    ),
+  );
+  window.print();
 }
 
 export default function DailyReportPrintPage() {
@@ -114,6 +168,8 @@ export default function DailyReportPrintPage() {
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<Report | null>(null);
   const [project, setProject] = useState<ProjectMeta | null>(null);
+  const [documentPageCounts, setDocumentPageCounts] = useState<Record<string, number>>({});
+  const [documentErrors, setDocumentErrors] = useState<string[]>([]);
   const [attachmentsBySection, setAttachmentsBySection] = useState<Record<string, ReportAttachment[]>>(
     {},
   );
@@ -152,6 +208,30 @@ export default function DailyReportPrintPage() {
             });
           }
           setAttachmentsBySection(map);
+
+          const documents = (attData.attachments ?? []).filter(
+            (item) => !isDailyReportImageAttachment(item),
+          );
+          const pageResults = await Promise.all(
+            documents.map(async (item) => {
+              const response = await fetch(
+                `/api/superintendent/daily-reports/${id}/attachments/${item.id}/document-pages?meta=1`,
+              );
+              if (!response.ok) return { id: item.id, pages: 0, error: true };
+              const data = (await response.json()) as { pages?: number };
+              return {
+                id: item.id,
+                pages: Number.isInteger(data.pages) ? Number(data.pages) : 0,
+                error: !Number.isInteger(data.pages) || Number(data.pages) < 1,
+              };
+            }),
+          );
+          setDocumentPageCounts(
+            Object.fromEntries(
+              pageResults.filter((item) => !item.error).map((item) => [item.id, item.pages]),
+            ),
+          );
+          setDocumentErrors(pageResults.filter((item) => item.error).map((item) => item.id));
         }
       } finally {
         setLoading(false);
@@ -199,7 +279,7 @@ export default function DailyReportPrintPage() {
             >
               Edit
             </Button>
-            <Button type="button" onClick={() => window.print()}>
+            <Button type="button" onClick={() => void printAfterImagesLoad()}>
               Print / PDF
             </Button>
           </div>
@@ -360,7 +440,7 @@ export default function DailyReportPrintPage() {
                               <figure key={p.fileUrl} className="break-inside-avoid space-y-1">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
-                                  src={p.fileUrl}
+                                  src={`/api/superintendent/daily-reports/${id}/attachments/${p.id}/preview`}
                                   alt={p.caption || p.fileName}
                                   className="h-36 w-full rounded border object-cover"
                                 />
@@ -394,7 +474,7 @@ export default function DailyReportPrintPage() {
                       <figure key={p.fileUrl} className="break-inside-avoid space-y-1">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={p.fileUrl}
+                          src={`/api/superintendent/daily-reports/${id}/attachments/${p.id}/preview`}
                           alt={p.caption || p.fileName}
                           className="h-36 w-full rounded border object-cover"
                         />
@@ -411,10 +491,17 @@ export default function DailyReportPrintPage() {
                 </div>
               ) : null}
 
-              <PdfReferencePages attachments={attachments.filter((item) => !isDailyReportImageAttachment(item))} />
             </section>
           );
         })}
+        <DocumentAppendix
+          reportId={id}
+          attachments={Object.values(attachmentsBySection)
+            .flat()
+            .filter((item) => !isDailyReportImageAttachment(item))}
+          pageCounts={documentPageCounts}
+          errors={documentErrors}
+        />
       </article>
     </PageShell>
   );

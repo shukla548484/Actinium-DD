@@ -217,8 +217,8 @@ export function CrewCredentialPanel({ vesselId }: { vesselId: string }) {
                   Temporary password: {DEFAULT_EMPLOYEE_PASSWORD}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Crew must sign in with the vessel login ID only. The office login ID is kept
-                  for records and admin reference.
+                  Crew can sign in with either the vessel login ID or the office Login ID. Default
+                  password applies until they change it.
                 </p>
                 <Button
                   type="button"

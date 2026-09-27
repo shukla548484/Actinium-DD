@@ -12,7 +12,8 @@ import {
 import type { TopNavId, TopNavItem } from "@/lib/navigation/topNavItems";
 import type { ShipyardModuleId } from "@/lib/shipyard/workflow";
 
-const TOP_NAV_ID_KEYS: Record<TopNavId, ShipyardQuoteUiKey> = {
+/** Only modules with shipyard dual-language strings. Crew group menus use fallback labels. */
+const TOP_NAV_ID_KEYS: Partial<Record<TopNavId, ShipyardQuoteUiKey>> = {
   admin: "navAdmin",
   jobs: "navJobCreations",
   shipyard: "navShipyard",

@@ -3,6 +3,7 @@ import {
   CREW_ASSIGNABLE_PAGES,
   DEFAULT_CREW_PAGE_KEYS,
   expandCrewPagePermissionKeys,
+  withMachineryRegisterPage,
   type CrewPageDefinition,
 } from "@/lib/shipAccess/crewPages";
 import { notDeleted } from "@/lib/superintendent/helpers";
@@ -23,7 +24,7 @@ export async function getCrewPageAccessKeys(employeeId: string): Promise<string[
     select: { permissionKey: true },
     orderBy: { permissionKey: "asc" },
   });
-  return rows.map((row) => row.permissionKey);
+  return withMachineryRegisterPage(rows.map((row) => row.permissionKey));
 }
 
 export async function getCrewEffectivePermissions(employeeId: string): Promise<Set<string>> {

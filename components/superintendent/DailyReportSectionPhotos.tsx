@@ -29,7 +29,7 @@ export type PendingPointPhoto = {
   id: string;
   file: File;
   previewUrl: string | null;
-  previewSource: "object" | "data" | null;
+  previewSource: "object" | "data" | "server" | null;
   caption: string;
   kind: "photo" | "document";
 };
@@ -41,7 +41,7 @@ export type PendingPointPhotoUpload = {
   caption: string;
 };
 
-const PHOTO_ACCEPT = ".png,.jpg,.jpeg,.webp,.gif,.bmp,.heic,.heif,image/*";
+const PHOTO_ACCEPT = ".png,.jpg,.jpeg,.jfif,.webp,.gif,.bmp,.heic,.heif,.avif,.tif,.tiff,image/*";
 const DOCUMENT_ACCEPT =
   ".pdf,.doc,.docx,.xls,.xlsx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
@@ -53,14 +53,14 @@ function newId(): string {
 export function revokePendingPhotoPreview(
   item: Pick<PendingPointPhoto, "previewUrl" | "previewSource">,
 ) {
-  if (item.previewSource === "object" && item.previewUrl) {
+  if ((item.previewSource === "object" || item.previewSource === "server") && item.previewUrl) {
     URL.revokeObjectURL(item.previewUrl);
   }
 }
 
 export function isDailyReportImageAttachment(item: Pick<Attachment, "mimeType" | "fileName">): boolean {
   if (item.mimeType?.startsWith("image/")) return true;
-  return /\.(png|jpe?g|webp|gif|bmp|heic|heif)$/i.test(item.fileName);
+  return /\.(png|jpe?g|jfif|webp|gif|bmp|heic|heif|avif|tiff?)$/i.test(item.fileName);
 }
 
 export function isDailyReportPdfAttachment(item: Pick<Attachment, "mimeType" | "fileName">): boolean {
@@ -74,11 +74,29 @@ export function dailyReportFileKindLabel(item: Pick<Attachment, "mimeType" | "fi
   return "File";
 }
 
+async function requestServerPreview(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.set("file", file);
+  const response = await fetch("/api/superintendent/daily-reports/image-preview", {
+    method: "POST",
+    body: formData,
+  });
+  if (!response.ok) throw new Error("Server preview conversion failed");
+
+  const bytes = await response.arrayBuffer();
+  return URL.createObjectURL(new Blob([bytes], { type: "image/jpeg" }));
+}
+
 async function buildStagedPreview(
   file: File,
 ): Promise<Pick<PendingPointPhoto, "previewUrl" | "previewSource">> {
   if (!isProbablyImageFile(file)) {
     return { previewUrl: null, previewSource: null };
+  }
+  try {
+    return { previewUrl: await requestServerPreview(file), previewSource: "server" };
+  } catch {
+    // Standard formats can still preview locally if the server is temporarily unavailable.
   }
   try {
     const buffer = await file.arrayBuffer();
@@ -304,24 +322,44 @@ export function DailyReportPointPhotos({
   }, [reportId, sectionKey, pointId]);
 
   useEffect(() => {
-    const missing = pending.filter((item) => item.kind === "photo" && !item.previewUrl);
+    const missing = pending.filter(
+      (item) => item.kind === "photo" && item.previewSource !== "server",
+    );
     if (missing.length === 0) return;
 
     let cancelled = false;
     void Promise.all(
-      missing.map(async (item) => ({ id: item.id, preview: await buildStagedPreview(item.file) })),
+      missing.map(async (item) => {
+        try {
+          return {
+            id: item.id,
+            previewUrl: await requestServerPreview(item.file),
+            previewSource: "server" as const,
+          };
+        } catch {
+          return null;
+        }
+      }),
     ).then((repaired) => {
       if (cancelled) return;
       const byId = new Map(
         repaired
-          .filter((item) => Boolean(item.preview.previewUrl))
-          .map((item) => [item.id, item.preview]),
+          .filter((item): item is NonNullable<typeof item> => item !== null)
+          .map((item) => [item.id, item]),
       );
       if (byId.size === 0) return;
+      for (const item of pending) {
+        if (byId.has(item.id)) revokePendingPhotoPreview(item);
+      }
       setPending((current) =>
         current.map((item) => {
           const preview = byId.get(item.id);
-          return preview ? { ...item, ...preview } : item;
+          if (!preview) return item;
+          return {
+            ...item,
+            previewUrl: preview.previewUrl,
+            previewSource: preview.previewSource,
+          };
         }),
       );
     });
@@ -492,7 +530,11 @@ export function DailyReportPointPhotos({
           {photoAttachments.map((a) => (
             <div key={a.id} className="w-20 space-y-1">
               <div className="relative">
-                <Thumb key={a.fileUrl} src={a.fileUrl} alt={a.caption || a.fileName} />
+                <Thumb
+                  key={a.id}
+                  src={`/api/superintendent/daily-reports/${reportId}/attachments/${a.id}/preview`}
+                  alt={a.caption || a.fileName}
+                />
                 <button
                   type="button"
                   className="absolute -right-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm hover:text-destructive"

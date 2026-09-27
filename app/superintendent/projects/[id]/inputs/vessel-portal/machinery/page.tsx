@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { PageHeader, PageShell } from "@/components/layout/PageShell";
+import { MachineryRegisterPanel } from "@/components/machinery/MachineryRegisterPanel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -10,11 +11,15 @@ export default function VesselPortalMachineryPage() {
   const { id } = useParams<{ id: string }>();
 
   return (
-    <PageShell>
+    <PageShell size="wide">
       <PageHeader
         title="Machinery technical data"
-        description="Running hours, parameters, and condition reports feed dry dock scope."
+        description="Register, running hours, parameters, and condition reports feed dry dock scope."
       />
+      <div className="mb-8">
+        <h2 className="mb-3 text-lg font-semibold">Machinery register</h2>
+        <MachineryRegisterPanel side="office" dryDockProjectId={id} />
+      </div>
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
@@ -52,6 +57,21 @@ export default function VesselPortalMachineryPage() {
           <CardContent>
             <Button render={<Link href="/ship-access/pms" />} nativeButton={false}>
               Open PMS schedule
+            </Button>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Ship register</CardTitle>
+            <CardDescription>Same register in the onboard Ship Access portal.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="outline"
+              render={<Link href="/ship-access/machinery/register" />}
+              nativeButton={false}
+            >
+              Open ship machinery register
             </Button>
           </CardContent>
         </Card>

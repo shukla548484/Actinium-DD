@@ -154,7 +154,9 @@ function ActiniumMobileApp() {
           <Field label="Login ID">
             <TextInput
               value={loginId}
-              onChangeText={(value) => setLoginId(value.toUpperCase().replace(/[^A-Z0-9.]/g, ""))}
+              onChangeText={(value) =>
+                setLoginId(value.toUpperCase().replace(/[^A-Z0-9._-]/g, ""))
+              }
               autoCapitalize="characters"
               autoCorrect={false}
               placeholder="AAA.BBB.CE01"

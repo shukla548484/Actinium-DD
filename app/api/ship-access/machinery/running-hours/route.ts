@@ -22,54 +22,64 @@ const createSchema = z.object({
 });
 
 export async function GET(request: Request) {
-  const denied = await requireShipAccessApiAccess(request);
-  if (denied) return denied;
+  try {
+    const denied = await requireShipAccessApiAccess(request);
+    if (denied) return denied;
 
-  const { searchParams } = new URL(request.url);
-  const vesselId = searchParams.get("vesselId") ?? (await getSelectedShipVesselId());
-  if (!vesselId) {
-    return NextResponse.json({ error: "No vessel in scope" }, { status: 400 });
+    const { searchParams } = new URL(request.url);
+    const vesselId = searchParams.get("vesselId") ?? (await getSelectedShipVesselId());
+    if (!vesselId) {
+      return NextResponse.json({ error: "No vessel in scope" }, { status: 400 });
+    }
+
+    const access = await assertShipVesselInScope(vesselId);
+    if (!access.ok) return access.response;
+
+    const entries = await listRunningHoursEntries(vesselId);
+    return NextResponse.json({ entries });
+  } catch (err) {
+    console.error("[ship-access/machinery/running-hours] GET failed", err);
+    return NextResponse.json({ error: "Failed to load running hours" }, { status: 500 });
   }
-
-  const access = await assertShipVesselInScope(vesselId);
-  if (!access.ok) return access.response;
-
-  const entries = await listRunningHoursEntries(vesselId);
-  return NextResponse.json({ entries });
 }
 
 export async function POST(request: Request) {
-  const denied = await requireShipAccessApiAccess(request);
-  if (denied) return denied;
+  try {
+    const denied = await requireShipAccessApiAccess(request);
+    if (denied) return denied;
 
-  const parsed = createSchema.safeParse(await request.json());
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
+    const parsed = createSchema.safeParse(await request.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
+    }
+
+    const vesselId = parsed.data.vesselId ?? (await getSelectedShipVesselId());
+    if (!vesselId) {
+      return NextResponse.json({ error: "No vessel in scope" }, { status: 400 });
+    }
+
+    const access = await assertShipVesselInScope(vesselId);
+    if (!access.ok) return access.response;
+
+    const crew = await getCrewSessionContext();
+    const enteredBy =
+      crew?.designation ?? crew?.roleName ?? crew?.vesselLoginId ?? "Onboard crew";
+
+    const entry = await recordRunningHours({
+      vesselId,
+      machineryAssetId: parsed.data.machineryAssetId,
+      department: parsed.data.department,
+      currentHours: parsed.data.currentHours,
+      lastJobDoneDate: parsed.data.lastJobDoneDate,
+      nextDueHours: parsed.data.nextDueHours,
+      nextDueDate: parsed.data.nextDueDate,
+      enteredBy,
+      verifiedBy: parsed.data.verifiedBy,
+    });
+
+    return NextResponse.json({ entry }, { status: 201 });
+  } catch (err) {
+    console.error("[ship-access/machinery/running-hours] POST failed", err);
+    return NextResponse.json({ error: "Failed to record running hours" }, { status: 500 });
   }
-
-  const vesselId = parsed.data.vesselId ?? (await getSelectedShipVesselId());
-  if (!vesselId) {
-    return NextResponse.json({ error: "No vessel in scope" }, { status: 400 });
-  }
-
-  const access = await assertShipVesselInScope(vesselId);
-  if (!access.ok) return access.response;
-
-  const crew = await getCrewSessionContext();
-  const enteredBy =
-    crew?.designation ?? crew?.roleName ?? crew?.vesselLoginId ?? "Onboard crew";
-
-  const entry = await recordRunningHours({
-    vesselId,
-    machineryAssetId: parsed.data.machineryAssetId,
-    department: parsed.data.department,
-    currentHours: parsed.data.currentHours,
-    lastJobDoneDate: parsed.data.lastJobDoneDate,
-    nextDueHours: parsed.data.nextDueHours,
-    nextDueDate: parsed.data.nextDueDate,
-    enteredBy,
-    verifiedBy: parsed.data.verifiedBy,
-  });
-
-  return NextResponse.json({ entry }, { status: 201 });
 }

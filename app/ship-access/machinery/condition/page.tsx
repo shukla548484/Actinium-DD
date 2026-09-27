@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { ConditionReportDto, MachineryAssetDto } from "@/lib/db/vesselMachineryAssets";
+import { readResponseJson } from "@/lib/http/readResponseJson";
 import { CONDITION_RATING_ITEMS, conditionRatingLabel } from "@/lib/vessel/machinery/parameters";
 
 export default function MachineryConditionPage() {
@@ -35,10 +36,10 @@ export default function MachineryConditionPage() {
       fetch(`/api/ship-access/machinery/assets?vesselId=${ctx.vesselId}`),
       fetch(`/api/ship-access/machinery/condition?vesselId=${ctx.vesselId}`),
     ]);
-    const aData = (await aRes.json()) as { assets?: MachineryAssetDto[] };
-    const rData = (await rRes.json()) as { reports?: ConditionReportDto[] };
-    setAssets(aData.assets ?? []);
-    setReports(rData.reports ?? []);
+    const aData = await readResponseJson<{ assets?: MachineryAssetDto[] }>(aRes);
+    const rData = await readResponseJson<{ reports?: ConditionReportDto[] }>(rRes);
+    setAssets(aData?.assets ?? []);
+    setReports(rData?.reports ?? []);
   }, [ctx.vesselId]);
 
   useEffect(() => {

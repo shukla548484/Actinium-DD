@@ -491,12 +491,20 @@ export const PERMISSIONS: PermissionSeed[] = [
     sortOrder: 77,
   },
   {
+    key: "page.shipAccess.machineryRegister",
+    module: "page",
+    resource: "/ship-access/machinery/register",
+    appSurface: "vessel",
+    description: "Machinery asset register",
+    sortOrder: 78,
+  },
+  {
     key: "page.shipAccess.dryDockDashboard",
     module: "page",
     resource: "/ship-access/dry-dock",
     appSurface: "vessel",
     description: "Dry dock readiness dashboard",
-    sortOrder: 78,
+    sortOrder: 79,
   },
   {
     key: "page.shipAccess.dryDockJobs",

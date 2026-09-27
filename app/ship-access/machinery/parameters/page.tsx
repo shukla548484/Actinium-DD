@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { MachineryAssetDto, ParameterEntryDto } from "@/lib/db/vesselMachineryAssets";
+import { readResponseJson } from "@/lib/http/readResponseJson";
 import { MACHINERY_PARAMETER_CATALOG } from "@/lib/vessel/machinery/parameters";
 
 export default function MachineryParametersPage() {
@@ -34,11 +35,11 @@ export default function MachineryParametersPage() {
       fetch(`/api/ship-access/machinery/assets?vesselId=${ctx.vesselId}`),
       fetch(`/api/ship-access/machinery/parameters?vesselId=${ctx.vesselId}`),
     ]);
-    const aData = (await aRes.json()) as { assets?: MachineryAssetDto[] };
-    const eData = (await eRes.json()) as { entries?: ParameterEntryDto[] };
-    setAssets(aData.assets ?? []);
-    setEntries(eData.entries ?? []);
-    if (!assetId && aData.assets?.[0]) setAssetId(aData.assets[0].id);
+    const aData = await readResponseJson<{ assets?: MachineryAssetDto[] }>(aRes);
+    const eData = await readResponseJson<{ entries?: ParameterEntryDto[] }>(eRes);
+    setAssets(aData?.assets ?? []);
+    setEntries(eData?.entries ?? []);
+    if (!assetId && aData?.assets?.[0]) setAssetId(aData.assets[0].id);
   }, [ctx.vesselId, assetId]);
 
   useEffect(() => {

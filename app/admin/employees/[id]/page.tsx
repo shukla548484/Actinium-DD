@@ -78,7 +78,7 @@ export default async function EmployeeDetailPage({ params }: Props) {
             ) : null}
             {employee.vesselLoginId ? (
               <p className="text-xs text-muted-foreground">
-                Onboard crew sign in with the vessel login ID only.
+                Onboard crew can sign in with the vessel login ID or the office Login ID.
               </p>
             ) : null}
             <div className="flex justify-between">

@@ -68,6 +68,14 @@ export const CREW_ASSIGNABLE_PAGES: CrewPageDefinition[] = [
     actionKeys: ["ship.machinery.update", "ship.machinery.read"],
   },
   {
+    key: "page.shipAccess.machineryRegister",
+    label: "Machinery register",
+    description: "Register and maintain vessel machinery assets with nameplate photos",
+    route: "/ship-access/machinery/register",
+    group: "Machinery",
+    actionKeys: ["ship.machinery.update", "ship.machinery.read"],
+  },
+  {
     key: "page.shipAccess.dryDockDashboard",
     label: "Dry dock preparation",
     description: "Dry dock readiness dashboard and scope building progress",
@@ -240,6 +248,7 @@ export const DEFAULT_CREW_PAGE_KEYS = [
   "page.shipAccess.machineryRunningHours",
   "page.shipAccess.machineryParameters",
   "page.shipAccess.machineryCondition",
+  "page.shipAccess.machineryRegister",
   "page.shipAccess.dryDockDashboard",
   "page.shipAccess.dryDockJobs",
   "page.shipAccess.dryDockJobs.new",
@@ -263,6 +272,26 @@ export function expandCrewPagePermissionKeys(pageKeys: string[]): string[] {
   return [...expanded];
 }
 
+const MACHINERY_PAGE_KEYS = new Set([
+  "page.shipAccess.machineryDashboard",
+  "page.shipAccess.machineryHours",
+  "page.shipAccess.machineryRunningHours",
+  "page.shipAccess.machineryParameters",
+  "page.shipAccess.machineryCondition",
+  "page.shipAccess.machineryRegister",
+]);
+
+/**
+ * Existing crew credentials created before the register page existed often have
+ * other machinery pages but not register. Keep register visible/usable whenever
+ * any machinery page is already assigned.
+ */
+export function withMachineryRegisterPage(pageKeys: string[]): string[] {
+  if (pageKeys.includes("page.shipAccess.machineryRegister")) return pageKeys;
+  if (!pageKeys.some((key) => MACHINERY_PAGE_KEYS.has(key))) return pageKeys;
+  return [...pageKeys, "page.shipAccess.machineryRegister"];
+}
+
 export function crewPagePermissionForPath(
   pathname: string,
   search?: URLSearchParams | string,
@@ -279,6 +308,9 @@ export function crewPagePermissionForPath(
   }
   if (path.startsWith("/ship-access/machinery/condition")) {
     return "page.shipAccess.machineryCondition";
+  }
+  if (path.startsWith("/ship-access/machinery/register")) {
+    return "page.shipAccess.machineryRegister";
   }
   if (path === "/ship-access/pms" || path.startsWith("/ship-access/pms/")) {
     return "page.shipAccess.pms";
@@ -392,7 +424,7 @@ export function crewApiPermissionForPath(
     return "ship.job.create";
   }
   if (pathname.startsWith("/api/ship-access/machinery/dashboard") || pathname.startsWith("/api/ship-access/machinery/assets")) {
-    return "ship.machinery.read";
+    return method === "GET" ? "ship.machinery.read" : "ship.machinery.update";
   }
   if (pathname.startsWith("/api/ship-access/machinery/")) {
     return method === "GET" ? "ship.machinery.read" : "ship.machinery.update";

@@ -1,16 +1,22 @@
-import type { Prisma, VesselConditionRating } from "@prisma/client";
+import type { VesselConditionRating } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { notDeleted, parsePageLimit } from "@/lib/db/superintendent/pagination";
+import { notDeleted } from "@/lib/db/superintendent/pagination";
+import { saveLocalUpload } from "@/lib/storage/localUpload";
 
 export type MachineryAssetDto = {
   id: string;
   vesselId: string;
   libraryNodeId: string | null;
+  identificationNumber: string | null;
   department: string;
   name: string;
   maker: string | null;
   model: string | null;
   serialNumber: string | null;
+  units: string | null;
+  location: string | null;
+  nameplatePhotoUrl: string | null;
+  isActive: boolean;
   currentRunningHours: number | null;
   lastOverhaulDate: string | null;
   nextDueHours: number | null;
@@ -61,15 +67,33 @@ export type ConditionReportDto = {
   reportedAt: string;
 };
 
-function mapAsset(row: {
+export type MachineryAssetWriteInput = {
+  name: string;
+  department?: string | null;
+  maker?: string | null;
+  model?: string | null;
+  serialNumber?: string | null;
+  units?: string | null;
+  location?: string | null;
+  notes?: string | null;
+  isActive?: boolean;
+  nameplatePhotoUrl?: string | null;
+};
+
+type AssetRow = {
   id: string;
   vesselId: string;
   libraryNodeId: string | null;
+  identificationNumber: string | null;
   department: string;
   name: string;
   maker: string | null;
   model: string | null;
   serialNumber: string | null;
+  units: string | null;
+  location: string | null;
+  nameplatePhotoUrl: string | null;
+  isActive: boolean;
   currentRunningHours: number | null;
   lastOverhaulDate: Date | null;
   nextDueHours: number | null;
@@ -77,16 +101,23 @@ function mapAsset(row: {
   conditionRating: VesselConditionRating | null;
   healthScore: number | null;
   notes: string | null;
-}): MachineryAssetDto {
+};
+
+function mapAsset(row: AssetRow): MachineryAssetDto {
   return {
     id: row.id,
     vesselId: row.vesselId,
     libraryNodeId: row.libraryNodeId,
+    identificationNumber: row.identificationNumber,
     department: row.department,
     name: row.name,
     maker: row.maker,
     model: row.model,
     serialNumber: row.serialNumber,
+    units: row.units,
+    location: row.location,
+    nameplatePhotoUrl: row.nameplatePhotoUrl,
+    isActive: row.isActive,
     currentRunningHours: row.currentRunningHours,
     lastOverhaulDate: row.lastOverhaulDate?.toISOString() ?? null,
     nextDueHours: row.nextDueHours,
@@ -107,28 +138,233 @@ const DEFAULT_MACHINERY_ASSETS = [
   { department: "Electrical", name: "Auxiliary Generator No.2" },
 ];
 
+function sanitizeVesselCode(code: string): string {
+  const cleaned = code.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+  return cleaned || "VESSEL";
+}
+
+/** Next sequential ID like VESSELCODE-MCH-0001 for the vessel. */
+export async function nextMachineryIdentificationNumber(vesselId: string): Promise<string> {
+  const vessel = await prisma.vessel.findFirst({
+    where: { id: vesselId, ...notDeleted },
+    select: { code: true },
+  });
+  const prefix = `${sanitizeVesselCode(vessel?.code ?? "VESSEL")}-MCH-`;
+
+  const existing = await prisma.vesselMachineryAsset.findMany({
+    where: {
+      vesselId,
+      identificationNumber: { startsWith: prefix },
+    },
+    select: { identificationNumber: true },
+  });
+
+  let maxSeq = 0;
+  for (const row of existing) {
+    const num = row.identificationNumber?.slice(prefix.length) ?? "";
+    const parsed = Number.parseInt(num, 10);
+    if (Number.isFinite(parsed) && parsed > maxSeq) maxSeq = parsed;
+  }
+
+  return `${prefix}${String(maxSeq + 1).padStart(4, "0")}`;
+}
+
+async function backfillMissingIdentificationNumbers(vesselId: string): Promise<void> {
+  const missing = await prisma.vesselMachineryAsset.findMany({
+    where: { vesselId, identificationNumber: null, ...notDeleted },
+    orderBy: [{ createdAt: "asc" }, { name: "asc" }],
+    select: { id: true },
+  });
+  for (const row of missing) {
+    const identificationNumber = await nextMachineryIdentificationNumber(vesselId);
+    try {
+      await prisma.vesselMachineryAsset.update({
+        where: { id: row.id },
+        data: { identificationNumber },
+      });
+    } catch {
+      // Concurrent backfill or unique race — safe to continue.
+    }
+  }
+}
+
 export async function ensureDefaultMachineryAssets(vesselId: string): Promise<void> {
   const count = await prisma.vesselMachineryAsset.count({
     where: { vesselId, ...notDeleted },
   });
-  if (count > 0) return;
-
-  await prisma.vesselMachineryAsset.createMany({
-    data: DEFAULT_MACHINERY_ASSETS.map((a) => ({ vesselId, ...a })),
-  });
+  if (count === 0) {
+    for (const asset of DEFAULT_MACHINERY_ASSETS) {
+      try {
+        const identificationNumber = await nextMachineryIdentificationNumber(vesselId);
+        await prisma.vesselMachineryAsset.create({
+          data: { vesselId, ...asset, identificationNumber, isActive: true },
+        });
+      } catch {
+        // Concurrent seed of defaults — continue with remaining rows.
+      }
+    }
+  } else {
+    await backfillMissingIdentificationNumbers(vesselId);
+  }
 }
 
-export async function listMachineryAssets(vesselId: string): Promise<MachineryAssetDto[]> {
-  await ensureDefaultMachineryAssets(vesselId);
+export async function listMachineryAssets(
+  vesselId: string,
+  options?: { includeInactive?: boolean },
+): Promise<MachineryAssetDto[]> {
+  try {
+    await ensureDefaultMachineryAssets(vesselId);
+  } catch (err) {
+    // Never fail the list endpoint because of seed/backfill races.
+    console.error("[vesselMachineryAssets] ensureDefault failed", err);
+  }
   const rows = await prisma.vesselMachineryAsset.findMany({
-    where: { vesselId, ...notDeleted },
+    where: {
+      vesselId,
+      ...notDeleted,
+      ...(options?.includeInactive ? {} : { isActive: true }),
+    },
     orderBy: [{ department: "asc" }, { name: "asc" }],
   });
   return rows.map(mapAsset);
 }
 
-export async function getMachineryDashboard(vesselId: string) {
+export async function getMachineryAsset(
+  vesselId: string,
+  assetId: string,
+): Promise<MachineryAssetDto | null> {
+  const row = await prisma.vesselMachineryAsset.findFirst({
+    where: { id: assetId, vesselId, ...notDeleted },
+  });
+  return row ? mapAsset(row) : null;
+}
+
+export async function createMachineryAsset(
+  vesselId: string,
+  input: MachineryAssetWriteInput,
+): Promise<MachineryAssetDto> {
   await ensureDefaultMachineryAssets(vesselId);
+  const identificationNumber = await nextMachineryIdentificationNumber(vesselId);
+  const row = await prisma.vesselMachineryAsset.create({
+    data: {
+      vesselId,
+      identificationNumber,
+      name: input.name.trim(),
+      department: input.department?.trim() || "Machinery",
+      maker: input.maker?.trim() || null,
+      model: input.model?.trim() || null,
+      serialNumber: input.serialNumber?.trim() || null,
+      units: input.units?.trim() || null,
+      location: input.location?.trim() || null,
+      notes: input.notes?.trim() || null,
+      nameplatePhotoUrl: input.nameplatePhotoUrl?.trim() || null,
+      isActive: input.isActive ?? true,
+    },
+  });
+  return mapAsset(row);
+}
+
+/** Sequential batch create so identification numbers stay unique per vessel. */
+export async function createMachineryAssetsBatch(
+  vesselId: string,
+  inputs: MachineryAssetWriteInput[],
+): Promise<{ created: MachineryAssetDto[]; failed: Array<{ index: number; error: string }> }> {
+  await ensureDefaultMachineryAssets(vesselId);
+  const created: MachineryAssetDto[] = [];
+  const failed: Array<{ index: number; error: string }> = [];
+
+  for (let i = 0; i < inputs.length; i++) {
+    const input = inputs[i]!;
+    const name = input.name?.trim() ?? "";
+    if (!name) {
+      failed.push({ index: i, error: "Machinery name is required" });
+      continue;
+    }
+    try {
+      const asset = await createMachineryAsset(vesselId, { ...input, name });
+      created.push(asset);
+    } catch (err) {
+      failed.push({
+        index: i,
+        error: err instanceof Error ? err.message : "Failed to create asset",
+      });
+    }
+  }
+
+  return { created, failed };
+}
+
+export async function updateMachineryAsset(
+  vesselId: string,
+  assetId: string,
+  input: Partial<MachineryAssetWriteInput>,
+): Promise<MachineryAssetDto | null> {
+  const existing = await prisma.vesselMachineryAsset.findFirst({
+    where: { id: assetId, vesselId, ...notDeleted },
+  });
+  if (!existing) return null;
+
+  const row = await prisma.vesselMachineryAsset.update({
+    where: { id: assetId },
+    data: {
+      ...(input.name !== undefined ? { name: input.name.trim() } : {}),
+      ...(input.department !== undefined
+        ? { department: input.department?.trim() || existing.department }
+        : {}),
+      ...(input.maker !== undefined ? { maker: input.maker?.trim() || null } : {}),
+      ...(input.model !== undefined ? { model: input.model?.trim() || null } : {}),
+      ...(input.serialNumber !== undefined
+        ? { serialNumber: input.serialNumber?.trim() || null }
+        : {}),
+      ...(input.units !== undefined ? { units: input.units?.trim() || null } : {}),
+      ...(input.location !== undefined ? { location: input.location?.trim() || null } : {}),
+      ...(input.notes !== undefined ? { notes: input.notes?.trim() || null } : {}),
+      ...(input.nameplatePhotoUrl !== undefined
+        ? { nameplatePhotoUrl: input.nameplatePhotoUrl?.trim() || null }
+        : {}),
+      ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+    },
+  });
+  return mapAsset(row);
+}
+
+export async function softDeleteMachineryAsset(
+  vesselId: string,
+  assetId: string,
+): Promise<boolean> {
+  const existing = await prisma.vesselMachineryAsset.findFirst({
+    where: { id: assetId, vesselId, ...notDeleted },
+    select: { id: true },
+  });
+  if (!existing) return false;
+  await prisma.vesselMachineryAsset.update({
+    where: { id: assetId },
+    data: { deletedAt: new Date(), isActive: false },
+  });
+  return true;
+}
+
+export async function setMachineryAssetActive(
+  vesselId: string,
+  assetId: string,
+  isActive: boolean,
+): Promise<MachineryAssetDto | null> {
+  return updateMachineryAsset(vesselId, assetId, { isActive });
+}
+
+export async function saveMachineryNameplatePhoto(
+  vesselId: string,
+  assetId: string,
+  file: File,
+): Promise<string> {
+  const saved = await saveLocalUpload({
+    file,
+    segments: ["ship-access", "machinery", vesselId, assetId],
+  });
+  return saved.fileUrl;
+}
+
+export async function getMachineryDashboard(vesselId: string) {
   const assets = await listMachineryAssets(vesselId);
 
   const now = new Date();
@@ -136,9 +372,14 @@ export async function getMachineryDashboard(vesselId: string) {
     (a) => a.nextDueDate && new Date(a.nextDueDate) < now,
   ).length;
   const hoursDue = assets.filter(
-    (a) => a.nextDueHours != null && a.currentRunningHours != null && a.currentRunningHours >= a.nextDueHours,
+    (a) =>
+      a.nextDueHours != null &&
+      a.currentRunningHours != null &&
+      a.currentRunningHours >= a.nextDueHours,
   ).length;
-  const critical = assets.filter((a) => a.conditionRating === "critical" || a.conditionRating === "poor").length;
+  const critical = assets.filter(
+    (a) => a.conditionRating === "critical" || a.conditionRating === "poor",
+  ).length;
   const monitor = assets.filter((a) => a.conditionRating === "monitor").length;
 
   const healthScores = assets.map((a) => a.healthScore).filter((s): s is number => s != null);
@@ -225,7 +466,10 @@ export async function recordRunningHours(input: {
   } satisfies RunningHoursEntryDto;
 }
 
-export async function listRunningHoursEntries(vesselId: string, limit = 50): Promise<RunningHoursEntryDto[]> {
+export async function listRunningHoursEntries(
+  vesselId: string,
+  limit = 50,
+): Promise<RunningHoursEntryDto[]> {
   const rows = await prisma.vesselMachineryRunningHoursEntry.findMany({
     where: { vesselId },
     orderBy: { recordedAt: "desc" },
@@ -283,7 +527,10 @@ export async function recordParameter(input: {
   } satisfies ParameterEntryDto;
 }
 
-export async function listParameterEntries(vesselId: string, limit = 50): Promise<ParameterEntryDto[]> {
+export async function listParameterEntries(
+  vesselId: string,
+  limit = 50,
+): Promise<ParameterEntryDto[]> {
   const rows = await prisma.vesselMachineryParameterEntry.findMany({
     where: { vesselId },
     orderBy: { recordedAt: "desc" },
@@ -358,7 +605,10 @@ export async function createConditionReport(input: {
   } satisfies ConditionReportDto;
 }
 
-export async function listConditionReports(vesselId: string, limit = 50): Promise<ConditionReportDto[]> {
+export async function listConditionReports(
+  vesselId: string,
+  limit = 50,
+): Promise<ConditionReportDto[]> {
   const rows = await prisma.vesselMachineryConditionReport.findMany({
     where: { vesselId },
     orderBy: { reportedAt: "desc" },
@@ -377,4 +627,46 @@ export async function listConditionReports(vesselId: string, limit = 50): Promis
     reportedBy: r.reportedBy,
     reportedAt: r.reportedAt.toISOString(),
   }));
+}
+
+/** Parse create/update fields from JSON body or multipart FormData.
+ * Only keys present on the source are returned (partial updates safe). */
+export function parseMachineryAssetFormFields(
+  source: FormData | Record<string, unknown>,
+): Partial<MachineryAssetWriteInput> {
+  const has = (key: string): boolean => {
+    if (source instanceof FormData) return source.has(key);
+    return Object.prototype.hasOwnProperty.call(source, key);
+  };
+  const get = (key: string): string | null => {
+    if (source instanceof FormData) {
+      const v = source.get(key);
+      return typeof v === "string" ? v : null;
+    }
+    const v = source[key];
+    if (typeof v === "boolean") return v ? "true" : "false";
+    if (typeof v === "number") return String(v);
+    if (v == null) return null;
+    return typeof v === "string" ? v : null;
+  };
+
+  const out: Partial<MachineryAssetWriteInput> = {};
+  if (has("name")) out.name = get("name")?.trim() ?? "";
+  if (has("department")) out.department = get("department");
+  if (has("maker")) out.maker = get("maker");
+  if (has("model")) out.model = get("model");
+  if (has("serialNumber")) out.serialNumber = get("serialNumber");
+  if (has("units")) out.units = get("units");
+  if (has("location")) out.location = get("location");
+  if (has("notes")) out.notes = get("notes");
+  if (has("isActive")) {
+    const isActiveRaw = get("isActive");
+    out.isActive =
+      isActiveRaw == null
+        ? undefined
+        : !["false", "0", "inactive", "deactive", "deactivated"].includes(
+            isActiveRaw.trim().toLowerCase(),
+          );
+  }
+  return out;
 }

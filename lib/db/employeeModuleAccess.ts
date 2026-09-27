@@ -8,7 +8,7 @@ import {
   type AccessModuleCode,
   type AccessModuleDefinition,
 } from "@/lib/rbac/accessModules";
-import { expandCrewPagePermissionKeys } from "@/lib/shipAccess/crewPages";
+import { expandCrewPagePermissionKeys, withMachineryRegisterPage } from "@/lib/shipAccess/crewPages";
 import { setCrewPageAccess, getCrewPageAccessKeys } from "@/lib/db/crewPageAccess";
 import type { RbacUserType } from "@prisma/client";
 
@@ -214,7 +214,7 @@ export async function getEffectiveEmployeePageKeys(
   employeeId: string,
 ): Promise<string[]> {
   const pageKeys = await getEmployeeAssignedPageKeys(employeeId);
-  if (pageKeys.length > 0) return pageKeys;
+  if (pageKeys.length > 0) return withMachineryRegisterPage(pageKeys);
 
   // Legacy crew-only rows before module migration
   const employee = await prisma.employee.findFirst({

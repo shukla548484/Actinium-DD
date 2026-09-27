@@ -47,6 +47,7 @@ type PreviewAttachment = {
   caption: string;
   kind: "photo" | "document";
   src: string | null;
+  pages?: string[];
 };
 
 type Props = {
@@ -74,7 +75,7 @@ function escapeHtml(value: unknown): string {
 function isStoredImage(item: StoredAttachment): boolean {
   return (
     item.mimeType?.startsWith("image/") === true ||
-    /\.(png|jpe?g|webp|gif|bmp|heic|heif)$/i.test(item.fileName)
+    /\.(png|jpe?g|jfif|webp|gif|bmp|heic|heif|avif|tiff?)$/i.test(item.fileName)
   );
 }
 
@@ -95,6 +96,24 @@ async function buildPendingAttachments(pendingByPoint: PendingByPoint): Promise<
         item.kind === "photo"
           ? item.previewUrl || (await readFileAsDataUrl(item.file))
           : null;
+      let pages: string[] | undefined;
+      if (item.kind === "document") {
+        const formData = new FormData();
+        formData.set("file", item.file);
+        const response = await fetch(
+          "/api/superintendent/daily-reports/document-preview",
+          { method: "POST", body: formData },
+        );
+        if (!response.ok) throw new Error("Document conversion failed");
+        const data = (await response.json()) as { token: string; pages: number };
+        pages = Array.from(
+          { length: data.pages },
+          (_, index) =>
+            `/api/superintendent/daily-reports/document-preview?token=${encodeURIComponent(
+              data.token,
+            )}&page=${index + 1}`,
+        );
+      }
       result.push({
         id: item.id,
         pointId,
@@ -103,6 +122,7 @@ async function buildPendingAttachments(pendingByPoint: PendingByPoint): Promise<
         caption: item.caption.trim(),
         kind: item.kind,
         src,
+        pages,
       });
     }
   }
@@ -147,6 +167,25 @@ function renderAttachmentBlock(items: PreviewAttachment[]): string {
   return documentsHtml + photosHtml;
 }
 
+function renderDocumentAppendix(items: PreviewAttachment[]): string {
+  const documents = items.filter((item) => item.kind === "document");
+  return documents
+    .flatMap((item) =>
+      (item.pages ?? []).map(
+        (src, index) => `<section class="document-page">
+          <div class="document-heading">
+            <strong>${escapeHtml(item.caption || item.fileName)}</strong>
+            <span>Attachment page ${index + 1} of ${item.pages?.length ?? 0}</span>
+          </div>
+          <img src="${escapeHtml(src)}" alt="${escapeHtml(
+            `${item.fileName}, page ${index + 1}`,
+          )}" />
+        </section>`,
+      ),
+    )
+    .join("");
+}
+
 function renderDraftHtml(input: {
   project: DraftProject;
   reportNumber?: string | null;
@@ -173,6 +212,8 @@ function renderDraftHtml(input: {
     );
     return hasWork || attachments.some((item) => item.sectionKey === key);
   });
+
+  const documentAppendix = renderDocumentAppendix(attachments);
 
   const overview =
     sectionsWithContent.length === 0
@@ -289,6 +330,10 @@ function renderDraftHtml(input: {
     figcaption { padding-top: 4px; color: #4d6073; font-size: 10px; overflow-wrap: anywhere; }
     .empty { color: #718096; font-style: italic; }
     .other-attachments { break-inside: avoid; border-top: 1px solid #d8e0e8; padding-top: 6px; }
+    .document-page { break-before: page; page-break-before: always; }
+    .document-heading { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid #d8e0e8; padding-bottom: 6px; margin-bottom: 8px; font-size: 10px; }
+    .document-heading span { color: #718096; }
+    .document-page img { display: block; width: 100%; max-height: 255mm; object-fit: contain; }
     .footer { margin-top: 24px; border-top: 1px solid #d8e0e8; padding-top: 8px; color: #718096; font-size: 10px; }
     @media print {
       body { background: white; }
@@ -333,6 +378,7 @@ function renderDraftHtml(input: {
     <h2>Brief Overview</h2>
     ${overview}
     ${details}
+    ${documentAppendix}
     <div class="footer">Draft preview generated from the current unsaved report. Review before submission.</div>
   </main>
 </body>
@@ -377,15 +423,36 @@ export function DailyReportDraftPreviewButton({
         );
         if (response.ok) {
           const data = (await response.json()) as { attachments?: StoredAttachment[] };
-          stored = (data.attachments ?? []).map((item) => ({
-            id: item.id,
-            pointId: item.pointId ?? "",
-            sectionKey: item.sectionKey,
-            fileName: item.fileName,
-            caption: item.caption?.trim() ?? "",
-            kind: isStoredImage(item) ? "photo" : "document",
-            src: isStoredImage(item) ? item.fileUrl : null,
-          }));
+          stored = await Promise.all(
+            (data.attachments ?? []).map(async (item) => {
+              const image = isStoredImage(item);
+              let pages: string[] | undefined;
+              if (!image) {
+                const metaResponse = await fetch(
+                  `/api/superintendent/daily-reports/${reportId}/attachments/${item.id}/document-pages?meta=1`,
+                );
+                if (!metaResponse.ok) throw new Error("Document conversion failed");
+                const meta = (await metaResponse.json()) as { pages: number };
+                pages = Array.from(
+                  { length: meta.pages },
+                  (_, index) =>
+                    `/api/superintendent/daily-reports/${reportId}/attachments/${item.id}/document-pages?page=${index + 1}`,
+                );
+              }
+              return {
+                id: item.id,
+                pointId: item.pointId ?? "",
+                sectionKey: item.sectionKey,
+                fileName: item.fileName,
+                caption: item.caption?.trim() ?? "",
+                kind: image ? ("photo" as const) : ("document" as const),
+                src: image
+                  ? `/api/superintendent/daily-reports/${reportId}/attachments/${item.id}/preview`
+                  : null,
+                pages,
+              };
+            }),
+          );
         }
       }
 
@@ -403,9 +470,32 @@ export function DailyReportDraftPreviewButton({
         }),
       );
       previewWindow.document.close();
-      previewWindow.document
-        .getElementById("print-draft")
-        ?.addEventListener("click", () => previewWindow.print());
+      const printButton = previewWindow.document.getElementById(
+        "print-draft",
+      ) as HTMLButtonElement | null;
+      const previewImages = Array.from(previewWindow.document.images);
+      if (printButton) {
+        printButton.disabled = true;
+        printButton.textContent = "Preparing pages...";
+      }
+      await Promise.all(
+        previewImages.map(
+          (image) =>
+            new Promise<void>((resolve) => {
+              if (image.complete) {
+                resolve();
+                return;
+              }
+              image.addEventListener("load", () => resolve(), { once: true });
+              image.addEventListener("error", () => resolve(), { once: true });
+            }),
+        ),
+      );
+      if (printButton) {
+        printButton.disabled = false;
+        printButton.textContent = "Print / Save PDF";
+        printButton.addEventListener("click", () => previewWindow.print());
+      }
     } catch {
       previewWindow.close();
       setPreviewError("The draft preview could not be prepared. Please try again.");

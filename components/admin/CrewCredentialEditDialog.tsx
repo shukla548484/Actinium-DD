@@ -173,7 +173,8 @@ export function CrewCredentialEditDialog({
         <DialogHeader>
           <DialogTitle>Edit crew credential</DialogTitle>
           <DialogDescription>
-            Update onboard login details. Crew sign in with the vessel login ID only.
+            Update onboard login details. Crew can sign in with the vessel login ID or office Login
+            ID.
           </DialogDescription>
         </DialogHeader>
 

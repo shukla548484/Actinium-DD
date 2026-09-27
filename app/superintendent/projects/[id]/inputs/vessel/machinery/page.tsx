@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { PageHeader, PageShell } from "@/components/layout/PageShell";
+import { MachineryRegisterPanel } from "@/components/machinery/MachineryRegisterPanel";
 import { SuperintendentVesselPmsPanel } from "@/components/superintendent/SuperintendentVesselPmsPanel";
 import { VesselMachineryHoursPanel } from "@/components/superintendent/VesselMachineryHoursPanel";
 
@@ -12,9 +13,13 @@ export default function VesselMachineryPage() {
     <PageShell size="wide">
       <PageHeader
         title="Machinery & PMS"
-        description="Running hours and planned maintenance schedule from the vessel."
+        description="Machinery register, running hours, and planned maintenance from the vessel."
       />
       <div className="space-y-8">
+        <div>
+          <h2 className="mb-3 text-lg font-semibold">Machinery register</h2>
+          <MachineryRegisterPanel side="office" dryDockProjectId={id} />
+        </div>
         <VesselMachineryHoursPanel dryDockProjectId={id} />
         <div>
           <h2 className="mb-3 text-lg font-semibold">PMS schedule</h2>

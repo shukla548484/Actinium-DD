@@ -1669,11 +1669,18 @@ model VesselMachineryAsset {
   id                   String                 @id @default(cuid())
   vesselId             String                 @map("vessel_id")
   libraryNodeId        String?                @map("library_node_id")
+  /// Unique per vessel, e.g. VESSELCODE-MCH-0001
+  identificationNumber String?                @map("identification_number")
   department           String
   name                 String
   maker                String?
   model                String?
   serialNumber         String?                @map("serial_number")
+  /// Count / capacity unit label (e.g. "1 set", "2 units", "m³").
+  units                String?
+  location             String?
+  nameplatePhotoUrl    String?                @map("nameplate_photo_url")
+  isActive             Boolean                @default(true) @map("is_active")
   installedAt          DateTime?              @map("installed_at")
   currentRunningHours  Int?                   @map("current_running_hours")
   lastOverhaulDate     DateTime?              @map("last_overhaul_date")
@@ -1694,7 +1701,9 @@ model VesselMachineryAsset {
   purchaseRequisitions PurchaseRequisition[]
   purchaseRequisitionItems PurchaseRequisitionItem[]
 
+  @@unique([vesselId, identificationNumber])
   @@index([vesselId, department])
+  @@index([vesselId, isActive])
   @@index([deletedAt])
   @@map("vessel_machinery_assets")
 }

@@ -439,7 +439,7 @@ export async function listPurchaseMachineryForVessel(
   if (!vessel) return { error: "Vessel not found.", status: 404 };
 
   const assets = await prisma.vesselMachineryAsset.findMany({
-    where: { vesselId, deletedAt: null },
+    where: { vesselId, deletedAt: null, isActive: true },
     orderBy: [{ department: "asc" }, { name: "asc" }],
     take: Math.min(limit, 1000),
     select: {

@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { MachineryAssetDto, RunningHoursEntryDto } from "@/lib/db/vesselMachineryAssets";
+import { readResponseJson } from "@/lib/http/readResponseJson";
 
 export default function MachineryRunningHoursPage() {
   const ctx = useShipAccessContext();
@@ -32,17 +33,28 @@ export default function MachineryRunningHoursPage() {
 
   const load = useCallback(async () => {
     if (!ctx.vesselId) return;
-    const [aRes, eRes] = await Promise.all([
-      fetch(`/api/ship-access/machinery/assets?vesselId=${ctx.vesselId}`),
-      fetch(`/api/ship-access/machinery/running-hours?vesselId=${ctx.vesselId}`),
-    ]);
-    const aData = (await aRes.json()) as { assets?: MachineryAssetDto[] };
-    const eData = (await eRes.json()) as { entries?: RunningHoursEntryDto[] };
-    setAssets(aData.assets ?? []);
-    setEntries(eData.entries ?? []);
-    if (!assetId && aData.assets?.[0]) {
-      setAssetId(aData.assets[0].id);
-      setDepartment(aData.assets[0].department);
+    setError(null);
+    try {
+      const [aRes, eRes] = await Promise.all([
+        fetch(`/api/ship-access/machinery/assets?vesselId=${ctx.vesselId}`),
+        fetch(`/api/ship-access/machinery/running-hours?vesselId=${ctx.vesselId}`),
+      ]);
+      const aData = await readResponseJson<{ assets?: MachineryAssetDto[]; error?: string }>(aRes);
+      const eData = await readResponseJson<{ entries?: RunningHoursEntryDto[]; error?: string }>(eRes);
+      if (!aRes.ok || !eRes.ok) {
+        setError(aData?.error ?? eData?.error ?? "Failed to load running hours");
+        setAssets(aData?.assets ?? []);
+        setEntries(eData?.entries ?? []);
+        return;
+      }
+      setAssets(aData?.assets ?? []);
+      setEntries(eData?.entries ?? []);
+      if (!assetId && aData?.assets?.[0]) {
+        setAssetId(aData.assets[0].id);
+        setDepartment(aData.assets[0].department);
+      }
+    } catch {
+      setError("Failed to load running hours");
     }
   }, [ctx.vesselId, assetId]);
 
@@ -68,9 +80,9 @@ export default function MachineryRunningHoursPage() {
       }),
     });
     setBusy(false);
-    const data = (await res.json()) as { error?: string };
+    const data = await readResponseJson<{ error?: string }>(res);
     if (!res.ok) {
-      setError(data.error ?? "Failed to save");
+      setError(data?.error ?? "Failed to save");
       return;
     }
     setCurrentHours("");

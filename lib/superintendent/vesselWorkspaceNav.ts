@@ -40,10 +40,10 @@ export const VESSEL_WORKSPACE_NAV: VesselWorkspaceNavItem[] = [
   },
   {
     segment: "machinery",
-    label: "Machinery hours",
-    description: "Main engine, auxiliary, and boiler running hours from the vessel.",
+    label: "Machinery & PMS",
+    description: "Machinery register, running hours, and planned maintenance from the vessel.",
     icon: Clock,
-    shipAccessHref: "/ship-access/machinery",
+    shipAccessHref: "/ship-access/machinery/register",
   },
   {
     segment: "defects",

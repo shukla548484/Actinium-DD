@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { mapSelectItems } from "@/lib/ui/labeledSelect";
+import { readResponseJson } from "@/lib/http/readResponseJson";
 
 type VesselOption = { id: string; code: string; name: string };
 
@@ -103,13 +104,16 @@ export function useShipAccessContext() {
     setError(null);
     try {
       const res = await fetch("/api/ship-access/context");
-      const data = await res.json();
+      const data = await readResponseJson<ContextState & { error?: string }>(res);
       if (!res.ok) {
-        setError(data.error ?? "Failed to load ship context");
+        setError(data?.error ?? "Failed to load ship context");
         setState(null);
         return;
       }
       setState(data as ContextState);
+    } catch {
+      setError("Failed to load ship context");
+      setState(null);
     } finally {
       setLoading(false);
     }

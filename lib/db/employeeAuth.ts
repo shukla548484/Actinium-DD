@@ -1,6 +1,7 @@
 import type { EntityStatus, RbacUserType } from "@prisma/client";
 import { isVesselCrewRoleCode } from "@/lib/admin/crewLoginId";
 import { DEFAULT_EMPLOYEE_PASSWORD } from "@/lib/auth/constants";
+import { expandLoginLookupCandidates } from "@/lib/auth/loginIdNormalize";
 import { hashPassword, verifyPasswordHash } from "@/lib/auth/password";
 import { resolveRbacUserTypeFromRole } from "@/lib/rbac/userTypes";
 import { prisma } from "@/lib/prisma";
@@ -95,7 +96,7 @@ export async function verifyEmployeeLogin(
     },
   } as const;
 
-  const loginCandidates = [trimmed, trimmed.toUpperCase()];
+  const loginCandidates = expandLoginLookupCandidates(trimmed);
 
   const userByVesselLogin = await prisma.user.findFirst({
     where: {
@@ -103,7 +104,7 @@ export async function verifyEmployeeLogin(
       employeeProfile: {
         is: {
           ...notDeleted,
-          vesselLoginId: { in: [...new Set(loginCandidates)] },
+          vesselLoginId: { in: loginCandidates },
         },
       },
     },
@@ -113,7 +114,7 @@ export async function verifyEmployeeLogin(
   const userByLoginId = await prisma.user.findFirst({
     where: {
       ...notDeleted,
-      loginId: { in: [...new Set(loginCandidates)] },
+      loginId: { in: loginCandidates },
     },
     include: includeProfile,
   });
@@ -121,28 +122,15 @@ export async function verifyEmployeeLogin(
   const userByEmployeeCode = await prisma.user.findFirst({
     where: {
       ...notDeleted,
-      employeeProfile: { is: { employeeCode: trimmed, ...notDeleted } },
+      employeeProfile: { is: { employeeCode: { in: loginCandidates }, ...notDeleted } },
     },
     include: includeProfile,
   });
 
-  let user = userByVesselLogin;
-  let matchedViaEmployeeCode = false;
-
-  if (!user && userByLoginId) {
-    if (isVesselCrewRole(userByLoginId.employeeProfile?.role)) {
-      return null;
-    }
-    user = userByLoginId;
-  }
-
-  if (!user && userByEmployeeCode) {
-    if (isVesselCrewRole(userByEmployeeCode.employeeProfile?.role)) {
-      return null;
-    }
-    user = userByEmployeeCode;
-    matchedViaEmployeeCode = true;
-  }
+  // Prefer vessel login ID, then User.loginId, then employee code.
+  // Vessel crew may sign in with either their vessel login ID or office Login ID
+  // (employee code / user.loginId) — both are valid credentials.
+  const user = userByVesselLogin ?? userByLoginId ?? userByEmployeeCode;
 
   if (!user || user.status === "disabled") return null;
   if (!verifyPasswordHash(password, user.passwordHash)) return null;
@@ -152,7 +140,6 @@ export async function verifyEmployeeLogin(
   if (employee && employee.status === "inactive") return null;
 
   const vesselCrew = isVesselCrewRole(employee?.role ?? null);
-  if (vesselCrew && matchedViaEmployeeCode) return null;
 
   const resolvedLoginId = user.loginId ?? employee?.employeeCode ?? trimmed;
   const rbacUserType = resolveRbacUserTypeFromRole(employee?.role ?? null);

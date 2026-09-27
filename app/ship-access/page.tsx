@@ -86,7 +86,9 @@ export default function ShipAccessOverviewPage() {
       </div>
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
-        {has("page.shipAccess.machineryDashboard") || has("page.shipAccess.machineryHours") ? (
+        {has("page.shipAccess.machineryDashboard") ||
+        has("page.shipAccess.machineryHours") ||
+        has("page.shipAccess.machineryRegister") ? (
           <Card>
             <CardHeader>
               <CardTitle>Machinery</CardTitle>
@@ -102,6 +104,16 @@ export default function ShipAccessOverviewPage() {
                   disabled={!ctx.vesselId}
                 >
                   Machinery dashboard
+                </Button>
+              ) : null}
+              {has("page.shipAccess.machineryRegister") ? (
+                <Button
+                  variant="outline"
+                  render={<Link href="/ship-access/machinery/register" />}
+                  nativeButton={false}
+                  disabled={!ctx.vesselId}
+                >
+                  Machinery register
                 </Button>
               ) : null}
               {has("page.shipAccess.machineryRunningHours") ? (

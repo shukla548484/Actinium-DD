@@ -9,6 +9,7 @@ import {
 } from "@/lib/db/employeeModuleAccess";
 import { moduleCodeForPageKey } from "@/lib/rbac/accessModules";
 import { getUserPermissions } from "@/lib/db/rbac";
+import { withMachineryRegisterPage } from "@/lib/shipAccess/crewPages";
 
 export const dynamic = "force-dynamic";
 
@@ -83,6 +84,8 @@ export async function GET() {
       assignedModuleCodes = [...derived].sort();
     }
   }
+
+  assignedPageKeys = withMachineryRegisterPage(assignedPageKeys);
 
   return NextResponse.json({
     authenticated: true,
