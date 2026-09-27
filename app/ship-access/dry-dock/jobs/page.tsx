@@ -16,6 +16,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PaginationBar } from "@/components/superintendent/PaginationBar";
+import { useClientTable } from "@/hooks/useClientTable";
 import { VESSEL_JOB_STATUS_ITEMS } from "@/lib/superintendent/constants";
 import type { DdVesselJobDto } from "@/lib/superintendent/types";
 import { conditionRatingLabel } from "@/lib/vessel/machinery/parameters";
@@ -50,6 +52,11 @@ function DryDockJobsContent() {
   useEffect(() => {
     if (!ctx.loading) void load();
   }, [ctx.loading, load]);
+
+  const table = useClientTable({
+    items: jobs,
+    resetKey: status,
+  });
 
   return (
     <PageShell size="wide">
@@ -105,7 +112,7 @@ function DryDockJobsContent() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  jobs.map((job) => (
+                  table.pageItems.map((job) => (
                     <TableRow key={job.id}>
                       <TableCell className="font-medium">{job.title}</TableCell>
                       <TableCell>{job.department ?? job.category}</TableCell>
@@ -133,6 +140,15 @@ function DryDockJobsContent() {
           )}
         </CardContent>
       </Card>
+
+      {!loading ? (
+        <PaginationBar
+          page={table.page}
+          totalPages={table.totalPages}
+          total={table.total}
+          onPageChange={table.setPage}
+        />
+      ) : null}
     </PageShell>
   );
 }

@@ -337,9 +337,11 @@ export function ClassStatusConfirmationPanel({
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-24">Code</TableHead>
                     <TableHead>Machinery</TableHead>
                     <TableHead>Last done</TableHead>
                     <TableHead>Due</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>Include in DD</TableHead>
                     <TableHead>Reason</TableHead>
                   </TableRow>
@@ -347,15 +349,74 @@ export function ClassStatusConfirmationPanel({
                 <TableBody>
                   {machinery.map((m) => (
                     <TableRow key={m.id}>
+                      <TableCell className="font-mono text-xs">{m.classCode ?? "—"}</TableCell>
                       <TableCell className="font-medium">{m.name}</TableCell>
                       <TableCell className="text-sm">{m.lastDone ?? "—"}</TableCell>
                       <TableCell className="text-sm">{m.dueDate ?? "—"}</TableCell>
+                      <TableCell className="text-sm">{m.status ?? "—"}</TableCell>
                       <TableCell className="text-sm">
                         {m.includeInDryDock ? "Yes" : "No"}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {m.reason ?? "—"}
                       </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="shadow-none">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Machinery last done / due</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              No machinery / continuous-survey items extracted from this report.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {analysis.machinerySync && analysis.machinerySync.length > 0 ? (
+        <Card className="shadow-none">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Machinery register sync</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Class report vs vessel register. Class updates dates only when newer than the app;
+              running hours are never overwritten.
+            </p>
+            <div className="overflow-x-auto rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Machinery</TableHead>
+                    <TableHead className="w-24">Code</TableHead>
+                    <TableHead>Match</TableHead>
+                    <TableHead>Class last / due</TableHead>
+                    <TableHead>App last / due</TableHead>
+                    <TableHead>Result</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {analysis.machinerySync.map((row) => (
+                    <TableRow key={row.id}>
+                      <TableCell className="font-medium">{row.name}</TableCell>
+                      <TableCell className="font-mono text-xs">{row.classCode ?? "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {row.matchBy ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {[row.classLastDone ?? "—", row.classDueDate ?? "—"].join(" / ")}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {[row.appLastDone ?? "—", row.appDueDate ?? "—"].join(" / ")}
+                      </TableCell>
+                      <TableCell className="text-sm font-medium">{row.message}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

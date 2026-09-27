@@ -17,6 +17,17 @@ export {
   type MachineryRegisterImportRow,
 } from "@/lib/machinery/machineryRegisterImport";
 
+/** Thrown for user-facing Excel validation/corrupt-file failures (HTTP 400). */
+export class MachineryRegisterExcelError extends Error {
+  readonly code: "corrupt" | "unsupported" | "empty";
+
+  constructor(code: MachineryRegisterExcelError["code"], message: string) {
+    super(message);
+    this.name = "MachineryRegisterExcelError";
+    this.code = code;
+  }
+}
+
 const HEADER_ALIASES: Record<MachineryRegisterImportColumnKey, string[]> = {
   name: ["machinery name", "name", "asset name", "equipment name", "machinery"],
   maker: ["make", "maker", "manufacturer", "oem"],
@@ -41,6 +52,76 @@ const IGNORED_HEADERS = [
   "image",
   "images",
 ];
+
+function createWorkbook(): ExcelJS.Workbook {
+  const ns = ExcelJS as unknown as {
+    Workbook?: typeof ExcelJS.Workbook;
+    default?: { Workbook: typeof ExcelJS.Workbook };
+  };
+  const Workbook = ns.Workbook ?? ns.default?.Workbook;
+  if (!Workbook) {
+    throw new Error(
+      "Excel library failed to load (exceljs). Restart the dev server after npm install.",
+    );
+  }
+  return new Workbook();
+}
+
+function toNodeBuffer(data: ArrayBuffer | Buffer | Uint8Array): Buffer {
+  if (Buffer.isBuffer(data)) return Buffer.from(data);
+  if (data instanceof ArrayBuffer) return Buffer.from(data);
+  if (ArrayBuffer.isView(data)) {
+    return Buffer.from(data.buffer, data.byteOffset, data.byteLength);
+  }
+  throw new MachineryRegisterExcelError(
+    "corrupt",
+    "Could not read the uploaded file. Use the Download template .xlsx file.",
+  );
+}
+
+function isLikelyZipCorruptError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err ?? "");
+  const n = message.toLowerCase();
+  return (
+    n.includes("corrupted zip") ||
+    n.includes("end of central directory") ||
+    n.includes("end of data reached") ||
+    n.includes("invalid signature") ||
+    n.includes("is this a zip file")
+  );
+}
+
+async function loadWorkbook(data: ArrayBuffer | Buffer | Uint8Array): Promise<ExcelJS.Workbook> {
+  const buffer = toNodeBuffer(data);
+  if (buffer.byteLength < 4) {
+    throw new MachineryRegisterExcelError(
+      "corrupt",
+      "The uploaded file is empty or unreadable. Download the template, save as .xlsx, and try again.",
+    );
+  }
+  // xlsx files are ZIP packages (PK..). Old .xls / CSV / HTML error pages fail here.
+  if (buffer[0] !== 0x50 || buffer[1] !== 0x4b) {
+    throw new MachineryRegisterExcelError(
+      "corrupt",
+      "File is not a valid Excel .xlsx workbook. Download the official template and upload the .xlsx file (not CSV or .xls).",
+    );
+  }
+  const wb = createWorkbook();
+  try {
+    // Pass a Node Buffer — ExcelJS/JSZip accept Buffer; casting Buffer as ArrayBuffer is unsafe.
+    await wb.xlsx.load(buffer);
+  } catch (err) {
+    if (err instanceof MachineryRegisterExcelError) throw err;
+    if (isLikelyZipCorruptError(err)) {
+      throw new MachineryRegisterExcelError(
+        "corrupt",
+        "Could not open the Excel file (corrupt or not .xlsx). Re-download the template, fill Machinery name, and upload the .xlsx again.",
+      );
+    }
+    throw err;
+  }
+  return wb;
+}
 
 function normalizeHeader(value: string): string {
   return value.toLowerCase().replace(/[\s_/.-]+/g, " ").trim();
@@ -99,7 +180,7 @@ export async function buildMachineryRegisterTemplateWorkbook(opts?: {
   vesselName?: string | null;
   vesselCode?: string | null;
 }): Promise<Buffer> {
-  const wb = new ExcelJS.Workbook();
+  const wb = createWorkbook();
   wb.creator = "Actinium DD";
   wb.created = new Date();
 
@@ -136,6 +217,7 @@ export async function buildMachineryRegisterTemplateWorkbook(opts?: {
   });
   sheet.getRow(3).height = 22;
 
+  // ExcelJS accepts a dense values array with index 0 → column A for this version.
   const sample = sheet.getRow(4);
   sample.values = [
     "Example: Auxiliary Generator No.3",
@@ -210,7 +292,7 @@ export async function buildMachineryRegisterTemplateWorkbook(opts?: {
   });
 
   const buffer = await wb.xlsx.writeBuffer();
-  return Buffer.from(buffer);
+  return toNodeBuffer(buffer as ArrayBuffer | Buffer | Uint8Array);
 }
 
 function findMachinerySheet(wb: ExcelJS.Workbook): ExcelJS.Worksheet | null {
@@ -233,12 +315,16 @@ function findMachinerySheet(wb: ExcelJS.Workbook): ExcelJS.Worksheet | null {
 }
 
 export async function parseMachineryRegisterWorkbook(
-  buffer: ArrayBuffer | Buffer,
+  data: ArrayBuffer | Buffer | Uint8Array,
 ): Promise<MachineryRegisterImportRow[]> {
-  const wb = new ExcelJS.Workbook();
-  await wb.xlsx.load(buffer as ArrayBuffer);
+  const wb = await loadWorkbook(data);
   const sheet = findMachinerySheet(wb);
-  if (!sheet) return [];
+  if (!sheet) {
+    throw new MachineryRegisterExcelError(
+      "empty",
+      "No 'Machinery register' sheet found. Use the Download template workbook.",
+    );
+  }
 
   let headerRow = 0;
   const colMap = new Map<number, MachineryRegisterImportColumnKey>();
@@ -257,7 +343,12 @@ export async function parseMachineryRegisterWorkbook(
     }
   });
 
-  if (headerRow === 0) return [];
+  if (headerRow === 0) {
+    throw new MachineryRegisterExcelError(
+      "empty",
+      "No header row with 'Machinery name' found. Use the Download template (headers are on row 3).",
+    );
+  }
 
   const parsed: MachineryRegisterImportRow[] = [];
   for (let r = headerRow + 1; r <= sheet.rowCount; r++) {
@@ -310,6 +401,27 @@ export async function parseMachineryRegisterWorkbook(
   }
 
   return parsed;
+}
+
+export function machineryRegisterParseHttpError(err: unknown): {
+  status: number;
+  error: string;
+} {
+  if (err instanceof MachineryRegisterExcelError) {
+    return { status: 400, error: err.message };
+  }
+  if (isLikelyZipCorruptError(err)) {
+    return {
+      status: 400,
+      error:
+        "Could not open the Excel file (corrupt or not .xlsx). Re-download the template and try again.",
+    };
+  }
+  const message = err instanceof Error ? err.message : "";
+  if (/excel library failed to load/i.test(message)) {
+    return { status: 500, error: message };
+  }
+  return { status: 500, error: "Failed to parse Excel file" };
 }
 
 export function excelAttachmentResponse(buffer: Buffer, filename: string): Response {

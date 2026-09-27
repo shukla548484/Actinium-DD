@@ -16,6 +16,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PaginationBar } from "@/components/superintendent/PaginationBar";
+import { useClientTable } from "@/hooks/useClientTable";
 import {
   DD_SIMPLE_JOB_STATUS_ITEMS,
   DD_SIMPLE_JOB_STATUS_LABELS,
@@ -130,6 +132,11 @@ function SimpleJobsContent() {
     ...DD_SIMPLE_PAINT_JOB_TYPES.map((t) => ({ value: t.code, label: t.label })),
   ];
 
+  const table = useClientTable({
+    items: jobs,
+    resetKey: `${status}|${jobType}`,
+  });
+
   return (
     <PageShell size="wide">
       <PageHeader
@@ -189,7 +196,7 @@ function SimpleJobsContent() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {jobs.map((job) => (
+                {table.pageItems.map((job) => (
                   <TableRow key={job.id}>
                     <TableCell className="font-medium">{job.title}</TableCell>
                     <TableCell>{paintJobTypeLabel(job.jobType)}</TableCell>
@@ -246,6 +253,15 @@ function SimpleJobsContent() {
           </CardContent>
         </Card>
       )}
+
+      {!loading && !error && ctx.vesselId && jobs.length > 0 ? (
+        <PaginationBar
+          page={table.page}
+          totalPages={table.totalPages}
+          total={table.total}
+          onPageChange={table.setPage}
+        />
+      ) : null}
     </PageShell>
   );
 }

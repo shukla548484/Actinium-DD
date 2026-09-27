@@ -103,16 +103,49 @@ export type ClassStatusSurveyPlanning = {
   notes: string | null;
 };
 
+export type ClassMachinerySyncAction =
+  | "updated_from_class"
+  | "kept_app_record"
+  | "new_from_class"
+  | "matched_no_change";
+
+export type ClassMachinerySyncMatchBy = "class_code" | "asset_id" | "name" | null;
+
+/** Diff / apply result for one Class machinery line vs vessel register. */
+export type ClassMachinerySyncRow = {
+  id: string;
+  classMachineryId: string;
+  machineryAssetId: string | null;
+  name: string;
+  classCode: string | null;
+  matchBy: ClassMachinerySyncMatchBy;
+  action: ClassMachinerySyncAction;
+  /** User-facing: Updated from Class (newer) / Kept app record / New from Class */
+  message: string;
+  classLastDone: string | null;
+  classDueDate: string | null;
+  classStatus: string | null;
+  appLastDone: string | null;
+  appDueDate: string | null;
+  applied: boolean;
+};
+
 export type ClassStatusMachineryItem = {
   id: string;
   name: string;
+  /** Class / CSM item code when present (e.g. IRS 0024) */
+  classCode: string | null;
   lastDone: string | null;
   dueDate: string | null;
+  /** Report status e.g. Due / Overdue / Completed / Pending */
+  status: string | null;
   /** Due within dry-dock window or within 1 year from report / today */
   includeInDryDock: boolean;
   reason: string | null;
   attend: boolean;
   createdJobId: string | null;
+  /** Linked vessel machinery asset after sync */
+  machineryAssetId: string | null;
 };
 
 export type ClassStatusConditionItem = {
@@ -138,6 +171,8 @@ export type ClassStatusAnalysis = {
   surveyPlanning: ClassStatusSurveyPlanning;
   conditions: ClassStatusConditionItem[];
   machinery: ClassStatusMachineryItem[];
+  /** Re-upload sync vs vessel machinery register */
+  machinerySync: ClassMachinerySyncRow[];
   /** Tickable dry-dock jobs (surveys due, machinery, recommendations) */
   jobs: ClassStatusTableRow[];
   cocs: ClassStatusTableRow[];
@@ -239,6 +274,7 @@ export function emptyClassStatusAnalysis(
     surveyPlanning: emptySurveyPlanning(),
     conditions: [],
     machinery: [],
+    machinerySync: [],
     jobs: [],
     cocs: [],
     otherItems: [],
@@ -341,6 +377,7 @@ function pickBetterRangeEnd(
   const scoreB = intermediateWindowScore(rangeStart, endB);
   if (scoreB > scoreA) return endB;
   if (scoreA > scoreB) return endA;
+  if (!rangeStart) return endA;
   const daysA = daysBetween(rangeStart, endA);
   const daysB = daysBetween(rangeStart, endB);
   if (daysA != null && daysB != null && daysB > daysA) return endB;
@@ -531,6 +568,29 @@ function normalizeConditions(values: unknown): ClassStatusConditionItem[] {
   return out;
 }
 
+function normalizeMachineryStatus(value: unknown): string | null {
+  if (value == null) return null;
+  const s = String(value).trim();
+  if (!s) return null;
+  const lower = s.toLowerCase();
+  if (/\bover[\s-]?due\b/.test(lower)) return "Overdue";
+  if (/\bdue\b/.test(lower) && !/\bnot\s+due\b/.test(lower)) return "Due";
+  if (/\bnot\s+due\b|\bupcoming\b|\bfuture\b/.test(lower)) return "Not due";
+  if (/\bcomplet|\bdone\b|\bclosed\b/.test(lower)) return "Completed";
+  if (/\bpending\b/.test(lower)) return "Pending";
+  return s;
+}
+
+function normalizeClassCode(value: unknown): string | null {
+  if (value == null) return null;
+  const s = String(value).trim();
+  if (!s) return null;
+  // Keep short alphanumeric Class/CSM codes (e.g. 0024, CSM-0615)
+  const cleaned = s.replace(/\s+/g, "").toUpperCase();
+  if (cleaned.length > 32) return s.slice(0, 32);
+  return cleaned;
+}
+
 function normalizeMachinery(
   values: unknown,
   opts: { referenceDate: string; dryDockStart: string | null; dryDockEnd: string | null },
@@ -541,13 +601,27 @@ function normalizeMachinery(
   values.forEach((v, i) => {
     if (!v || typeof v !== "object") return;
     const row = v as Record<string, unknown>;
-    const name = String(row.name ?? row.title ?? row.machinery ?? "").trim();
+    const name = String(row.name ?? row.title ?? row.machinery ?? row.description ?? "").trim();
     if (!name) return;
     const lastDone = parseFlexibleDate(row.lastDone ?? row.lastSurvey ?? row.completed);
     const dueDate = parseFlexibleDate(row.dueDate ?? row.due ?? row.nextDue);
+    const status = normalizeMachineryStatus(row.status ?? row.surveyStatus ?? row.state);
+    const classCode = normalizeClassCode(
+      row.classCode ?? row.code ?? row.itemCode ?? row.ref ?? row.classItemCode,
+    );
     let includeInDryDock = Boolean(row.includeInDryDock);
     let reason =
       row.reason != null && String(row.reason).trim() ? String(row.reason).trim() : null;
+
+    if (status === "Due" || status === "Overdue" || status === "Pending") {
+      includeInDryDock = true;
+      if (!reason) {
+        reason =
+          status === "Overdue"
+            ? "Overdue on Class report — include in dry dock"
+            : "Due / pending on Class report — include in dry dock";
+      }
+    }
 
     if (dueDate) {
       const delta = daysBetween(opts.referenceDate, dueDate);
@@ -576,14 +650,158 @@ function normalizeMachinery(
     out.push({
       id: String(row.id ?? newId("mach", i)),
       name,
+      classCode,
       lastDone,
       dueDate,
+      status,
       includeInDryDock,
       reason,
       attend: Boolean(row.attend) || includeInDryDock,
       createdJobId: null,
+      machineryAssetId:
+        row.machineryAssetId != null && String(row.machineryAssetId).trim()
+          ? String(row.machineryAssetId).trim()
+          : null,
     });
   });
+  return out;
+}
+
+/** Merge OpenAI + local machinery by class code, then normalized name. */
+export function mergeMachineryLists(
+  primary: ClassStatusMachineryItem[],
+  secondary: ClassStatusMachineryItem[],
+): ClassStatusMachineryItem[] {
+  const byCode = new Map<string, ClassStatusMachineryItem>();
+  const byName = new Map<string, ClassStatusMachineryItem>();
+  const out: ClassStatusMachineryItem[] = [];
+
+  const index = (item: ClassStatusMachineryItem) => {
+    if (item.classCode) byCode.set(item.classCode.toUpperCase(), item);
+    byName.set(normalizeMachineryNameKey(item.name), item);
+  };
+
+  const upsert = (item: ClassStatusMachineryItem) => {
+    const codeHit = item.classCode ? byCode.get(item.classCode.toUpperCase()) : undefined;
+    const nameHit = byName.get(normalizeMachineryNameKey(item.name));
+    const existing = codeHit ?? nameHit;
+    if (!existing) {
+      out.push(item);
+      index(item);
+      return;
+    }
+    const merged: ClassStatusMachineryItem = {
+      ...existing,
+      classCode: existing.classCode ?? item.classCode,
+      lastDone: existing.lastDone ?? item.lastDone,
+      dueDate: existing.dueDate ?? item.dueDate,
+      status: existing.status ?? item.status,
+      includeInDryDock: existing.includeInDryDock || item.includeInDryDock,
+      reason: existing.reason ?? item.reason,
+      attend: existing.attend || item.attend,
+      machineryAssetId: existing.machineryAssetId ?? item.machineryAssetId,
+    };
+    const idx = out.findIndex((x) => x.id === existing.id);
+    if (idx >= 0) out[idx] = merged;
+    index(merged);
+  };
+
+  for (const item of primary) upsert(item);
+  for (const item of secondary) upsert(item);
+  return out;
+}
+
+export function normalizeMachineryNameKey(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Local fallback: IRS Section J / continuous survey items due in 6/12 months,
+ * plus machinery names near "List Of Machinery Items" / "Next Due".
+ */
+export function extractMachineryFromLocalText(text: string): ClassStatusMachineryItem[] {
+  if (!text.trim()) return [];
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+
+  const out: ClassStatusMachineryItem[] = [];
+  const seen = new Set<string>();
+
+  const pushName = (
+    name: string,
+    opts: { classCode?: string | null; includeInDryDock: boolean; reason: string; status?: string | null },
+  ) => {
+    const cleaned = name.replace(/^[\d.\-\s]+/, "").trim();
+    if (cleaned.length < 4 || cleaned.length > 120) return;
+    if (/^(page|printed|ir\s*class|ship\s+survey|name|status|code|next\s+due)/i.test(cleaned)) {
+      return;
+    }
+    if (/^\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}$/.test(cleaned)) return;
+    if (/^\d{4,}$/.test(cleaned)) return;
+    const key = normalizeMachineryNameKey(cleaned);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    out.push({
+      id: newId("local-mach", out.length),
+      name: cleaned,
+      classCode: opts.classCode ?? null,
+      lastDone: null,
+      dueDate: null,
+      status: opts.status ?? null,
+      includeInDryDock: opts.includeInDryDock,
+      reason: opts.reason,
+      attend: opts.includeInDryDock,
+      createdJobId: null,
+      machineryAssetId: null,
+    });
+  };
+
+  // Section J (and equivalents): continuous survey items due in next 6/12 months.
+  // IRS text extract often emits a block of codes, then a block of names — pair by order.
+  let inDueSection = false;
+  const pendingCodes: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!;
+    if (
+      /list of continuous survey items due|continuous survey items due in next/i.test(line)
+    ) {
+      inDueSection = true;
+      pendingCodes.length = 0;
+      continue;
+    }
+    if (inDueSection) {
+      if (/^[A-Z]\.\s+\S/.test(line) && !/continuous survey/i.test(line)) {
+        inDueSection = false;
+        pendingCodes.length = 0;
+        continue;
+      }
+      if (/list of (surveyable|machinery)|survey history|tank coating/i.test(line)) {
+        inDueSection = false;
+        pendingCodes.length = 0;
+        continue;
+      }
+      if (/^\d{3,5}$/.test(line)) {
+        pendingCodes.push(line);
+        continue;
+      }
+      if (/[A-Za-z]{3}/.test(line) && !/^\d{1,2}[\/\-.]/.test(line)) {
+        const code = pendingCodes.shift() ?? null;
+        pushName(line, {
+          classCode: code,
+          includeInDryDock: true,
+          reason: "Continuous survey item due in next 6/12 months (local extract)",
+          status: "Due",
+        });
+      }
+    }
+  }
+
   return out;
 }
 
@@ -1018,10 +1236,14 @@ function buildJobRowsFromStructured(analysis: {
     if (m.includeInDryDock || m.attend) {
       pushUnique({
         id: m.id,
-        ref: null,
+        ref: m.classCode,
         title: m.name,
         dueOrWindow: m.dueDate,
-        notes: [m.lastDone ? `Last done: ${m.lastDone}` : null, m.reason]
+        notes: [
+          m.status ? `Status: ${m.status}` : null,
+          m.lastDone ? `Last done: ${m.lastDone}` : null,
+          m.reason,
+        ]
           .filter(Boolean)
           .join(" · "),
         sourceHint: "machinery",
@@ -1182,7 +1404,8 @@ const EXTRACTION_JSON_SHAPE = `{
     "ref": string|null, "title": string, "dueOrWindow": string|null, "notes": string|null
   }],
   "machinery": [{
-    "name": string, "lastDone": string|null, "dueDate": string|null,
+    "name": string, "classCode": string|null, "lastDone": string|null, "dueDate": string|null,
+    "status": "Due"|"Overdue"|"Completed"|"Not due"|"Pending"|string|null,
     "includeInDryDock": boolean, "reason": string|null
   }],
   "jobs": [{"ref": string|null, "title": string, "dueOrWindow": string|null, "notes": string|null, "sourceHint": string|null}],
@@ -1214,7 +1437,16 @@ REPORT STRUCTURE (read thoroughly, page by page):
    rangeStart = first date, rangeEnd = second date (latest). Do NOT use Annual Survey due date as rangeEnd.
 7) After certificates: due / overdue inspections & certificates → conditions kind "due_or_overdue".
 8) Conditions of Class → kind "coc"; Statutory conditions → "statutory"; Memorandum → "memorandum"; Additional information → "additional".
-9) Machinery list: name, last done, next due. If due within planned dry dock OR within next 12 months OR overdue → includeInDryDock=true with reason.
+9) MACHINERY / CONTINUOUS SURVEY ITEMS (CRITICAL for dry-dock jobs + register sync):
+   a) Section titled like "List of continuous survey items due in next 6 months/ 12 months" (IRS Section J or equivalent)
+      — extract EVERY item: classCode (item code), name/description, lastDone, dueDate/next due, status.
+      ALL of these are upcoming Class work → includeInDryDock=true with reason.
+   b) Machinery / CSM item tables ("List Of Machinery Items") with Status, Cycle, Last Done / Date, Next Due
+      — extract items that are Due, Overdue, Pending, or due within 12 months / dry-dock window.
+      Include name, classCode, lastDone, dueDate, status, includeInDryDock.
+   Do NOT dump hundreds of Completed/Not-due historical register rows — prioritize due/overdue/upcoming.
+   If the report only has a compact machinery list, extract it all.
+   classCode is essential for matching on re-upload (IRS numeric codes like 0024, 0615).
 
 DATE RULES:
 - Survey due dates for Special / Intermediate / Docking / CSM MUST come from the report survey schedule table columns (Assigned Date, Due Date, Range, Status). Never derive them as anniversary+2.5y / +5y.
@@ -1225,9 +1457,10 @@ DATE RULES:
 
 JOBS / COCs tables:
 - jobs = surveys/inspections/machinery/recommendations to attend in dry dock (include unit numbers when present). Prefer including the four surveys when status is Due or Overdue.
+- Also put continuous-survey / machinery items with includeInDryDock=true into jobs (title = machinery name, ref = classCode when present).
 - cocs = Conditions of Class lines.
 - Be exhaustive — do not skip certificates, COCs, survey schedule rows, or machinery due items.
-- Prefer PDF content over LOCAL_EXTRACT; use local to fill gaps; set extractionComparison accordingly. Prefer preferredSource "merged" when both PDF and local survey schedule data are used.`;
+- Prefer PDF content over LOCAL_EXTRACT; use local to fill gaps; set extractionComparison accordingly. Prefer preferredSource "merged" when both PDF and local survey schedule / machinery data are used.`;
 
 function extractJsonObject(content: string): Record<string, unknown> {
   const trimmed = content.trim();
@@ -1279,6 +1512,7 @@ function parsedToAnalysis(
     dryDockStart: string | null;
     dryDockEnd: string | null;
     localSurveys?: ClassStatusSurveyScheduleItem[];
+    localMachinery?: ClassStatusMachineryItem[];
     localText?: string | null;
   },
 ): ClassStatusAnalysis {
@@ -1315,11 +1549,13 @@ function parsedToAnalysis(
     new Date().toISOString().slice(0, 10);
 
   const conditions = normalizeConditions(parsed.conditions);
-  const machinery = normalizeMachinery(parsed.machinery, {
+  const fromModel = normalizeMachinery(parsed.machinery, {
     referenceDate,
     dryDockStart: meta.dryDockStart,
     dryDockEnd: meta.dryDockEnd,
   });
+  const fromLocal = meta.localMachinery ?? [];
+  const machinery = mergeMachineryLists(fromModel, fromLocal);
 
   const jobsFromModel = [
     ...asTableRows("job", parsed.jobs ?? parsed.dueJobs),
@@ -1427,17 +1663,21 @@ function parsedToAnalysis(
     : `Vessel ${vessel.vesselName ?? "—"}; ${certificatesFixed.length} cert(s); ${surveyPlanning.surveys.length} survey schedule row(s); ${jobs.length} dry-dock job candidate(s).`;
 
   const usedLocalSurveys = (meta.localSurveys?.length ?? 0) > 0;
+  const usedLocalMachinery = (meta.localMachinery?.length ?? 0) > 0;
   const usedOpenAiSurveys =
     (Array.isArray(planningRaw?.surveys) && planningRaw.surveys.length > 0) ||
     Boolean(planningRaw?.specialSurveyDue);
-  if (usedLocalSurveys && (meta.openaiPdfUsed || usedOpenAiSurveys)) {
+  if (
+    (usedLocalSurveys || usedLocalMachinery) &&
+    (meta.openaiPdfUsed || usedOpenAiSurveys || fromModel.length > 0)
+  ) {
     preferredSource = "merged";
   }
 
   const note =
     String(cmpRaw.note ?? "").trim() ||
     (preferredSource === "merged"
-      ? `Merged OpenAI PDF + local survey schedule (${surveyPlanning.surveys.length} surveys; local extract ${meta.localCharCount} chars).`
+      ? `Merged OpenAI PDF + local extract (${surveyPlanning.surveys.length} surveys, ${machinery.length} machinery; local ${meta.localCharCount} chars).`
       : meta.openaiPdfUsed
         ? `OpenAI PDF read; local extract ${meta.localCharCount} chars compared.`
         : `Local text only (${meta.localCharCount} chars).`);
@@ -1656,6 +1896,7 @@ export async function analyzeClassStatusReport(input: {
     : input.buffer.toString("utf8").slice(0, 120_000);
   const localCharCount = localExtract.trim().length;
   const localSurveys = extractSurveyScheduleFromLocalText(localExtract);
+  const localMachinery = extractMachineryFromLocalText(localExtract);
 
   if (isPdf) {
     try {
@@ -1677,6 +1918,7 @@ export async function analyzeClassStatusReport(input: {
         dryDockStart,
         dryDockEnd,
         localSurveys,
+        localMachinery,
         localText: localExtract,
       });
     } catch (pdfErr) {
@@ -1702,6 +1944,7 @@ export async function analyzeClassStatusReport(input: {
         dryDockStart,
         dryDockEnd,
         localSurveys,
+        localMachinery,
         localText: localExtract,
       });
       const failNote =
@@ -1711,7 +1954,8 @@ export async function analyzeClassStatusReport(input: {
         extractionComparison: {
           localCharCount,
           openaiPdfUsed: false,
-          preferredSource: localSurveys.length > 0 ? "merged" : "local_text",
+          preferredSource:
+            localSurveys.length > 0 || localMachinery.length > 0 ? "merged" : "local_text",
           note: `Fell back to local extract after OpenAI PDF read failed: ${failNote}`,
         },
       };
@@ -1741,6 +1985,7 @@ export async function analyzeClassStatusReport(input: {
     dryDockStart,
     dryDockEnd,
     localSurveys,
+    localMachinery,
     localText: localExtract,
   });
 }
@@ -1777,7 +2022,15 @@ export function parseStoredClassStatusAnalysis(
       surveys: Array.isArray(v3.surveyPlanning?.surveys) ? v3.surveyPlanning.surveys : [],
     },
     conditions: Array.isArray(v3.conditions) ? v3.conditions : [],
-    machinery: Array.isArray(v3.machinery) ? v3.machinery : [],
+    machinery: Array.isArray(v3.machinery)
+      ? v3.machinery.map((m) => ({
+          ...m,
+          classCode: m.classCode ?? null,
+          status: m.status ?? null,
+          machineryAssetId: m.machineryAssetId ?? null,
+        }))
+      : [],
+    machinerySync: Array.isArray(v3.machinerySync) ? v3.machinerySync : [],
     jobs: Array.isArray(v3.jobs) ? v3.jobs : [],
     cocs: Array.isArray(v3.cocs) ? v3.cocs : [],
     otherItems: Array.isArray(v3.otherItems) ? v3.otherItems : [],

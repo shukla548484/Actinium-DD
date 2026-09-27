@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireSuperintendentApiAccess } from "@/lib/auth/superintendentAccess";
-import { parseMachineryRegisterWorkbook } from "@/lib/machinery/machineryRegisterExcel";
+import {
+  machineryRegisterParseHttpError,
+  parseMachineryRegisterWorkbook,
+} from "@/lib/machinery/machineryRegisterExcel";
 import { assertDryDockProjectInScope, assertVesselInScope } from "@/lib/superintendent/scope";
 
 export const dynamic = "force-dynamic";
@@ -53,10 +56,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Upload an Excel file (.xlsx)." }, { status: 400 });
     }
     const name = file.name.toLowerCase();
-    if (!name.endsWith(".xlsx") && !name.endsWith(".xls")) {
+    if (name.endsWith(".xls") && !name.endsWith(".xlsx")) {
+      return NextResponse.json(
+        {
+          error:
+            "Legacy .xls is not supported. Download the template and save/upload as .xlsx.",
+        },
+        { status: 400 },
+      );
+    }
+    if (!name.endsWith(".xlsx")) {
       return NextResponse.json({ error: "Upload an Excel file (.xlsx)." }, { status: 400 });
     }
-    if (file.type && !EXCEL_TYPES.has(file.type) && !name.endsWith(".xlsx") && !name.endsWith(".xls")) {
+    if (file.type && !EXCEL_TYPES.has(file.type) && !name.endsWith(".xlsx")) {
       return NextResponse.json({ error: "Upload an Excel file (.xlsx)." }, { status: 400 });
     }
 
@@ -66,7 +78,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "No machinery rows found. Ensure the sheet has a 'Machinery name' column and at least one data row.",
+            "No machinery rows found. Add at least one row with Machinery name (row 5+). The example row is ignored — delete it or add your own rows below it.",
         },
         { status: 400 },
       );
@@ -78,7 +90,10 @@ export async function POST(request: Request) {
       message: `Parsed ${rows.length} row(s). Review and confirm to register.`,
     });
   } catch (err) {
-    console.error("[superintendent/machinery-assets/parse-import] POST failed", err);
-    return NextResponse.json({ error: "Failed to parse Excel file" }, { status: 500 });
+    const mapped = machineryRegisterParseHttpError(err);
+    if (mapped.status >= 500) {
+      console.error("[superintendent/machinery-assets/parse-import] POST failed", err);
+    }
+    return NextResponse.json({ error: mapped.error }, { status: mapped.status });
   }
 }

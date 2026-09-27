@@ -8,17 +8,37 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { LabeledSelect } from "@/components/ui/LabeledSelect";
+import { SortableTableHead } from "@/components/ui/SortableTableHead";
 import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PaginationBar } from "@/components/superintendent/PaginationBar";
+import {
+  useClientTable,
+  type ComparableValue,
+} from "@/hooks/useClientTable";
 import type { ConditionReportDto, MachineryAssetDto } from "@/lib/db/vesselMachineryAssets";
 import { readResponseJson } from "@/lib/http/readResponseJson";
 import { CONDITION_RATING_ITEMS, conditionRatingLabel } from "@/lib/vessel/machinery/parameters";
+
+function getReportSortValue(report: ConditionReportDto, key: string): ComparableValue {
+  switch (key) {
+    case "machinery":
+      return report.machineryName ?? report.department ?? "General";
+    case "rating":
+      return conditionRatingLabel(report.overallRating);
+    case "summary":
+      return report.summary;
+    case "reported":
+      return new Date(report.reportedAt);
+    default:
+      return null;
+  }
+}
 
 export default function MachineryConditionPage() {
   const ctx = useShipAccessContext();
@@ -45,6 +65,12 @@ export default function MachineryConditionPage() {
   useEffect(() => {
     if (!ctx.loading) void load();
   }, [ctx.loading, load]);
+
+  const table = useClientTable({
+    items: reports,
+    getSortValue: getReportSortValue,
+    defaultSort: { key: "reported", direction: "desc" },
+  });
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -115,25 +141,64 @@ export default function MachineryConditionPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Machinery</TableHead>
-                <TableHead>Rating</TableHead>
-                <TableHead>Summary</TableHead>
-                <TableHead>Reported</TableHead>
+                <SortableTableHead
+                  label="Machinery"
+                  columnKey="machinery"
+                  activeKey={table.sortKey}
+                  direction={table.sortDirection}
+                  onSort={table.toggleSort}
+                />
+                <SortableTableHead
+                  label="Rating"
+                  columnKey="rating"
+                  activeKey={table.sortKey}
+                  direction={table.sortDirection}
+                  onSort={table.toggleSort}
+                />
+                <SortableTableHead
+                  label="Summary"
+                  columnKey="summary"
+                  activeKey={table.sortKey}
+                  direction={table.sortDirection}
+                  onSort={table.toggleSort}
+                />
+                <SortableTableHead
+                  label="Reported"
+                  columnKey="reported"
+                  activeKey={table.sortKey}
+                  direction={table.sortDirection}
+                  onSort={table.toggleSort}
+                />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {reports.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell>{r.machineryName ?? r.department ?? "General"}</TableCell>
-                  <TableCell>{conditionRatingLabel(r.overallRating)}</TableCell>
-                  <TableCell className="max-w-md truncate">{r.summary ?? "—"}</TableCell>
-                  <TableCell>{new Date(r.reportedAt).toLocaleDateString()}</TableCell>
+              {table.pageItems.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                    No condition reports yet.
+                  </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                table.pageItems.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell>{r.machineryName ?? r.department ?? "General"}</TableCell>
+                    <TableCell>{conditionRatingLabel(r.overallRating)}</TableCell>
+                    <TableCell className="max-w-md truncate">{r.summary ?? "—"}</TableCell>
+                    <TableCell>{new Date(r.reportedAt).toLocaleDateString()}</TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
+
+      <PaginationBar
+        page={table.page}
+        totalPages={table.totalPages}
+        total={table.total}
+        onPageChange={table.setPage}
+      />
     </PageShell>
   );
 }

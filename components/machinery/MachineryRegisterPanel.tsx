@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LabeledSelect } from "@/components/ui/LabeledSelect";
+import { SortableTableHead } from "@/components/ui/SortableTableHead";
 import {
   Table,
   TableBody,
@@ -15,6 +16,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
+import { PaginationBar } from "@/components/superintendent/PaginationBar";
+import {
+  useClientTable,
+  type ComparableValue,
+} from "@/hooks/useClientTable";
 import type { MachineryAssetDto } from "@/lib/db/vesselMachineryAssets";
 import { readResponseJson } from "@/lib/http/readResponseJson";
 import {
@@ -160,8 +166,59 @@ export function MachineryRegisterPanel({
   const [clearPhoto, setClearPhoto] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [reviewRows, setReviewRows] = useState<ReviewRow[] | null>(null);
+  const [nameFilter, setNameFilter] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const scoped = side === "ship" ? Boolean(vesselId) : Boolean(dryDockProjectId || vesselId);
+
+  const nameFilterNormalized = nameFilter.trim().toLowerCase();
+  const filteredAssets = useMemo(() => {
+    return assets.filter((a) => {
+      if (departmentFilter !== "all" && a.department !== departmentFilter) return false;
+      if (statusFilter === "active" && a.isActive === false) return false;
+      if (statusFilter === "inactive" && a.isActive !== false) return false;
+      if (!nameFilterNormalized) return true;
+      const name = a.name.toLowerCase();
+      const id = (a.identificationNumber ?? "").toLowerCase();
+      return name.includes(nameFilterNormalized) || id.includes(nameFilterNormalized);
+    });
+  }, [assets, departmentFilter, statusFilter, nameFilterNormalized]);
+
+  const getAssetSortValue = useCallback((a: MachineryAssetDto, key: string): ComparableValue => {
+    switch (key) {
+      case "id":
+        return a.identificationNumber;
+      case "name":
+        return a.name;
+      case "makeModel":
+        return [a.maker, a.model].filter(Boolean).join(" ");
+      case "units":
+        return a.units;
+      case "location":
+        return a.location;
+      case "status":
+        return a.isActive === false ? "Deactive" : "Active";
+      default:
+        return null;
+    }
+  }, []);
+
+  const {
+    pageItems,
+    page,
+    setPage,
+    totalPages,
+    total,
+    sortKey,
+    sortDirection,
+    toggleSort,
+  } = useClientTable({
+    items: filteredAssets,
+    getSortValue: getAssetSortValue,
+    defaultSort: { key: "name", direction: "asc" },
+    resetKey: `${nameFilterNormalized}|${departmentFilter}|${statusFilter}`,
+  });
 
   const existingKeys = useMemo(() => {
     const keys = new Set<string>();
@@ -916,18 +973,84 @@ export function MachineryRegisterPanel({
         </Card>
       ) : null}
 
+      <div className="flex flex-wrap items-center gap-3">
+        <Input
+          type="text"
+          value={nameFilter}
+          onChange={(e) => setNameFilter(e.target.value)}
+          placeholder="Filter by name…"
+          aria-label="Filter by machinery name"
+          className="min-w-[200px] max-w-sm flex-1"
+        />
+        <LabeledSelect
+          items={[
+            { value: "all", label: "All departments" },
+            ...DEPARTMENTS,
+          ]}
+          value={departmentFilter}
+          onValueChange={setDepartmentFilter}
+          className="w-[11rem]"
+        />
+        <LabeledSelect
+          items={[
+            { value: "all", label: "All statuses" },
+            { value: "active", label: "Active" },
+            { value: "inactive", label: "Deactive" },
+          ]}
+          value={statusFilter}
+          onValueChange={setStatusFilter}
+          className="w-[10rem]"
+        />
+      </div>
+
       <Card>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Make / Model</TableHead>
-                <TableHead>Units</TableHead>
-                <TableHead>Location</TableHead>
+                <SortableTableHead
+                  label="ID"
+                  columnKey="id"
+                  activeKey={sortKey}
+                  direction={sortDirection}
+                  onSort={toggleSort}
+                />
+                <SortableTableHead
+                  label="Name"
+                  columnKey="name"
+                  activeKey={sortKey}
+                  direction={sortDirection}
+                  onSort={toggleSort}
+                />
+                <SortableTableHead
+                  label="Make / Model"
+                  columnKey="makeModel"
+                  activeKey={sortKey}
+                  direction={sortDirection}
+                  onSort={toggleSort}
+                />
+                <SortableTableHead
+                  label="Units"
+                  columnKey="units"
+                  activeKey={sortKey}
+                  direction={sortDirection}
+                  onSort={toggleSort}
+                />
+                <SortableTableHead
+                  label="Location"
+                  columnKey="location"
+                  activeKey={sortKey}
+                  direction={sortDirection}
+                  onSort={toggleSort}
+                />
                 <TableHead>Photo</TableHead>
-                <TableHead>Status</TableHead>
+                <SortableTableHead
+                  label="Status"
+                  columnKey="status"
+                  activeKey={sortKey}
+                  direction={sortDirection}
+                  onSort={toggleSort}
+                />
                 <TableHead className="sticky right-0 z-10 min-w-[15rem] bg-background text-right shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.12)]">
                   Actions
                 </TableHead>
@@ -940,9 +1063,18 @@ export function MachineryRegisterPanel({
                     No machinery registered yet.
                   </TableCell>
                 </TableRow>
+              ) : pageItems.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                    No machinery matches the current filters.
+                  </TableCell>
+                </TableRow>
               ) : (
-                assets.map((a) => (
-                  <TableRow key={a.id} className={a.isActive ? undefined : "opacity-60"}>
+                pageItems.map((a) => (
+                  <TableRow
+                    key={a.id}
+                    className={a.isActive === false ? "opacity-60" : undefined}
+                  >
                     <TableCell className="font-mono text-xs">
                       {a.identificationNumber ?? "—"}
                     </TableCell>
@@ -972,7 +1104,9 @@ export function MachineryRegisterPanel({
                         "—"
                       )}
                     </TableCell>
-                    <TableCell>{a.isActive ? "Active" : "Deactive"}</TableCell>
+                    <TableCell>
+                      {a.isActive === false ? "Deactive" : "Active"}
+                    </TableCell>
                     <TableCell className="sticky right-0 z-10 min-w-[15rem] whitespace-normal bg-background text-right shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.12)]">
                       <div className="inline-flex flex-nowrap items-center justify-end gap-1">
                         <Button
@@ -991,7 +1125,7 @@ export function MachineryRegisterPanel({
                           disabled={importBusy}
                           onClick={() => void handleToggleActive(a)}
                         >
-                          {a.isActive ? "Deactive" : "Active"}
+                          {a.isActive === false ? "Active" : "Deactive"}
                         </Button>
                         <Button
                           type="button"
@@ -1011,6 +1145,8 @@ export function MachineryRegisterPanel({
           </Table>
         </CardContent>
       </Card>
+
+      <PaginationBar page={page} totalPages={totalPages} total={total} onPageChange={setPage} />
     </div>
   );
 }

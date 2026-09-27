@@ -16,6 +16,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PaginationBar } from "@/components/superintendent/PaginationBar";
+import { useClientTable } from "@/hooks/useClientTable";
 import { equipmentSystemLabel } from "@/lib/shipAccess/crewDefectSystems";
 import type { VesselRequisitionDto } from "@/lib/shipAccess/requisitionDto";
 import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
@@ -105,6 +107,11 @@ function ShipAccessPurchaseContent() {
   useEffect(() => {
     if (!ctx.loading) void load();
   }, [ctx.loading, load]);
+
+  const table = useClientTable({
+    items: requisitions,
+    resetKey: status,
+  });
 
   async function runAction(requisitionId: string, fn: () => Promise<Response>) {
     setBusyId(requisitionId);
@@ -196,7 +203,7 @@ function ShipAccessPurchaseContent() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  requisitions.map((req) => (
+                  table.pageItems.map((req) => (
                     <TableRow key={req.id}>
                       <TableCell className="font-mono text-xs">{req.requisitionNumber}</TableCell>
                       <TableCell>
@@ -264,6 +271,15 @@ function ShipAccessPurchaseContent() {
           )}
         </CardContent>
       </Card>
+
+      {!loading ? (
+        <PaginationBar
+          page={table.page}
+          totalPages={table.totalPages}
+          total={table.total}
+          onPageChange={table.setPage}
+        />
+      ) : null}
     </PageShell>
   );
 }

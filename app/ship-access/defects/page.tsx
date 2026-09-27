@@ -16,6 +16,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PaginationBar } from "@/components/superintendent/PaginationBar";
+import { useClientTable } from "@/hooks/useClientTable";
 import {
   defectStatusLabel,
   equipmentSystemLabel,
@@ -95,6 +97,11 @@ function ShipAccessDefectsContent() {
   useEffect(() => {
     if (!ctx.loading) void load();
   }, [ctx.loading, load]);
+
+  const table = useClientTable({
+    items: defects,
+    resetKey: status,
+  });
 
   async function runAction(
     defectId: string,
@@ -178,7 +185,7 @@ function ShipAccessDefectsContent() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  defects.map((defect) => (
+                  table.pageItems.map((defect) => (
                     <TableRow key={defect.id}>
                       <TableCell>
                         <div className="font-medium">{equipmentSystemLabel(defect.equipmentSystem)}</div>
@@ -246,6 +253,15 @@ function ShipAccessDefectsContent() {
           )}
         </CardContent>
       </Card>
+
+      {!loading ? (
+        <PaginationBar
+          page={table.page}
+          totalPages={table.totalPages}
+          total={table.total}
+          onPageChange={table.setPage}
+        />
+      ) : null}
     </PageShell>
   );
 }

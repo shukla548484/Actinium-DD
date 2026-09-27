@@ -10,6 +10,7 @@ import {
   analyzeClassStatusReport,
   parseStoredClassStatusAnalysis,
 } from "@/lib/superintendent/classStatusAnalysis";
+import { syncClassMachineryToVesselRegister } from "@/lib/superintendent/classMachinerySync";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -48,6 +49,7 @@ export async function GET(_request: Request, ctx: RouteCtx) {
 
 /**
  * POST — OpenAI reads the Class Status Report PDF online; local extract is compared; lite tables returned.
+ * Also matches machinery to the vessel register and applies Class-newer updates (idempotent).
  * Body: { attachmentId?: string }
  */
 export async function POST(request: Request, ctx: RouteCtx) {
@@ -66,7 +68,7 @@ export async function POST(request: Request, ctx: RouteCtx) {
 
   const project = await prisma.dryDockProject.findFirst({
     where: { id: item.dryDockProjectId, ...notDeleted },
-    select: { plannedStart: true, plannedEnd: true },
+    select: { plannedStart: true, plannedEnd: true, vesselId: true },
   });
 
   const body = (await request.json().catch(() => ({}))) as { attachmentId?: string };
@@ -96,7 +98,7 @@ export async function POST(request: Request, ctx: RouteCtx) {
 
   try {
     const buffer = await readFile(diskPath);
-    const analysis = await analyzeClassStatusReport({
+    let analysis = await analyzeClassStatusReport({
       buffer,
       fileName: attachment.fileName,
       mimeType: attachment.mimeType,
@@ -104,6 +106,15 @@ export async function POST(request: Request, ctx: RouteCtx) {
       dryDockStart: project?.plannedStart?.toISOString().slice(0, 10) ?? null,
       dryDockEnd: project?.plannedEnd?.toISOString().slice(0, 10) ?? null,
     });
+
+    if (project?.vesselId) {
+      const synced = await syncClassMachineryToVesselRegister({
+        vesselId: project.vesselId,
+        analysis,
+        apply: true,
+      });
+      analysis = synced.analysis;
+    }
 
     await prisma.ddChecklistItem.update({
       where: { id },
@@ -165,10 +176,27 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
     );
   }
 
+  let analysisToStore = parseStoredClassStatusAnalysis(body.analysis) ?? body.analysis;
+
+  const project = await prisma.dryDockProject.findFirst({
+    where: { id: item.dryDockProjectId, ...notDeleted },
+    select: { vesselId: true },
+  });
+  const parsed = parseStoredClassStatusAnalysis(body.analysis);
+  if (parsed && project?.vesselId && markComplete) {
+    // Re-apply sync on confirm (idempotent — no duplicate assets).
+    const synced = await syncClassMachineryToVesselRegister({
+      vesselId: project.vesselId,
+      analysis: parsed,
+      apply: true,
+    });
+    analysisToStore = synced.analysis;
+  }
+
   const updated = await prisma.ddChecklistItem.update({
     where: { id },
     data: {
-      classStatusAnalysis: body.analysis as unknown as Prisma.InputJsonValue,
+      classStatusAnalysis: analysisToStore as unknown as Prisma.InputJsonValue,
       ...(markComplete ? { isCompleted: true, completedAt: new Date() } : {}),
     },
   });

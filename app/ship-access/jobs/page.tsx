@@ -22,6 +22,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PaginationBar } from "@/components/superintendent/PaginationBar";
+import { useClientTable } from "@/hooks/useClientTable";
 import {
   VESSEL_JOB_ASSIGNED_PARTY_ITEMS,
   VESSEL_JOB_ASSIGNED_PARTY_LABELS,
@@ -168,6 +170,11 @@ function ShipAccessJobsIndex() {
   const movableJobs = useMemo(() => jobs.filter(canMoveJob), [jobs]);
   const allMovableSelected =
     movableJobs.length > 0 && movableJobs.every((job) => selectedIds.has(job.id));
+
+  const table = useClientTable({
+    items: jobs,
+    resetKey: `${status}|${assignedPartyFilter}`,
+  });
 
   const toggleSelectAll = useCallback(
     (checked: boolean) => {
@@ -522,7 +529,7 @@ function ShipAccessJobsIndex() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      jobs.map((job) => {
+                      table.pageItems.map((job) => {
                         const movable = canMoveJob(job);
                         return (
                           <TableRow key={job.id} data-selected={selectedIds.has(job.id) || undefined}>
@@ -590,6 +597,15 @@ function ShipAccessJobsIndex() {
               )}
             </CardContent>
           </Card>
+
+          {!loading ? (
+            <PaginationBar
+              page={table.page}
+              totalPages={table.totalPages}
+              total={table.total}
+              onPageChange={table.setPage}
+            />
+          ) : null}
         </>
       )}
 

@@ -4,14 +4,14 @@ import { requireShipAccessApiAccess } from "@/lib/auth/shipAccess";
 import {
   listRunningHoursEntries,
   recordRunningHours,
+  recordRunningHoursBatch,
 } from "@/lib/db/vesselMachineryAssets";
 import { getCrewSessionContext } from "@/lib/shipAccess/crewContext";
 import { assertShipVesselInScope, getSelectedShipVesselId } from "@/lib/shipAccess/scope";
 
 export const dynamic = "force-dynamic";
 
-const createSchema = z.object({
-  vesselId: z.string().optional(),
+const readingSchema = z.object({
   machineryAssetId: z.string().min(1),
   department: z.string().min(1),
   currentHours: z.number().int().min(0),
@@ -19,6 +19,18 @@ const createSchema = z.object({
   nextDueHours: z.number().int().nullable().optional(),
   nextDueDate: z.string().nullable().optional(),
   verifiedBy: z.string().nullable().optional(),
+});
+
+const createSchema = z.object({
+  vesselId: z.string().optional(),
+  machineryAssetId: z.string().min(1).optional(),
+  department: z.string().min(1).optional(),
+  currentHours: z.number().int().min(0).optional(),
+  lastJobDoneDate: z.string().nullable().optional(),
+  nextDueHours: z.number().int().nullable().optional(),
+  nextDueDate: z.string().nullable().optional(),
+  verifiedBy: z.string().nullable().optional(),
+  readings: z.array(readingSchema).min(1).max(500).optional(),
 });
 
 export async function GET(request: Request) {
@@ -64,6 +76,34 @@ export async function POST(request: Request) {
     const crew = await getCrewSessionContext();
     const enteredBy =
       crew?.designation ?? crew?.roleName ?? crew?.vesselLoginId ?? "Onboard crew";
+
+    if (parsed.data.readings?.length) {
+      const result = await recordRunningHoursBatch(vesselId, parsed.data.readings, enteredBy);
+      if (result.entries.length === 0 && result.failed.length > 0) {
+        return NextResponse.json(
+          {
+            error: result.failed[0]?.error ?? "Failed to record running hours",
+            failed: result.failed,
+          },
+          { status: 400 },
+        );
+      }
+      return NextResponse.json(
+        {
+          entries: result.entries,
+          failed: result.failed,
+          message: `Recorded ${result.entries.length} of ${parsed.data.readings.length} reading(s).`,
+        },
+        { status: 201 },
+      );
+    }
+
+    if (!parsed.data.machineryAssetId || !parsed.data.department || parsed.data.currentHours == null) {
+      return NextResponse.json(
+        { error: "machineryAssetId, department, and currentHours are required" },
+        { status: 400 },
+      );
+    }
 
     const entry = await recordRunningHours({
       vesselId,

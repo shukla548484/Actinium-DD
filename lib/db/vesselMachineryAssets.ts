@@ -8,6 +8,7 @@ export type MachineryAssetDto = {
   vesselId: string;
   libraryNodeId: string | null;
   identificationNumber: string | null;
+  classItemCode: string | null;
   department: string;
   name: string;
   maker: string | null;
@@ -85,6 +86,7 @@ type AssetRow = {
   vesselId: string;
   libraryNodeId: string | null;
   identificationNumber: string | null;
+  classItemCode: string | null;
   department: string;
   name: string;
   maker: string | null;
@@ -108,16 +110,18 @@ function mapAsset(row: AssetRow): MachineryAssetDto {
     id: row.id,
     vesselId: row.vesselId,
     libraryNodeId: row.libraryNodeId,
-    identificationNumber: row.identificationNumber,
+    identificationNumber: row.identificationNumber ?? null,
+    classItemCode: row.classItemCode ?? null,
     department: row.department,
     name: row.name,
     maker: row.maker,
     model: row.model,
     serialNumber: row.serialNumber,
-    units: row.units,
-    location: row.location,
-    nameplatePhotoUrl: row.nameplatePhotoUrl,
-    isActive: row.isActive,
+    units: row.units ?? null,
+    location: row.location ?? null,
+    nameplatePhotoUrl: row.nameplatePhotoUrl ?? null,
+    // Default Active when column/client is mid-migration or field missing.
+    isActive: row.isActive !== false,
     currentRunningHours: row.currentRunningHours,
     lastOverhaulDate: row.lastOverhaulDate?.toISOString() ?? null,
     nextDueHours: row.nextDueHours,
@@ -464,6 +468,50 @@ export async function recordRunningHours(input: {
     verifiedBy: entry.verifiedBy,
     recordedAt: entry.recordedAt.toISOString(),
   } satisfies RunningHoursEntryDto;
+}
+
+export async function recordRunningHoursBatch(
+  vesselId: string,
+  readings: Array<{
+    machineryAssetId: string;
+    department: string;
+    currentHours: number;
+    lastJobDoneDate?: string | null;
+    nextDueHours?: number | null;
+    nextDueDate?: string | null;
+    verifiedBy?: string | null;
+  }>,
+  enteredBy: string,
+): Promise<{
+  entries: RunningHoursEntryDto[];
+  failed: Array<{ machineryAssetId: string; error: string }>;
+}> {
+  const entries: RunningHoursEntryDto[] = [];
+  const failed: Array<{ machineryAssetId: string; error: string }> = [];
+
+  for (const reading of readings) {
+    try {
+      const entry = await recordRunningHours({
+        vesselId,
+        machineryAssetId: reading.machineryAssetId,
+        department: reading.department,
+        currentHours: reading.currentHours,
+        lastJobDoneDate: reading.lastJobDoneDate,
+        nextDueHours: reading.nextDueHours,
+        nextDueDate: reading.nextDueDate,
+        enteredBy,
+        verifiedBy: reading.verifiedBy,
+      });
+      entries.push(entry);
+    } catch (err) {
+      failed.push({
+        machineryAssetId: reading.machineryAssetId,
+        error: err instanceof Error ? err.message : "Failed to record running hours",
+      });
+    }
+  }
+
+  return { entries, failed };
 }
 
 export async function listRunningHoursEntries(

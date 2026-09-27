@@ -1671,6 +1671,8 @@ model VesselMachineryAsset {
   libraryNodeId        String?                @map("library_node_id")
   /// Unique per vessel, e.g. VESSELCODE-MCH-0001
   identificationNumber String?                @map("identification_number")
+  /// Class society item / continuous-survey code (e.g. IRS 0024) — used to match Class Status re-uploads.
+  classItemCode        String?                @map("class_item_code")
   department           String
   name                 String
   maker                String?
@@ -1702,8 +1704,10 @@ model VesselMachineryAsset {
   purchaseRequisitionItems PurchaseRequisitionItem[]
 
   @@unique([vesselId, identificationNumber])
+  @@unique([vesselId, classItemCode])
   @@index([vesselId, department])
   @@index([vesselId, isActive])
+  @@index([vesselId, classItemCode])
   @@index([deletedAt])
   @@map("vessel_machinery_assets")
 }

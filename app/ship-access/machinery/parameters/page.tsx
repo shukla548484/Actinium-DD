@@ -8,17 +8,39 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LabeledSelect } from "@/components/ui/LabeledSelect";
+import { SortableTableHead } from "@/components/ui/SortableTableHead";
 import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PaginationBar } from "@/components/superintendent/PaginationBar";
+import {
+  useClientTable,
+  type ComparableValue,
+} from "@/hooks/useClientTable";
 import type { MachineryAssetDto, ParameterEntryDto } from "@/lib/db/vesselMachineryAssets";
 import { readResponseJson } from "@/lib/http/readResponseJson";
 import { MACHINERY_PARAMETER_CATALOG } from "@/lib/vessel/machinery/parameters";
+
+function getEntrySortValue(entry: ParameterEntryDto, key: string): ComparableValue {
+  switch (key) {
+    case "machinery":
+      return entry.machineryName;
+    case "parameter":
+      return entry.parameterLabel;
+    case "value":
+      return entry.value;
+    case "recorded":
+      return new Date(entry.recordedAt);
+    case "by":
+      return entry.enteredBy;
+    default:
+      return null;
+  }
+}
 
 export default function MachineryParametersPage() {
   const ctx = useShipAccessContext();
@@ -45,6 +67,12 @@ export default function MachineryParametersPage() {
   useEffect(() => {
     if (!ctx.loading) void load();
   }, [ctx.loading, load]);
+
+  const table = useClientTable({
+    items: entries,
+    getSortValue: getEntrySortValue,
+    defaultSort: { key: "recorded", direction: "desc" },
+  });
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -112,27 +140,72 @@ export default function MachineryParametersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Machinery</TableHead>
-                <TableHead>Parameter</TableHead>
-                <TableHead>Value</TableHead>
-                <TableHead>Recorded</TableHead>
-                <TableHead>By</TableHead>
+                <SortableTableHead
+                  label="Machinery"
+                  columnKey="machinery"
+                  activeKey={table.sortKey}
+                  direction={table.sortDirection}
+                  onSort={table.toggleSort}
+                />
+                <SortableTableHead
+                  label="Parameter"
+                  columnKey="parameter"
+                  activeKey={table.sortKey}
+                  direction={table.sortDirection}
+                  onSort={table.toggleSort}
+                />
+                <SortableTableHead
+                  label="Value"
+                  columnKey="value"
+                  activeKey={table.sortKey}
+                  direction={table.sortDirection}
+                  onSort={table.toggleSort}
+                />
+                <SortableTableHead
+                  label="Recorded"
+                  columnKey="recorded"
+                  activeKey={table.sortKey}
+                  direction={table.sortDirection}
+                  onSort={table.toggleSort}
+                />
+                <SortableTableHead
+                  label="By"
+                  columnKey="by"
+                  activeKey={table.sortKey}
+                  direction={table.sortDirection}
+                  onSort={table.toggleSort}
+                />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {entries.map((e) => (
-                <TableRow key={e.id}>
-                  <TableCell>{e.machineryName}</TableCell>
-                  <TableCell>{e.parameterLabel}</TableCell>
-                  <TableCell>{e.value}{e.unit ? ` ${e.unit}` : ""}</TableCell>
-                  <TableCell>{new Date(e.recordedAt).toLocaleString()}</TableCell>
-                  <TableCell>{e.enteredBy}</TableCell>
+              {table.pageItems.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    No parameter readings yet.
+                  </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                table.pageItems.map((e) => (
+                  <TableRow key={e.id}>
+                    <TableCell>{e.machineryName}</TableCell>
+                    <TableCell>{e.parameterLabel}</TableCell>
+                    <TableCell>{e.value}{e.unit ? ` ${e.unit}` : ""}</TableCell>
+                    <TableCell>{new Date(e.recordedAt).toLocaleString()}</TableCell>
+                    <TableCell>{e.enteredBy}</TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
+
+      <PaginationBar
+        page={table.page}
+        totalPages={table.totalPages}
+        total={table.total}
+        onPageChange={table.setPage}
+      />
     </PageShell>
   );
 }
