@@ -19,6 +19,7 @@ type RouteCtx = { params: Promise<{ id: string }> };
 function serializeReport(row: {
   id: string;
   dryDockProjectId: string;
+  reportNumber: string;
   reportDate: Date;
   weatherCondition: string | null;
   sectionsJson: Prisma.JsonValue;
@@ -40,6 +41,7 @@ function serializeReport(row: {
   return {
     id: row.id,
     dryDockProjectId: row.dryDockProjectId,
+    reportNumber: row.reportNumber,
     reportDate: row.reportDate.toISOString(),
     weatherCondition: row.weatherCondition,
     sections,
@@ -74,6 +76,9 @@ export async function GET(_request: Request, ctx: RouteCtx) {
           plannedEnd: true,
           actualStart: true,
           expectedSailing: true,
+          selectedYard: true,
+          portLocation: true,
+          status: true,
           vessel: { select: { id: true, name: true, code: true } },
         },
       },
@@ -94,6 +99,9 @@ export async function GET(_request: Request, ctx: RouteCtx) {
       plannedEnd: dryDockProject.plannedEnd?.toISOString() ?? null,
       actualStart: dryDockProject.actualStart?.toISOString() ?? null,
       expectedSailing: dryDockProject.expectedSailing?.toISOString() ?? null,
+      selectedYard: dryDockProject.selectedYard,
+      portLocation: dryDockProject.portLocation,
+      status: dryDockProject.status,
       vessel: dryDockProject.vessel,
     },
   });

@@ -304,8 +304,17 @@ export type DdVariationOrderDto = {
   updatedAt: string;
 };
 
+export type DdDailyReportPointDto = {
+  id: string;
+  text: string;
+  report?: string;
+  remarks?: string;
+};
+
 export type DdDailyReportSectionDto = {
-  workDone: string;
+  points: DdDailyReportPointDto[];
+  /** Legacy joined summary; kept for older clients. */
+  workDone?: string;
 };
 
 export type DdDailyReportSectionsDto = {
@@ -321,6 +330,7 @@ export type DdDailyReportAttachmentDto = {
   id: string;
   dailyReportId: string;
   sectionKey: string;
+  pointId: string | null;
   fileName: string;
   fileUrl: string;
   mimeType: string | null;
@@ -332,6 +342,7 @@ export type DdDailyReportAttachmentDto = {
 export type DdDailyReportDto = {
   id: string;
   dryDockProjectId: string;
+  reportNumber: string;
   reportDate: string;
   weatherCondition: string | null;
   sections: DdDailyReportSectionsDto;

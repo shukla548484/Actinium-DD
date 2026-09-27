@@ -9,17 +9,17 @@ import {
   type DailyReportFormValues,
   type DailyReportProjectMeta,
 } from "@/components/superintendent/DailyReportForm";
-import { PageHeader, PageShell } from "@/components/layout/PageShell";
+import { PageShell } from "@/components/layout/PageShell";
 import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 import { Button } from "@/components/ui/button";
 import { toDateInput } from "@/components/ui/DatePickerField";
-import { fmtDate } from "@/lib/superintendent/formatters";
 import type { DailyReportSections } from "@/lib/superintendent/dailyReportSections";
 
 export const dynamic = "force-dynamic";
 
 type Loaded = {
   id: string;
+  reportNumber: string;
   reportDate: string;
   weatherCondition: string | null;
   progressPct: number | null;
@@ -93,6 +93,7 @@ export default function EditDailyReportPage() {
   const initial: DailyReportFormValues = {
     ...blankDailyReportFormValues(item.dryDockProjectId),
     dryDockProjectId: item.dryDockProjectId,
+    reportNumber: item.reportNumber,
     reportDate: toDateInput(item.reportDate),
     weatherCondition: item.weatherCondition ?? "",
     progressPct: item.progressPct != null ? String(item.progressPct) : "",
@@ -100,20 +101,17 @@ export default function EditDailyReportPage() {
   };
 
   return (
-    <PageShell>
-      <PageHeader
-        title="Edit daily report"
-        description={fmtDate(item.reportDate)}
-        actions={
-          <Button
-            variant="outline"
-            render={<Link href={`/superintendent/monitoring/daily-reports/${item.id}/print`} />}
-            nativeButton={false}
-          >
-            Print / PDF
-          </Button>
-        }
-      />
+    <PageShell size="wide">
+      <div className="flex justify-end print:hidden">
+        <Button
+          variant="outline"
+          size="sm"
+          render={<Link href={`/superintendent/monitoring/daily-reports/${item.id}/print`} />}
+          nativeButton={false}
+        >
+          Print / PDF
+        </Button>
+      </div>
       <DailyReportForm
         mode="edit"
         reportId={item.id}

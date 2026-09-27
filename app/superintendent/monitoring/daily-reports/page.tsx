@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
 
 type Row = {
   id: string;
+  reportNumber: string;
   reportDate: string;
   weatherCondition: string | null;
   progressPct: number | null;
@@ -38,6 +39,7 @@ export default function ListPage() {
         editHref={(id) => `/superintendent/monitoring/daily-reports/${id}/edit`}
         searchParam="search"
         columns={[
+          { header: "Report No.", cell: (row) => row.reportNumber },
           { header: "Date", cell: (row) => fmtDate(row.reportDate) },
           { header: "Weather", cell: (row) => row.weatherCondition?.trim() || "—" },
           {

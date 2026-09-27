@@ -7,7 +7,8 @@ import {
   DailyReportForm,
   type DailyReportFormValues,
 } from "@/components/superintendent/DailyReportForm";
-import { PageHeader, PageShell } from "@/components/layout/PageShell";
+import { uploadPendingDailyReportPhotos } from "@/components/superintendent/DailyReportSectionPhotos";
+import { PageShell } from "@/components/layout/PageShell";
 import { useActiveDryDockProject } from "@/components/superintendent/ActiveDryDockProjectProvider";
 
 export const dynamic = "force-dynamic";
@@ -25,38 +26,53 @@ export default function NewDailyReportPage() {
     }
     setSaving(true);
     setError(null);
-    const res = await fetch("/api/superintendent/daily-reports", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        dryDockProjectId: values.dryDockProjectId,
-        reportDate: values.reportDate,
-        weatherCondition: values.weatherCondition || null,
-        progressPct: values.progressPct ? Number(values.progressPct) : null,
-        sections: values.sections,
-      }),
-    });
-    setSaving(false);
-    if (!res.ok) {
-      const d = (await res.json().catch(() => ({}))) as { error?: string };
-      setError(d.error ?? "Save failed");
-      return;
+    try {
+      const res = await fetch("/api/superintendent/daily-reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dryDockProjectId: values.dryDockProjectId,
+          reportDate: values.reportDate,
+          weatherCondition: values.weatherCondition || null,
+          progressPct: values.progressPct ? Number(values.progressPct) : null,
+          sections: values.sections,
+        }),
+      });
+      if (!res.ok) {
+        const d = (await res.json().catch(() => ({}))) as { error?: string };
+        setError(d.error ?? "Save failed");
+        return;
+      }
+      const d = (await res.json()) as { dailyReport?: { id: string } };
+      const reportId = d.dailyReport?.id;
+      if (!reportId) {
+        router.push("/superintendent/monitoring/daily-reports");
+        router.refresh();
+        return;
+      }
+
+      const pending = values.pendingPhotos ?? [];
+      if (pending.length > 0) {
+        const upload = await uploadPendingDailyReportPhotos(reportId, pending);
+        if (upload.error) {
+          setError(
+            `Report saved, but ${upload.uploaded}/${pending.length} photos uploaded: ${upload.error}`,
+          );
+          router.push(`/superintendent/monitoring/daily-reports/${reportId}/edit`);
+          router.refresh();
+          return;
+        }
+      }
+
+      router.push(`/superintendent/monitoring/daily-reports/${reportId}/edit`);
+      router.refresh();
+    } finally {
+      setSaving(false);
     }
-    const d = (await res.json()) as { dailyReport?: { id: string } };
-    if (d.dailyReport?.id) {
-      router.push(`/superintendent/monitoring/daily-reports/${d.dailyReport.id}/edit`);
-    } else {
-      router.push("/superintendent/monitoring/daily-reports");
-    }
-    router.refresh();
   }
 
   return (
-    <PageShell>
-      <PageHeader
-        title="New daily report"
-        description="One report per project calendar day — weather and six work sections."
-      />
+    <PageShell size="wide">
       <DailyReportForm
         key={activeProjectId ?? "none"}
         mode="create"

@@ -280,7 +280,19 @@ export const ddVariationOrderUpdateSchema = ddVariationOrderCreateSchema
   .omit({ dryDockProjectId: true })
   .refine((data) => Object.keys(data).length > 0, { message: "No fields to update" });
 
+const dailyReportPointSchema = z.union([
+  z.string(),
+  z.object({
+    id: z.string().min(1).optional(),
+    text: z.string(),
+    report: z.string().optional(),
+    remarks: z.string().optional(),
+  }),
+]);
+
 const dailyReportSectionPayloadSchema = z.object({
+  points: z.array(dailyReportPointSchema).optional(),
+  /** Legacy — migrated into points by normalizeDailyReportSections. */
   workDone: z.string().optional().default(""),
 });
 

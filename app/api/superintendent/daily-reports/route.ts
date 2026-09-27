@@ -21,12 +21,14 @@ import {
   resolveDailyReportSections,
 } from "@/lib/superintendent/dailyReportSections";
 import { prisma } from "@/lib/prisma";
+import { allocateDailyReportNumber } from "@/lib/superintendent/dailyReportNumber";
 
 export const dynamic = "force-dynamic";
 
 function serializeReport(row: {
   id: string;
   dryDockProjectId: string;
+  reportNumber: string;
   reportDate: Date;
   weatherCondition: string | null;
   sectionsJson: Prisma.JsonValue;
@@ -48,6 +50,7 @@ function serializeReport(row: {
   return {
     id: row.id,
     dryDockProjectId: row.dryDockProjectId,
+    reportNumber: row.reportNumber,
     reportDate: row.reportDate.toISOString(),
     weatherCondition: row.weatherCondition,
     sections,
@@ -82,6 +85,7 @@ export async function GET(request: Request) {
     ...(search
       ? {
           OR: [
+            { reportNumber: { contains: search, mode: "insensitive" } },
             { weatherCondition: { contains: search, mode: "insensitive" } },
             { completedWork: { contains: search, mode: "insensitive" } },
             { plannedWork: { contains: search, mode: "insensitive" } },
@@ -144,10 +148,14 @@ export async function POST(request: Request) {
     ? normalizeDailyReportSections(parsed.data.sections)
     : emptyDailyReportSections();
 
-  const row = await prisma.ddDailyReport.create({
-    data: {
-      dryDockProjectId: parsed.data.dryDockProjectId,
-      reportDate,
+  const row = await prisma.$transaction(async (tx) => {
+    const reportNumber = await allocateDailyReportNumber(tx, project);
+
+    return tx.ddDailyReport.create({
+      data: {
+        dryDockProjectId: parsed.data.dryDockProjectId,
+        reportNumber,
+        reportDate,
       weatherCondition: parsed.data.weatherCondition?.trim() || null,
       sectionsJson: sections as unknown as Prisma.InputJsonValue,
       completedWork: parsed.data.completedWork?.trim() || null,
@@ -155,9 +163,10 @@ export async function POST(request: Request) {
       manpowerCount: parsed.data.manpowerCount ?? null,
       safetyNotes: parsed.data.safetyNotes?.trim() || null,
       delayNotes: parsed.data.delayNotes?.trim() || null,
-      progressPct: parsed.data.progressPct ?? null,
-    },
-    include: { _count: { select: { attachments: true } } },
+        progressPct: parsed.data.progressPct ?? null,
+      },
+      include: { _count: { select: { attachments: true } } },
+    });
   });
 
   return NextResponse.json({ dailyReport: serializeReport(row) }, { status: 201 });

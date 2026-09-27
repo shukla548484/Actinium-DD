@@ -2148,8 +2148,9 @@ model DdVariationOrder {
 model DdDailyReport {
   id                String   @id @default(cuid())
   dryDockProjectId  String   @map("dry_dock_project_id")
+  reportNumber      String   @unique @map("report_number")
   reportDate        DateTime @map("report_date")
-  /// Six section payloads: { deck_crew, engine_crew, third_party, shipyard, painting, class_attendance } each { workDone }.
+  /// Six section payloads: { deck_crew, … } each { points: [{ id, text, report? }], workDone? }.
   sectionsJson      Json?    @map("sections_json")
   weatherCondition  String?  @map("weather_condition")
   /// Legacy flat fields — kept for read/migration; UI writes sectionsJson instead.
@@ -2178,6 +2179,8 @@ model DdDailyReportAttachment {
   dailyReportId String   @map("daily_report_id")
   /// One of: deck_crew | engine_crew | third_party | shipyard | painting | class_attendance
   sectionKey    String   @map("section_key")
+  /// Client-generated work-point id from sectionsJson; null = legacy section-level photo.
+  pointId       String?  @map("point_id")
   fileName      String   @map("file_name")
   fileUrl       String   @map("file_url")
   mimeType      String?  @map("mime_type")
@@ -2188,6 +2191,7 @@ model DdDailyReportAttachment {
   dailyReport DdDailyReport @relation(fields: [dailyReportId], references: [id], onDelete: Cascade)
 
   @@index([dailyReportId, sectionKey])
+  @@index([dailyReportId, pointId])
   @@map("dd_daily_report_attachments")
 }
 

@@ -5,12 +5,21 @@ import { requireSuperintendentApiAccess } from "@/lib/auth/superintendentAccess"
 import { assertDryDockProjectInScope } from "@/lib/superintendent/scope";
 import { notDeleted } from "@/lib/superintendent/helpers";
 import {
+  DAILY_REPORT_MAX_DOCUMENTS_PER_POINT,
+  DAILY_REPORT_MAX_IMAGES_PER_POINT,
   DAILY_REPORT_MAX_IMAGES_PER_SECTION,
   isDailyReportSectionKey,
 } from "@/lib/superintendent/dailyReportSections";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
+
+function isImageUpload(file: File): boolean {
+  return (
+    file.type.startsWith("image/") ||
+    /\.(png|jpe?g|webp|gif|bmp|heic|heif)$/i.test(file.name)
+  );
+}
 
 type RouteCtx = { params: Promise<{ id: string }> };
 
@@ -34,6 +43,7 @@ export async function GET(request: Request, ctx: RouteCtx) {
 
   const { searchParams } = new URL(request.url);
   const sectionKey = searchParams.get("sectionKey")?.trim();
+  const pointId = searchParams.get("pointId")?.trim();
 
   if (sectionKey && !isDailyReportSectionKey(sectionKey)) {
     return NextResponse.json({ error: "Invalid sectionKey" }, { status: 400 });
@@ -43,8 +53,9 @@ export async function GET(request: Request, ctx: RouteCtx) {
     where: {
       dailyReportId: reportId,
       ...(sectionKey ? { sectionKey } : {}),
+      ...(pointId ? { pointId } : {}),
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: { createdAt: "asc" },
   });
 
   return NextResponse.json({ attachments });
@@ -70,12 +81,43 @@ export async function POST(request: Request, ctx: RouteCtx) {
     return NextResponse.json({ error: "sectionKey is required" }, { status: 400 });
   }
 
+  const pointIdRaw = formData.get("pointId");
+  const pointId =
+    typeof pointIdRaw === "string" && pointIdRaw.trim() ? pointIdRaw.trim() : null;
+
+  if (pointId) {
+    const pointAttachments = await prisma.ddDailyReportAttachment.findMany({
+      where: { dailyReportId: reportId, pointId },
+      select: { fileName: true, mimeType: true },
+    });
+    const imageUpload = isImageUpload(file);
+    const sameKindCount = pointAttachments.filter((item) => {
+      const existingIsImage =
+        item.mimeType?.startsWith("image/") ||
+        /\.(png|jpe?g|webp|gif|bmp|heic|heif)$/i.test(item.fileName);
+      return existingIsImage === imageUpload;
+    }).length;
+    const pointLimit = imageUpload
+      ? DAILY_REPORT_MAX_IMAGES_PER_POINT
+      : DAILY_REPORT_MAX_DOCUMENTS_PER_POINT;
+    if (sameKindCount >= pointLimit) {
+      return NextResponse.json(
+        {
+          error: imageUpload
+            ? `Maximum ${pointLimit} photos per point`
+            : `Maximum ${pointLimit} report/reference files per point`,
+        },
+        { status: 400 },
+      );
+    }
+  }
+
   const existingCount = await prisma.ddDailyReportAttachment.count({
     where: { dailyReportId: reportId, sectionKey },
   });
   if (existingCount >= DAILY_REPORT_MAX_IMAGES_PER_SECTION) {
     return NextResponse.json(
-      { error: `Maximum ${DAILY_REPORT_MAX_IMAGES_PER_SECTION} images per section` },
+      { error: `Maximum ${DAILY_REPORT_MAX_IMAGES_PER_SECTION} attachments per section` },
       { status: 400 },
     );
   }
@@ -102,6 +144,7 @@ export async function POST(request: Request, ctx: RouteCtx) {
     data: {
       dailyReportId: reportId,
       sectionKey,
+      pointId,
       fileName: file.name,
       fileUrl,
       mimeType: file.type || null,
