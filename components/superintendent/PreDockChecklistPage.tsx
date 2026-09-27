@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { PaginationBar } from "@/components/superintendent/PaginationBar";
 import { ProjectFilter } from "@/components/superintendent/ProjectFilter";
+import { ActiveProjectBanner } from "@/components/superintendent/ActiveProjectBanner";
+import { useActiveDryDockProject } from "@/components/superintendent/ActiveDryDockProjectProvider";
 import { ChecklistCompletionRing } from "@/components/superintendent/ChecklistCompletionRing";
 import {
   deleteResource,
@@ -50,6 +52,8 @@ type ChecklistRow = {
   dueDate: string | null;
   assignedTo: string | null;
   notes: string | null;
+  projectName?: string | null;
+  projectReferenceCode?: string | null;
 };
 
 function checklistEditHref(row: ChecklistRow, filterProjectId: string) {
@@ -63,18 +67,27 @@ function checklistEditHref(row: ChecklistRow, filterProjectId: string) {
 
 function PreDockChecklistInner() {
   const searchParams = useSearchParams();
-  const scopedProjectId = searchParams.get("dryDockProjectId")?.trim();
-  const [projectId, setProjectId] = useState(() => scopedProjectId || "all");
+  const scopedFromUrl = searchParams.get("dryDockProjectId")?.trim();
+  const { activeProjectId, setActiveProjectId } = useActiveDryDockProject();
+  const [projectId, setProjectId] = useState(
+    () => scopedFromUrl || activeProjectId || "all",
+  );
   const [preparing, setPreparing] = useState(false);
   const [prepareMessage, setPrepareMessage] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ChecklistRow | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    const next = scopedFromUrl || activeProjectId || "all";
+    setProjectId(next);
+  }, [scopedFromUrl, activeProjectId]);
 
   const params: Record<string, string | undefined> = {
     dryDockProjectId: projectId,
   };
   const { items, loading, page, setPage, totalPages, total, completedCount, reload } =
     usePaginatedApi<ChecklistRow>("/api/superintendent/checklist", params);
+  const showProjectColumn = projectId === "all";
 
   async function confirmDelete() {
     if (!pendingDelete) return;
@@ -101,17 +114,33 @@ function PreDockChecklistInner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ dryDockProjectId: projectId }),
       });
-      const data = (await res.json()) as { added?: number; error?: string };
+      const data = (await res.json()) as {
+        added?: number;
+        deduped?: number;
+        error?: string;
+      };
       if (!res.ok) {
         setPrepareMessage(data.error ?? "Prepare failed");
         return;
       }
       const added = data.added ?? 0;
-      setPrepareMessage(
-        added > 0
-          ? `Added ${added} missing readiness item${added === 1 ? "" : "s"} from the project template.`
-          : "Project already includes all template readiness items.",
-      );
+      const deduped = data.deduped ?? 0;
+      if (added === 0 && deduped === 0) {
+        setPrepareMessage("Project already includes all template readiness items.");
+      } else {
+        const parts: string[] = [];
+        if (added > 0) {
+          parts.push(
+            `Added ${added} missing readiness item${added === 1 ? "" : "s"} from the project template`,
+          );
+        }
+        if (deduped > 0) {
+          parts.push(
+            `Removed ${deduped} duplicate title${deduped === 1 ? "" : "s"} within this project`,
+          );
+        }
+        setPrepareMessage(`${parts.join(". ")}.`);
+      }
       void reload();
     } catch {
       setPrepareMessage("Network error while preparing checklist.");
@@ -122,6 +151,7 @@ function PreDockChecklistInner() {
 
   return (
     <div className="space-y-4">
+      <ActiveProjectBanner />
       <Card>
         <CardContent className="flex flex-wrap items-center justify-between gap-4 pt-4">
           <ChecklistCompletionRing completed={completedCount} total={total} />
@@ -132,6 +162,7 @@ function PreDockChecklistInner() {
                 setPage(1);
                 setProjectId(v);
                 setPrepareMessage(null);
+                void setActiveProjectId(v === "all" ? null : v);
               }}
             />
             <Button
@@ -170,6 +201,7 @@ function PreDockChecklistInner() {
             <TableHeader>
               <TableRow>
                 <TableHead>Title</TableHead>
+                {showProjectColumn ? <TableHead>Project</TableHead> : null}
                 <TableHead>Category</TableHead>
                 <TableHead>Completed</TableHead>
                 <TableHead>Due</TableHead>
@@ -179,7 +211,10 @@ function PreDockChecklistInner() {
             <TableBody>
               {items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell
+                    colSpan={showProjectColumn ? 6 : 5}
+                    className="text-center text-muted-foreground"
+                  >
                     {projectId === "all"
                       ? "No items found. Select a project and use Prepare items."
                       : "No items for this project. Use Prepare items to seed Class status upload and readiness tasks."}
@@ -206,6 +241,11 @@ function PreDockChecklistInner() {
                           </span>
                         ) : null}
                       </TableCell>
+                      {showProjectColumn ? (
+                        <TableCell className="max-w-[14rem] truncate text-muted-foreground">
+                          {row.projectName ?? "—"}
+                        </TableCell>
+                      ) : null}
                       <TableCell>{row.category ?? "—"}</TableCell>
                       <TableCell>{row.isCompleted ? "Yes" : "No"}</TableCell>
                       <TableCell>{fmtDate(row.dueDate)}</TableCell>

@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useGoBack } from "@/hooks/useGoBack";
 import { PaginationBar } from "@/components/superintendent/PaginationBar";
 import { ProjectFilter } from "@/components/superintendent/ProjectFilter";
+import { ActiveProjectBanner } from "@/components/superintendent/ActiveProjectBanner";
+import { useActiveDryDockProject } from "@/components/superintendent/ActiveDryDockProjectProvider";
 import {
   deleteResource,
   usePaginatedApi,
@@ -71,9 +73,19 @@ function EntityListPageInner<T extends { id: string }>({
   searchParam?: string;
 }) {
   const searchParams = useSearchParams();
-  const scopedProjectId = searchParams.get("dryDockProjectId")?.trim();
-  const [projectId, setProjectId] = useState(() => scopedProjectId || "all");
+  const scopedFromUrl = searchParams.get("dryDockProjectId")?.trim();
+  const { activeProjectId, setActiveProjectId } = useActiveDryDockProject();
+  const [projectId, setProjectId] = useState(
+    () => scopedFromUrl || activeProjectId || "all",
+  );
   const [search, setSearch] = useState("");
+
+  // Keep filter aligned with URL / session active project when they change.
+  useEffect(() => {
+    const next = scopedFromUrl || activeProjectId || "all";
+    setProjectId(next);
+  }, [scopedFromUrl, activeProjectId]);
+
   const params: Record<string, string | undefined> = {
     dryDockProjectId: projectFilter ? projectId : undefined,
     [searchParam]: search || undefined,
@@ -87,11 +99,18 @@ function EntityListPageInner<T extends { id: string }>({
     if (ok) void reload();
   }
 
+  function onProjectFilterChange(v: string) {
+    setPage(1);
+    setProjectId(v);
+    void setActiveProjectId(v === "all" ? null : v);
+  }
+
   return (
     <div className="space-y-4">
+      {projectFilter ? <ActiveProjectBanner /> : null}
       <div className="flex flex-wrap items-center gap-2">
         {projectFilter ? (
-          <ProjectFilter value={projectId} onChange={(v) => { setPage(1); setProjectId(v); }} />
+          <ProjectFilter value={projectId} onChange={onProjectFilterChange} />
         ) : null}
         {searchParam ? (
           <Input

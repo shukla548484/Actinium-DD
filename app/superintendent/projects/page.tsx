@@ -5,6 +5,7 @@ import { useState } from "react";
 import { PageHeader, PageShell } from "@/components/layout/PageShell";
 import { TableCard } from "@/components/layout/TableCard";
 import { PaginationBar } from "@/components/superintendent/PaginationBar";
+import { ActiveProjectBanner } from "@/components/superintendent/ActiveProjectBanner";
 import { usePaginatedApi } from "@/components/superintendent/usePaginatedApi";
 import { fmtMoney, fmtPct } from "@/lib/superintendent/formatters";
 import { Button } from "@/components/ui/button";
@@ -41,13 +42,17 @@ export default function SuperintendentProjectsPage() {
     <PageShell>
       <PageHeader
         title="Dry dock projects"
-        description="Active and planned dry dock executions."
+        description="Active and planned dry dock executions. Opening a project sets it as the active project for navigation."
         actions={
           <Button render={<Link href="/superintendent/projects/new" />} nativeButton={false}>
             Add
           </Button>
         }
       />
+
+      <div className="mb-4">
+        <ActiveProjectBanner />
+      </div>
 
       <Input
         placeholder="Search projects…"

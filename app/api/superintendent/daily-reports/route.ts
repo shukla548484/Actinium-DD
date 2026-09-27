@@ -13,9 +13,56 @@ import {
 } from "@/lib/superintendent/childRouteScope";
 import { assertDryDockProjectInScope } from "@/lib/superintendent/scope";
 import { ddDailyReportCreateSchema, parseBody } from "@/lib/superintendent/validation";
+import {
+  countFilledSections,
+  emptyDailyReportSections,
+  normalizeDailyReportSections,
+  normalizeReportDate,
+  resolveDailyReportSections,
+} from "@/lib/superintendent/dailyReportSections";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
+
+function serializeReport(row: {
+  id: string;
+  dryDockProjectId: string;
+  reportDate: Date;
+  weatherCondition: string | null;
+  sectionsJson: Prisma.JsonValue;
+  completedWork: string | null;
+  plannedWork: string | null;
+  manpowerCount: number | null;
+  safetyNotes: string | null;
+  delayNotes: string | null;
+  progressPct: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+  _count?: { attachments: number };
+}) {
+  const sections = resolveDailyReportSections({
+    sectionsJson: row.sectionsJson,
+    completedWork: row.completedWork,
+    plannedWork: row.plannedWork,
+  });
+  return {
+    id: row.id,
+    dryDockProjectId: row.dryDockProjectId,
+    reportDate: row.reportDate.toISOString(),
+    weatherCondition: row.weatherCondition,
+    sections,
+    completedWork: row.completedWork,
+    plannedWork: row.plannedWork,
+    manpowerCount: row.manpowerCount,
+    safetyNotes: row.safetyNotes,
+    delayNotes: row.delayNotes,
+    progressPct: row.progressPct,
+    attachmentCount: row._count?.attachments,
+    sectionsFilled: countFilledSections(sections),
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
 
 export async function GET(request: Request) {
   const denied = await requireSuperintendentApiAccess();
@@ -24,6 +71,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const { page, limit, skip } = parsePagination(searchParams);
   const dryDockProjectId = searchParams.get("dryDockProjectId") ?? undefined;
+  const search = searchParams.get("search")?.trim();
 
   const guard = await guardChildListAccess(dryDockProjectId, page, limit);
   if (!guard.ok) return NextResponse.json(guard.response);
@@ -31,19 +79,30 @@ export async function GET(request: Request) {
   const where: Prisma.DdDailyReportWhereInput = {
     ...notDeleted,
     ...buildChildEntityWhere(dryDockProjectId, guard.projectFilter),
+    ...(search
+      ? {
+          OR: [
+            { weatherCondition: { contains: search, mode: "insensitive" } },
+            { completedWork: { contains: search, mode: "insensitive" } },
+            { plannedWork: { contains: search, mode: "insensitive" } },
+            { safetyNotes: { contains: search, mode: "insensitive" } },
+          ],
+        }
+      : {}),
   };
 
-  const [total, dailyReports] = await Promise.all([
+  const [total, rows] = await Promise.all([
     prisma.ddDailyReport.count({ where }),
     prisma.ddDailyReport.findMany({
       where,
       skip,
       take: limit,
       orderBy: { reportDate: "desc" },
+      include: { _count: { select: { attachments: true } } },
     }),
   ]);
 
-  return NextResponse.json(paginatedResult(dailyReports, total, page, limit));
+  return NextResponse.json(paginatedResult(rows.map(serializeReport), total, page, limit));
 }
 
 export async function POST(request: Request) {
@@ -59,6 +118,47 @@ export async function POST(request: Request) {
   const access = await assertDryDockProjectInScope(parsed.data.dryDockProjectId);
   if (!access.ok) return access.response;
 
-  const dailyReport = await prisma.ddDailyReport.create({ data: parsed.data });
-  return NextResponse.json({ dailyReport }, { status: 201 });
+  let reportDate: Date;
+  try {
+    reportDate = normalizeReportDate(parsed.data.reportDate as string | Date);
+  } catch {
+    return NextResponse.json({ error: "Invalid report date" }, { status: 400 });
+  }
+
+  const duplicate = await prisma.ddDailyReport.findFirst({
+    where: {
+      dryDockProjectId: parsed.data.dryDockProjectId,
+      reportDate,
+      ...notDeleted,
+    },
+    select: { id: true },
+  });
+  if (duplicate) {
+    return NextResponse.json(
+      { error: "A daily report already exists for this project and date" },
+      { status: 409 },
+    );
+  }
+
+  const sections = parsed.data.sections
+    ? normalizeDailyReportSections(parsed.data.sections)
+    : emptyDailyReportSections();
+
+  const row = await prisma.ddDailyReport.create({
+    data: {
+      dryDockProjectId: parsed.data.dryDockProjectId,
+      reportDate,
+      weatherCondition: parsed.data.weatherCondition?.trim() || null,
+      sectionsJson: sections as unknown as Prisma.InputJsonValue,
+      completedWork: parsed.data.completedWork?.trim() || null,
+      plannedWork: parsed.data.plannedWork?.trim() || null,
+      manpowerCount: parsed.data.manpowerCount ?? null,
+      safetyNotes: parsed.data.safetyNotes?.trim() || null,
+      delayNotes: parsed.data.delayNotes?.trim() || null,
+      progressPct: parsed.data.progressPct ?? null,
+    },
+    include: { _count: { select: { attachments: true } } },
+  });
+
+  return NextResponse.json({ dailyReport: serializeReport(row) }, { status: 201 });
 }

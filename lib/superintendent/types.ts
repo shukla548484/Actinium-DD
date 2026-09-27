@@ -196,10 +196,16 @@ export type DdBudgetLineDto = {
   dryDockProjectId: string;
   category: string;
   description: string | null;
+  currency: string;
+  exchangeRateLocalPerUsd: number | null;
   budgetAmount: number;
   quotedAmount: number | null;
   approvedAmount: number | null;
   actualAmount: number | null;
+  budgetAmountUsd: number | null;
+  quotedAmountUsd: number | null;
+  approvedAmountUsd: number | null;
+  actualAmountUsd: number | null;
   responsibleParty: string | null;
   varianceReason: string | null;
   approvalStatus: DdApprovalStatus;
@@ -298,16 +304,46 @@ export type DdVariationOrderDto = {
   updatedAt: string;
 };
 
+export type DdDailyReportSectionDto = {
+  workDone: string;
+};
+
+export type DdDailyReportSectionsDto = {
+  deck_crew: DdDailyReportSectionDto;
+  engine_crew: DdDailyReportSectionDto;
+  third_party: DdDailyReportSectionDto;
+  shipyard: DdDailyReportSectionDto;
+  painting: DdDailyReportSectionDto;
+  class_attendance: DdDailyReportSectionDto;
+};
+
+export type DdDailyReportAttachmentDto = {
+  id: string;
+  dailyReportId: string;
+  sectionKey: string;
+  fileName: string;
+  fileUrl: string;
+  mimeType: string | null;
+  fileSize: number | null;
+  caption: string | null;
+  createdAt: string;
+};
+
 export type DdDailyReportDto = {
   id: string;
   dryDockProjectId: string;
   reportDate: string;
+  weatherCondition: string | null;
+  sections: DdDailyReportSectionsDto;
+  /** Legacy flat fields retained for migration / search. */
   completedWork: string | null;
   plannedWork: string | null;
   manpowerCount: number | null;
   safetyNotes: string | null;
   delayNotes: string | null;
   progressPct: number | null;
+  attachmentCount?: number;
+  sectionsFilled?: number;
   createdAt: string;
   updatedAt: string;
 };

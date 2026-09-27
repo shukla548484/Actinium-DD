@@ -1,16 +1,23 @@
 "use client";
 
+import { useMemo } from "react";
 import { usePathname } from "next/navigation";
 import { NavItemLink } from "@/components/layout/NavItemLink";
+import { useActiveDryDockProject } from "@/components/superintendent/ActiveDryDockProjectProvider";
 import {
+  buildSuperintendentNavItems,
   resolveSuperintendentNavId,
   superintendentNavGroups,
-  superintendentNavItems,
 } from "@/lib/navigation/superintendentNavItems";
 
 export function SuperintendentSidebar() {
   const pathname = usePathname();
   const active = resolveSuperintendentNavId(pathname);
+  const { activeProjectId } = useActiveDryDockProject();
+  const items = useMemo(
+    () => buildSuperintendentNavItems(activeProjectId),
+    [activeProjectId],
+  );
 
   return (
     <aside
@@ -22,15 +29,15 @@ export function SuperintendentSidebar() {
           Tech Superintendent
         </p>
         {superintendentNavGroups.map((group) => {
-          const items = superintendentNavItems.filter((i) => i.group === group);
-          if (items.length === 0) return null;
+          const groupItems = items.filter((i) => i.group === group);
+          if (groupItems.length === 0) return null;
           return (
             <div key={group} className="mb-3">
               <p className="mb-1 px-2 text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground/80">
                 {group}
               </p>
               <ul className="space-y-0.5">
-                {items.map((item) => (
+                {groupItems.map((item) => (
                   <li key={item.id}>
                     <NavItemLink
                       href={item.href}
@@ -52,13 +59,18 @@ export function SuperintendentSidebar() {
 export function SuperintendentMobileNav() {
   const pathname = usePathname();
   const active = resolveSuperintendentNavId(pathname);
+  const { activeProjectId } = useActiveDryDockProject();
+  const items = useMemo(
+    () => buildSuperintendentNavItems(activeProjectId),
+    [activeProjectId],
+  );
 
   return (
     <nav
       className="flex gap-1 overflow-x-auto border-b bg-muted/30 px-3 py-2 md:hidden"
       aria-label="Superintendent sections"
     >
-      {superintendentNavItems.map((item) => (
+      {items.map((item) => (
         <NavItemLink
           key={item.id}
           href={item.href}

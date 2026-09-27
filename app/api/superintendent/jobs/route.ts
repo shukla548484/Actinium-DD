@@ -44,10 +44,19 @@ export async function GET(request: Request) {
       skip,
       take: limit,
       orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+      include: {
+        dryDockProject: { select: { id: true, name: true, referenceCode: true } },
+      },
     }),
   ]);
 
-  return NextResponse.json(paginatedResult(jobs, total, page, limit));
+  const items = jobs.map(({ dryDockProject, ...job }) => ({
+    ...job,
+    projectName: dryDockProject.name,
+    projectReferenceCode: dryDockProject.referenceCode,
+  }));
+
+  return NextResponse.json(paginatedResult(items, total, page, limit));
 }
 
 export async function POST(request: Request) {

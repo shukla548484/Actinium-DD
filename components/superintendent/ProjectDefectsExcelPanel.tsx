@@ -233,7 +233,7 @@ export function ProjectDefectsExcelPanel({
   }
 
   return (
-    <Card>
+    <Card id="excel-defects" className="scroll-mt-24">
       <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
         <div>
           <CardTitle className="text-base">Defects</CardTitle>

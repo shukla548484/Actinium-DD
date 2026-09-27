@@ -196,6 +196,9 @@ export const ddBudgetLineCreateSchema = z.object({
   dryDockProjectId: z.string().min(1, "Dry dock project is required"),
   category: z.string().min(1, "Category is required"),
   description: z.string().nullable().optional(),
+  currency: z.string().min(1).max(8).optional(),
+  /** Local currency units per 1 USD (same convention as ProjectCurrencyConversion). */
+  exchangeRateLocalPerUsd: z.number().positive().nullable().optional(),
   budgetAmount: z.number().optional(),
   quotedAmount: z.number().nullable().optional(),
   approvedAmount: z.number().nullable().optional(),
@@ -277,9 +280,25 @@ export const ddVariationOrderUpdateSchema = ddVariationOrderCreateSchema
   .omit({ dryDockProjectId: true })
   .refine((data) => Object.keys(data).length > 0, { message: "No fields to update" });
 
+const dailyReportSectionPayloadSchema = z.object({
+  workDone: z.string().optional().default(""),
+});
+
+export const dailyReportSectionsSchema = z.object({
+  deck_crew: dailyReportSectionPayloadSchema.optional(),
+  engine_crew: dailyReportSectionPayloadSchema.optional(),
+  third_party: dailyReportSectionPayloadSchema.optional(),
+  shipyard: dailyReportSectionPayloadSchema.optional(),
+  painting: dailyReportSectionPayloadSchema.optional(),
+  class_attendance: dailyReportSectionPayloadSchema.optional(),
+});
+
 export const ddDailyReportCreateSchema = z.object({
   dryDockProjectId: z.string().min(1, "Dry dock project is required"),
   reportDate: requiredDate,
+  weatherCondition: z.string().nullable().optional(),
+  sections: dailyReportSectionsSchema.optional(),
+  /** Legacy — accepted but UI should write `sections` instead. */
   completedWork: z.string().nullable().optional(),
   plannedWork: z.string().nullable().optional(),
   manpowerCount: z.number().int().nullable().optional(),

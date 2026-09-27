@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LabeledSelect } from "@/components/ui/LabeledSelect";
 import type { RbacUserType } from "@prisma/client";
-import { Anchor, Languages, Lock, Ship, Shield } from "lucide-react";
+import { Anchor, Eye, EyeOff, Languages, Lock, Ship, Shield } from "lucide-react";
 import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
 import {
   DEFAULT_SHIPYARD_QUOTE_LANG_PREFS,
@@ -41,15 +41,32 @@ function useLoginI18n() {
 
   useEffect(() => {
     let cancelled = false;
-    void ensureShipyardQuoteLangPrefs().then((loaded) => {
+    const fallback = window.setTimeout(() => {
       if (cancelled) return;
-      setPrefs(loaded);
+      setPrefs(loadShipyardQuoteLangPrefs());
       setReady(true);
-    });
+    }, 3000);
+
+    void ensureShipyardQuoteLangPrefs()
+      .then((loaded) => {
+        if (cancelled) return;
+        setPrefs(loaded);
+        setReady(true);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setPrefs(DEFAULT_SHIPYARD_QUOTE_LANG_PREFS);
+        setReady(true);
+      })
+      .finally(() => {
+        window.clearTimeout(fallback);
+      });
+
     const onLang = () => setPrefs(loadShipyardQuoteLangPrefs());
     window.addEventListener("actinium-shipyard-lang", onLang);
     return () => {
       cancelled = true;
+      window.clearTimeout(fallback);
       window.removeEventListener("actinium-shipyard-lang", onLang);
     };
   }, []);
@@ -145,6 +162,7 @@ function LoginForm() {
   const reason = searchParams.get("reason");
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const { prefs, ready, locale, t, label, update } = useLoginI18n();
@@ -189,7 +207,7 @@ function LoginForm() {
   if (!ready) {
     return (
       <div className="flex min-h-dvh items-center justify-center">
-        <ActiniumLoadingState size="lg" label={t("loading")} />
+        <ActiniumLoadingState size="lg" label="Loading…" />
       </div>
     );
   }
@@ -297,20 +315,34 @@ function LoginForm() {
               <Label htmlFor="password" className="block">
                 <span lang={locale}>{label("loginPasswordLabel")}</span>
               </Label>
-              <Input
-                id="password"
-                lang="en"
-                dir="ltr"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder={shipyardQuoteUi("en", "loginPasswordPlaceholder")}
-                autoComplete="current-password"
-                autoCorrect="off"
-                spellCheck={false}
-                className="h-11"
-                required
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  lang="en"
+                  dir="ltr"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={shipyardQuoteUi("en", "loginPasswordPlaceholder")}
+                  autoComplete="current-password"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  className="h-11 pr-10"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {showPassword ? (
+                    <EyeOff className="size-4" aria-hidden />
+                  ) : (
+                    <Eye className="size-4" aria-hidden />
+                  )}
+                </button>
+              </div>
             </div>
             <Button type="submit" className="h-11 w-full text-base" disabled={loading} lang={locale}>
               {loading ? label("loginSubmitting") : label("loginSubmit")}

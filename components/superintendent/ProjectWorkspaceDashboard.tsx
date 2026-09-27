@@ -7,9 +7,19 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { fmtPct } from "@/lib/superintendent/formatters";
 import type { ProjectWorkspaceSummary } from "@/lib/superintendent/engine/workspaceSummary";
+import { workspaceModuleHref } from "@/lib/superintendent/engine/workspaceNav";
+import { projectPlanningHref } from "@/lib/superintendent/engine/workspaceLinks";
 import { CombinedInputReadinessPanel } from "@/components/superintendent/CombinedInputReadinessPanel";
 import { ProjectDefectsExcelPanel } from "@/components/superintendent/ProjectDefectsExcelPanel";
 import { ActiniumLoadingState } from "@/components/ui/ActiniumLoader";
+
+function projectVesselJobsHref(dryDockProjectId: string) {
+  return `/superintendent/projects/${dryDockProjectId}/inputs/vessel/jobs`;
+}
+
+function projectExcelDefectsHref(dryDockProjectId: string) {
+  return `/superintendent/projects/${dryDockProjectId}#excel-defects`;
+}
 
 type Props = {
   dryDockProjectId: string;
@@ -92,29 +102,95 @@ export function ProjectWorkspaceDashboard({ dryDockProjectId }: Props) {
       {kpis ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
           {[
-            { label: "Progress", value: fmtPct(kpis.progressPct) },
-            { label: "Scope jobs", value: String(kpis.jobs) },
-            { label: "Workshops", value: String(workspace?.workshops.length ?? 0) },
-            { label: "Milestones", value: String(kpis.milestones) },
-            { label: "Budget lines", value: String(kpis.budgetLines) },
-            { label: "Survey items", value: String(kpis.surveyItems) },
-            { label: "Approvals", value: String(kpis.approvals) },
-            { label: "Documents", value: String(kpis.documentRequirements) },
-            { label: "RFQ steps", value: String(kpis.rfqSteps) },
-            { label: "Checklist", value: String(kpis.checklistItems) },
-            { label: "Vessel jobs in scope", value: String(kpis.vesselJobsIntegrated) },
-            { label: "Auto-imported", value: String(kpis.vesselJobsAutoImported) },
-            { label: "Pending vessel bank", value: String(kpis.vesselJobsPendingBank) },
-            { label: "Excel defects", value: String(kpis.importedDefects ?? 0) },
+            {
+              label: "Progress",
+              value: fmtPct(kpis.progressPct),
+              href: workspaceModuleHref("daily_progress", dryDockProjectId),
+            },
+            {
+              label: "Scope jobs",
+              value: String(kpis.jobs),
+              href: workspaceModuleHref("scope", dryDockProjectId),
+            },
+            {
+              label: "Workshops",
+              value: String(workspace?.workshops.length ?? 0),
+              href: workspaceModuleHref("workshops", dryDockProjectId),
+            },
+            {
+              label: "Milestones",
+              value: String(kpis.milestones),
+              href: workspaceModuleHref("timeline", dryDockProjectId),
+            },
+            {
+              label: "Budget lines",
+              value: String(kpis.budgetLines),
+              href: workspaceModuleHref("budget", dryDockProjectId),
+            },
+            {
+              label: "Survey items",
+              value: String(kpis.surveyItems),
+              href: workspaceModuleHref("survey", dryDockProjectId),
+            },
+            {
+              label: "Approvals",
+              value: String(kpis.approvals),
+              href: workspaceModuleHref("approvals", dryDockProjectId),
+            },
+            {
+              label: "Documents",
+              value: String(kpis.documentRequirements),
+              href: workspaceModuleHref("documents", dryDockProjectId),
+            },
+            {
+              label: "RFQ steps",
+              value: String(kpis.rfqSteps),
+              href: workspaceModuleHref("rfq", dryDockProjectId),
+            },
+            {
+              label: "Checklist",
+              value: String(kpis.checklistItems),
+              href: projectPlanningHref(dryDockProjectId, "checklist"),
+            },
+            {
+              label: "Vessel jobs in scope",
+              value: String(kpis.vesselJobsIntegrated),
+              href: projectVesselJobsHref(dryDockProjectId),
+            },
+            {
+              label: "Auto-imported",
+              value: String(kpis.vesselJobsAutoImported),
+              href: projectVesselJobsHref(dryDockProjectId),
+            },
+            {
+              label: "Pending vessel bank",
+              value: String(kpis.vesselJobsPendingBank),
+              href: projectVesselJobsHref(dryDockProjectId),
+            },
+            {
+              label: "Excel defects",
+              value: String(kpis.importedDefects ?? 0),
+              href: projectExcelDefectsHref(dryDockProjectId),
+            },
           ].map((kpi) => (
-            <Card key={kpi.label} size="sm" className="gap-0 py-1.5">
-              <CardHeader className="gap-0.5 px-2.5 py-0">
-                <CardTitle className="text-base font-semibold leading-none tabular-nums">
-                  {kpi.value}
-                </CardTitle>
-                <CardDescription className="text-xs leading-tight">{kpi.label}</CardDescription>
-              </CardHeader>
-            </Card>
+            <Link
+              key={kpi.label}
+              href={kpi.href}
+              aria-label={`View ${kpi.label}: ${kpi.value}`}
+              className="group rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <Card
+                size="sm"
+                className="h-full cursor-pointer gap-0 py-1.5 transition-colors group-hover:bg-muted/40 group-focus-visible:bg-muted/40"
+              >
+                <CardHeader className="gap-0.5 px-2.5 py-0">
+                  <CardTitle className="text-base font-semibold leading-none tabular-nums">
+                    {kpi.value}
+                  </CardTitle>
+                  <CardDescription className="text-xs leading-tight">{kpi.label}</CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
           ))}
         </div>
       ) : null}

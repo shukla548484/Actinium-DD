@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireSuperintendentApiAccess } from "@/lib/auth/superintendentAccess";
 import { notDeleted } from "@/lib/superintendent/helpers";
 import { assertChildDryDockProjectInScope } from "@/lib/superintendent/childRouteScope";
+import { resolveBudgetLineCurrencyAmounts } from "@/lib/superintendent/budgetLineCurrency";
 import { ddBudgetLineUpdateSchema, parseBody } from "@/lib/superintendent/validation";
 import { prisma } from "@/lib/prisma";
 
@@ -35,7 +36,46 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
   const access = await assertChildDryDockProjectInScope(existing.dryDockProjectId);
   if (!access.ok) return access.response;
 
-  const budgetLine = await prisma.ddBudgetLine.update({ where: { id }, data: parsed.data });
+  const {
+    currency,
+    exchangeRateLocalPerUsd,
+    budgetAmount,
+    quotedAmount,
+    approvedAmount,
+    actualAmount,
+    ...rest
+  } = parsed.data;
+
+  const amountsTouched =
+    currency !== undefined ||
+    exchangeRateLocalPerUsd !== undefined ||
+    budgetAmount !== undefined ||
+    quotedAmount !== undefined ||
+    approvedAmount !== undefined ||
+    actualAmount !== undefined;
+
+  const amounts = amountsTouched
+    ? await resolveBudgetLineCurrencyAmounts({
+        dryDockProjectId: existing.dryDockProjectId,
+        currency: currency ?? existing.currency,
+        exchangeRateLocalPerUsd:
+          exchangeRateLocalPerUsd !== undefined
+            ? exchangeRateLocalPerUsd
+            : existing.exchangeRateLocalPerUsd,
+        budgetAmount: budgetAmount ?? existing.budgetAmount,
+        quotedAmount: quotedAmount !== undefined ? quotedAmount : existing.quotedAmount,
+        approvedAmount: approvedAmount !== undefined ? approvedAmount : existing.approvedAmount,
+        actualAmount: actualAmount !== undefined ? actualAmount : existing.actualAmount,
+      })
+    : null;
+
+  const budgetLine = await prisma.ddBudgetLine.update({
+    where: { id },
+    data: {
+      ...rest,
+      ...(amounts ?? {}),
+    },
+  });
   return NextResponse.json({ budgetLine });
 }
 

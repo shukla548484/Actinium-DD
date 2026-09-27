@@ -1,6 +1,7 @@
 import { buildHybridComparison } from "@/lib/tender/buildHybridComparison";
 import { categoryLabelFromList } from "@/lib/tender/categories";
 import { notDeleted } from "@/lib/superintendent/helpers";
+import { mirrorUsdFromLocal } from "@/lib/superintendent/budgetLineCurrency";
 import { prisma } from "@/lib/prisma";
 
 export type BudgetQuoteRow = {
@@ -165,10 +166,19 @@ export async function syncBudgetLinesFromComparison(
     });
 
     if (existing) {
+      const mirrors = mirrorUsdFromLocal({
+        currency: existing.currency,
+        exchangeRateLocalPerUsd: existing.exchangeRateLocalPerUsd,
+        budgetAmount: existing.budgetAmount,
+        quotedAmount: row.quotedAmount,
+        approvedAmount: existing.approvedAmount,
+        actualAmount: existing.actualAmount,
+      });
       await prisma.ddBudgetLine.update({
         where: { id: existing.id },
         data: {
           quotedAmount: row.quotedAmount,
+          quotedAmountUsd: mirrors.quotedAmountUsd,
           description: existing.description ?? row.categoryLabel,
         },
       });
@@ -178,8 +188,12 @@ export async function syncBudgetLinesFromComparison(
           dryDockProjectId,
           category: row.category,
           description: row.categoryLabel,
+          currency: "USD",
+          exchangeRateLocalPerUsd: 1,
           budgetAmount: row.budgetAmount,
           quotedAmount: row.quotedAmount,
+          budgetAmountUsd: row.budgetAmount,
+          quotedAmountUsd: row.quotedAmount,
           sortOrder: i,
         },
       });

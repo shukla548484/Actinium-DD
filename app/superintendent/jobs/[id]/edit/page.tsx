@@ -297,18 +297,20 @@ export default function EditPage() {
               })();
             }}
           >
-            <div className="space-y-2">
-              <Label htmlFor="title">Title *</Label>
-              <Input id="title" name="title" defaultValue={item.title} required />
-            </div>
-            <div className="space-y-2">
-              <Label>Category *</Label>
-              <LabeledSelect
-                items={JOB_CATEGORY_ITEMS}
-                value={category}
-                onValueChange={(v) => setCategory(v || item.category)}
-                className="w-full"
-              />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="title">Title *</Label>
+                <Input id="title" name="title" defaultValue={item.title} required />
+              </div>
+              <div className="space-y-2">
+                <Label>Category *</Label>
+                <LabeledSelect
+                  items={JOB_CATEGORY_ITEMS}
+                  value={category}
+                  onValueChange={(v) => setCategory(v || item.category)}
+                  className="w-full"
+                />
+              </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
@@ -330,18 +332,20 @@ export default function EditPage() {
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="jobCode">Job code</Label>
-              <Input id="jobCode" name="jobCode" defaultValue={item.jobCode ?? ""} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="workshop">Workshop</Label>
-              <Input
-                id="workshop"
-                name="workshop"
-                defaultValue={item.workshop ?? ""}
-                placeholder="e.g. Hull, Machinery, Electrical"
-              />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="jobCode">Job code</Label>
+                <Input id="jobCode" name="jobCode" defaultValue={item.jobCode ?? ""} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="workshop">Workshop</Label>
+                <Input
+                  id="workshop"
+                  name="workshop"
+                  defaultValue={item.workshop ?? ""}
+                  placeholder="e.g. Hull, Machinery, Electrical"
+                />
+              </div>
             </div>
 
             {showSteelScope ? (

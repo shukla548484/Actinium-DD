@@ -1,30 +1,24 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { PageHeader, PageShell } from "@/components/layout/PageShell";
 import {
   EntityFormActions,
   useEntityFormSubmit,
 } from "@/components/superintendent/EntityListPage";
+import {
+  BudgetLineCurrencyFields,
+  parseBudgetLineCurrencyForm,
+} from "@/components/superintendent/BudgetLineCurrencyFields";
 import { DryDockProjectSelect } from "@/components/superintendent/DryDockProjectSelect";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-
 
 export const dynamic = "force-dynamic";
 
 export default function NewPage() {
-  const router = useRouter();
   const [projectId, setProjectId] = useState("");
   const { saving, error, submit } = useEntityFormSubmit(
     "/api/superintendent/budget",
@@ -48,10 +42,15 @@ export default function NewPage() {
             onSubmit={(e) => {
               e.preventDefault();
               const form = new FormData(e.currentTarget);
-              void submit({ dryDockProjectId: projectId, category: form.get("category") as string, description: (form.get("description") as string) || null, budgetAmount: Number(form.get("budgetAmount") || 0), quotedAmount: form.get("quotedAmount") ? Number(form.get("quotedAmount")) : null, actualAmount: form.get("actualAmount") ? Number(form.get("actualAmount")) : null });
+              const amounts = parseBudgetLineCurrencyForm(form);
+              void submit({
+                dryDockProjectId: projectId,
+                category: form.get("category") as string,
+                description: (form.get("description") as string) || null,
+                ...amounts,
+              });
             }}
           >
-
             <DryDockProjectSelect value={projectId} onChange={setProjectId} required />
             <div className="space-y-2">
               <Label htmlFor="category">Category *</Label>
@@ -61,20 +60,7 @@ export default function NewPage() {
               <Label htmlFor="description">Description</Label>
               <Textarea id="description" name="description" rows={2} />
             </div>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="budgetAmount">Budget amount</Label>
-                <Input id="budgetAmount" name="budgetAmount" type="number" defaultValue={0} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="quotedAmount">Quoted</Label>
-                <Input id="quotedAmount" name="quotedAmount" type="number" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="actualAmount">Actual</Label>
-                <Input id="actualAmount" name="actualAmount" type="number" />
-              </div>
-            </div>
+            <BudgetLineCurrencyFields dryDockProjectId={projectId || null} />
             <EntityFormActions saving={saving} />
           </form>
         </CardContent>

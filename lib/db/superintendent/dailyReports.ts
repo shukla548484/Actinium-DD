@@ -1,22 +1,49 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { notDeleted, parsePageLimit } from "@/lib/db/superintendent/pagination";
+import {
+  countFilledSections,
+  emptyDailyReportSections,
+  normalizeDailyReportSections,
+  normalizeReportDate,
+  resolveDailyReportSections,
+  type DailyReportSections,
+} from "@/lib/superintendent/dailyReportSections";
 import type { DdDailyReportDto, ListQuery } from "@/lib/superintendent/types";
 
-function mapDailyReport(row: Prisma.DdDailyReportGetPayload<object>): DdDailyReportDto {
+type ReportRow = Prisma.DdDailyReportGetPayload<{
+  include: { _count: { select: { attachments: true } } };
+}>;
+
+function mapDailyReport(row: ReportRow | Prisma.DdDailyReportGetPayload<object>): DdDailyReportDto {
+  const sections = resolveDailyReportSections({
+    sectionsJson: row.sectionsJson,
+    completedWork: row.completedWork,
+    plannedWork: row.plannedWork,
+  });
+  const attachmentCount =
+    "_count" in row && row._count ? row._count.attachments : undefined;
   return {
     id: row.id,
     dryDockProjectId: row.dryDockProjectId,
     reportDate: row.reportDate.toISOString(),
+    weatherCondition: row.weatherCondition,
+    sections,
     completedWork: row.completedWork,
     plannedWork: row.plannedWork,
     manpowerCount: row.manpowerCount,
     safetyNotes: row.safetyNotes,
     delayNotes: row.delayNotes,
     progressPct: row.progressPct,
+    attachmentCount,
+    sectionsFilled: countFilledSections(sections),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
+}
+
+function sectionsToJson(sections: DailyReportSections): Prisma.InputJsonValue {
+  return sections as unknown as Prisma.InputJsonValue;
 }
 
 function buildWhere(query: ListQuery): Prisma.DdDailyReportWhereInput {
@@ -24,6 +51,7 @@ function buildWhere(query: ListQuery): Prisma.DdDailyReportWhereInput {
   if (query.dryDockProjectId) where.dryDockProjectId = query.dryDockProjectId;
   if (query.search) {
     where.OR = [
+      { weatherCondition: { contains: query.search, mode: "insensitive" } },
       { completedWork: { contains: query.search, mode: "insensitive" } },
       { plannedWork: { contains: query.search, mode: "insensitive" } },
       { safetyNotes: { contains: query.search, mode: "insensitive" } },
@@ -43,6 +71,7 @@ export async function listDdDailyReports(query: ListQuery = {}) {
       skip,
       take: limit,
       orderBy: { reportDate: "desc" },
+      include: { _count: { select: { attachments: true } } },
     }),
   ]);
 
@@ -56,14 +85,35 @@ export async function listDdDailyReports(query: ListQuery = {}) {
 }
 
 export async function getDdDailyReport(id: string) {
-  const row = await prisma.ddDailyReport.findFirst({ where: { id, ...notDeleted } });
+  const row = await prisma.ddDailyReport.findFirst({
+    where: { id, ...notDeleted },
+    include: { _count: { select: { attachments: true } } },
+  });
   if (!row) return null;
   return mapDailyReport(row);
 }
 
+export async function findActiveReportForDay(
+  dryDockProjectId: string,
+  reportDate: Date,
+  excludeId?: string,
+) {
+  return prisma.ddDailyReport.findFirst({
+    where: {
+      dryDockProjectId,
+      reportDate,
+      ...notDeleted,
+      ...(excludeId ? { NOT: { id: excludeId } } : {}),
+    },
+    select: { id: true },
+  });
+}
+
 export async function createDdDailyReport(input: {
   dryDockProjectId: string;
-  reportDate: Date;
+  reportDate: Date | string;
+  weatherCondition?: string | null;
+  sections?: unknown;
   completedWork?: string | null;
   plannedWork?: string | null;
   manpowerCount?: number | null;
@@ -71,10 +121,17 @@ export async function createDdDailyReport(input: {
   delayNotes?: string | null;
   progressPct?: number | null;
 }) {
+  const reportDate = normalizeReportDate(input.reportDate);
+  const sections = input.sections
+    ? normalizeDailyReportSections(input.sections)
+    : emptyDailyReportSections();
+
   const row = await prisma.ddDailyReport.create({
     data: {
       dryDockProjectId: input.dryDockProjectId,
-      reportDate: input.reportDate,
+      reportDate,
+      weatherCondition: input.weatherCondition?.trim() || null,
+      sectionsJson: sectionsToJson(sections),
       completedWork: input.completedWork?.trim() || null,
       plannedWork: input.plannedWork?.trim() || null,
       manpowerCount: input.manpowerCount ?? null,
@@ -82,6 +139,7 @@ export async function createDdDailyReport(input: {
       delayNotes: input.delayNotes?.trim() || null,
       progressPct: input.progressPct ?? null,
     },
+    include: { _count: { select: { attachments: true } } },
   });
   return mapDailyReport(row);
 }
@@ -90,7 +148,9 @@ export async function updateDdDailyReport(
   id: string,
   input: Partial<{
     dryDockProjectId: string;
-    reportDate: Date;
+    reportDate: Date | string;
+    weatherCondition: string | null;
+    sections: unknown;
     completedWork: string | null;
     plannedWork: string | null;
     manpowerCount: number | null;
@@ -103,7 +163,13 @@ export async function updateDdDailyReport(
     where: { id },
     data: {
       ...(input.dryDockProjectId != null ? { dryDockProjectId: input.dryDockProjectId } : {}),
-      ...(input.reportDate != null ? { reportDate: input.reportDate } : {}),
+      ...(input.reportDate != null ? { reportDate: normalizeReportDate(input.reportDate) } : {}),
+      ...(input.weatherCondition !== undefined
+        ? { weatherCondition: input.weatherCondition?.trim() || null }
+        : {}),
+      ...(input.sections !== undefined
+        ? { sectionsJson: sectionsToJson(normalizeDailyReportSections(input.sections)) }
+        : {}),
       ...(input.completedWork !== undefined ? { completedWork: input.completedWork?.trim() || null } : {}),
       ...(input.plannedWork !== undefined ? { plannedWork: input.plannedWork?.trim() || null } : {}),
       ...(input.manpowerCount !== undefined ? { manpowerCount: input.manpowerCount } : {}),
@@ -111,6 +177,7 @@ export async function updateDdDailyReport(
       ...(input.delayNotes !== undefined ? { delayNotes: input.delayNotes?.trim() || null } : {}),
       ...(input.progressPct !== undefined ? { progressPct: input.progressPct } : {}),
     },
+    include: { _count: { select: { attachments: true } } },
   });
   return mapDailyReport(row);
 }
@@ -121,3 +188,5 @@ export async function deleteDdDailyReport(id: string) {
     data: { deletedAt: new Date() },
   });
 }
+
+export { mapDailyReport, resolveDailyReportSections, normalizeReportDate };

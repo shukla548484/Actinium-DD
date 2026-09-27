@@ -43,7 +43,14 @@ export async function getExecutiveBudgetSummary() {
       budgetTotal: true,
       budgetLines: {
         where: notDeleted,
-        select: { budgetAmount: true, actualAmount: true, approvedAmount: true },
+        select: {
+          budgetAmount: true,
+          actualAmount: true,
+          approvedAmount: true,
+          budgetAmountUsd: true,
+          actualAmountUsd: true,
+          currency: true,
+        },
       },
       purchaseOrders: {
         where: notDeleted,
@@ -67,8 +74,14 @@ export async function getExecutiveBudgetSummary() {
     const budget =
       p.approvedBudget ??
       p.budgetTotal ??
-      p.budgetLines.reduce((s, l) => s + l.budgetAmount, 0);
-    const actual = p.budgetLines.reduce((s, l) => s + (l.actualAmount ?? 0), 0);
+      p.budgetLines.reduce(
+        (s, l) => s + (l.budgetAmountUsd ?? l.budgetAmount),
+        0,
+      );
+    const actual = p.budgetLines.reduce(
+      (s, l) => s + (l.actualAmountUsd ?? l.actualAmount ?? 0),
+      0,
+    );
     const poCommitted = p.purchaseOrders
       .filter((po) => !["draft", "cancelled"].includes(po.status))
       .reduce((s, po) => s + po.amount, 0);

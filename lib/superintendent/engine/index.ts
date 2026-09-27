@@ -47,6 +47,11 @@ export type {
 
 export { provisionDryDockProjectWorkspace } from "./provisionWorkspace";
 export { ensureProjectChecklistFromTemplate } from "./ensureChecklist";
+export {
+  dedupeAllProjectChecklistItems,
+  dedupeProjectChecklistItems,
+} from "./dedupeChecklist";
+export type { DedupeChecklistResult } from "./dedupeChecklist";
 export { getProjectWorkspaceSummary } from "./workspaceSummary";
 export type { ProjectWorkspaceSummary, WorkspaceModuleCard, WorkspaceWorkshop } from "./workspaceSummary";
 export {

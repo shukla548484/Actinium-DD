@@ -1,6 +1,7 @@
 import type { DdApprovalStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { notDeleted, parsePageLimit } from "@/lib/db/superintendent/pagination";
+import { resolveBudgetLineCurrencyAmounts } from "@/lib/superintendent/budgetLineCurrency";
 import type { DdBudgetLineDto, ListQuery } from "@/lib/superintendent/types";
 
 function mapBudgetLine(row: Prisma.DdBudgetLineGetPayload<object>): DdBudgetLineDto {
@@ -9,10 +10,16 @@ function mapBudgetLine(row: Prisma.DdBudgetLineGetPayload<object>): DdBudgetLine
     dryDockProjectId: row.dryDockProjectId,
     category: row.category,
     description: row.description,
+    currency: row.currency,
+    exchangeRateLocalPerUsd: row.exchangeRateLocalPerUsd,
     budgetAmount: row.budgetAmount,
     quotedAmount: row.quotedAmount,
     approvedAmount: row.approvedAmount,
     actualAmount: row.actualAmount,
+    budgetAmountUsd: row.budgetAmountUsd,
+    quotedAmountUsd: row.quotedAmountUsd,
+    approvedAmountUsd: row.approvedAmountUsd,
+    actualAmountUsd: row.actualAmountUsd,
     responsibleParty: row.responsibleParty,
     varianceReason: row.varianceReason,
     approvalStatus: row.approvalStatus,
@@ -71,6 +78,8 @@ export async function createDdBudgetLine(input: {
   dryDockProjectId: string;
   category: string;
   description?: string | null;
+  currency?: string | null;
+  exchangeRateLocalPerUsd?: number | null;
   budgetAmount?: number;
   quotedAmount?: number | null;
   approvedAmount?: number | null;
@@ -80,15 +89,22 @@ export async function createDdBudgetLine(input: {
   approvalStatus?: DdApprovalStatus;
   sortOrder?: number;
 }) {
+  const amounts = await resolveBudgetLineCurrencyAmounts({
+    dryDockProjectId: input.dryDockProjectId,
+    currency: input.currency,
+    exchangeRateLocalPerUsd: input.exchangeRateLocalPerUsd,
+    budgetAmount: input.budgetAmount,
+    quotedAmount: input.quotedAmount,
+    approvedAmount: input.approvedAmount,
+    actualAmount: input.actualAmount,
+  });
+
   const row = await prisma.ddBudgetLine.create({
     data: {
       dryDockProjectId: input.dryDockProjectId,
       category: input.category.trim(),
       description: input.description?.trim() || null,
-      budgetAmount: input.budgetAmount ?? 0,
-      quotedAmount: input.quotedAmount ?? null,
-      approvedAmount: input.approvedAmount ?? null,
-      actualAmount: input.actualAmount ?? null,
+      ...amounts,
       responsibleParty: input.responsibleParty?.trim() || null,
       varianceReason: input.varianceReason?.trim() || null,
       approvalStatus: input.approvalStatus ?? "pending",
@@ -104,6 +120,8 @@ export async function updateDdBudgetLine(
     dryDockProjectId: string;
     category: string;
     description: string | null;
+    currency: string | null;
+    exchangeRateLocalPerUsd: number | null;
     budgetAmount: number;
     quotedAmount: number | null;
     approvedAmount: number | null;
@@ -114,16 +132,42 @@ export async function updateDdBudgetLine(
     sortOrder: number;
   }>,
 ) {
+  const existing = await prisma.ddBudgetLine.findFirst({ where: { id, ...notDeleted } });
+  if (!existing) throw new Error("Budget line not found");
+
+  const amountsTouched =
+    input.currency !== undefined ||
+    input.exchangeRateLocalPerUsd !== undefined ||
+    input.budgetAmount !== undefined ||
+    input.quotedAmount !== undefined ||
+    input.approvedAmount !== undefined ||
+    input.actualAmount !== undefined;
+
+  const amounts = amountsTouched
+    ? await resolveBudgetLineCurrencyAmounts({
+        dryDockProjectId: input.dryDockProjectId ?? existing.dryDockProjectId,
+        currency: input.currency ?? existing.currency,
+        exchangeRateLocalPerUsd:
+          input.exchangeRateLocalPerUsd !== undefined
+            ? input.exchangeRateLocalPerUsd
+            : existing.exchangeRateLocalPerUsd,
+        budgetAmount: input.budgetAmount ?? existing.budgetAmount,
+        quotedAmount:
+          input.quotedAmount !== undefined ? input.quotedAmount : existing.quotedAmount,
+        approvedAmount:
+          input.approvedAmount !== undefined ? input.approvedAmount : existing.approvedAmount,
+        actualAmount:
+          input.actualAmount !== undefined ? input.actualAmount : existing.actualAmount,
+      })
+    : null;
+
   const row = await prisma.ddBudgetLine.update({
     where: { id },
     data: {
       ...(input.dryDockProjectId != null ? { dryDockProjectId: input.dryDockProjectId } : {}),
       ...(input.category != null ? { category: input.category.trim() } : {}),
       ...(input.description !== undefined ? { description: input.description?.trim() || null } : {}),
-      ...(input.budgetAmount != null ? { budgetAmount: input.budgetAmount } : {}),
-      ...(input.quotedAmount !== undefined ? { quotedAmount: input.quotedAmount } : {}),
-      ...(input.approvedAmount !== undefined ? { approvedAmount: input.approvedAmount } : {}),
-      ...(input.actualAmount !== undefined ? { actualAmount: input.actualAmount } : {}),
+      ...(amounts ?? {}),
       ...(input.responsibleParty !== undefined
         ? { responsibleParty: input.responsibleParty?.trim() || null }
         : {}),

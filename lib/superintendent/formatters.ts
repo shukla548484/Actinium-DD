@@ -8,6 +8,19 @@ export function fmtMoney(value: number | null | undefined): string {
   return value.toLocaleString(undefined, { maximumFractionDigits: 0 });
 }
 
+/** Format amount with currency code; for non-USD optionally append USD equivalent. */
+export function fmtMoneyWithCurrency(
+  value: number | null | undefined,
+  currency: string | null | undefined,
+  usdValue?: number | null,
+): string {
+  if (value == null) return "—";
+  const code = (currency || "USD").toUpperCase();
+  const local = `${code} ${fmtMoney(value)}`;
+  if (code === "USD" || usdValue == null) return local;
+  return `${local} (≈ USD ${fmtMoney(usdValue)})`;
+}
+
 export function fmtPct(value: number | null | undefined): string {
   if (value == null) return "—";
   return `${value}%`;

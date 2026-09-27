@@ -1536,6 +1536,7 @@ export function saveShipyardQuoteLangPrefs(prefs: ShipyardQuoteLangPrefs) {
 /**
  * First visit: detect location/browser language and enable dual English + local.
  * Subsequent visits keep the saved preference (manual or auto).
+ * Never blocks login forever — geo/detect failures fall back to English within a timeout.
  */
 export async function ensureShipyardQuoteLangPrefs(): Promise<ShipyardQuoteLangPrefs> {
   if (typeof window === "undefined") return DEFAULT_SHIPYARD_QUOTE_LANG_PREFS;
@@ -1546,37 +1547,58 @@ export async function ensureShipyardQuoteLangPrefs(): Promise<ShipyardQuoteLangP
   const initialized = window.localStorage.getItem(SHIPYARD_QUOTE_LANG_INIT_KEY) === "1";
   if (initialized) return DEFAULT_SHIPYARD_QUOTE_LANG_PREFS;
 
-  const { detectLocaleFromClientHints, pickDetectedLocale, localeFromCountryCode } =
-    await import("@/lib/i18n/detectShipyardLocale");
+  const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T | null> =>
+    Promise.race([
+      promise.then((value) => value as T | null).catch(() => null),
+      new Promise<null>((resolve) => {
+        window.setTimeout(() => resolve(null), ms);
+      }),
+    ]);
 
-  let fromGeo: ReturnType<typeof localeFromCountryCode> = null;
   try {
-    const res = await fetch("/api/geo/locale", { cache: "no-store" });
-    if (res.ok) {
-      const data = (await res.json()) as { locale?: string | null; country?: string | null };
-      fromGeo =
-        (data.locale as ReturnType<typeof localeFromCountryCode>) ??
-        localeFromCountryCode(data.country);
+    const detectMod = await withTimeout(import("@/lib/i18n/detectShipyardLocale"), 2500);
+    if (!detectMod) {
+      window.localStorage.setItem(SHIPYARD_QUOTE_LANG_INIT_KEY, "1");
+      return DEFAULT_SHIPYARD_QUOTE_LANG_PREFS;
     }
+
+    const { detectLocaleFromClientHints, pickDetectedLocale, localeFromCountryCode } = detectMod;
+
+    let fromGeo: ReturnType<typeof localeFromCountryCode> = null;
+    try {
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), 1500);
+      const res = await fetch("/api/geo/locale", { cache: "no-store", signal: controller.signal });
+      window.clearTimeout(timer);
+      if (res.ok) {
+        const data = (await res.json()) as { locale?: string | null; country?: string | null };
+        fromGeo =
+          (data.locale as ReturnType<typeof localeFromCountryCode>) ??
+          localeFromCountryCode(data.country);
+      }
+    } catch {
+      /* offline / local dev / aborted — fall through to browser + timezone */
+    }
+
+    const detected = pickDetectedLocale(fromGeo, detectLocaleFromClientHints());
+    window.localStorage.setItem(SHIPYARD_QUOTE_LANG_INIT_KEY, "1");
+
+    if (!detected) {
+      return DEFAULT_SHIPYARD_QUOTE_LANG_PREFS;
+    }
+
+    const prefs: ShipyardQuoteLangPrefs = {
+      mode: "dual",
+      secondary: detected,
+      active: detected,
+      autoDetected: true,
+    };
+    saveShipyardQuoteLangPrefs(prefs);
+    return prefs;
   } catch {
-    /* offline / local dev — fall through to browser + timezone */
-  }
-
-  const detected = pickDetectedLocale(fromGeo, detectLocaleFromClientHints());
-  window.localStorage.setItem(SHIPYARD_QUOTE_LANG_INIT_KEY, "1");
-
-  if (!detected) {
+    window.localStorage.setItem(SHIPYARD_QUOTE_LANG_INIT_KEY, "1");
     return DEFAULT_SHIPYARD_QUOTE_LANG_PREFS;
   }
-
-  const prefs: ShipyardQuoteLangPrefs = {
-    mode: "dual",
-    secondary: detected,
-    active: detected,
-    autoDetected: true,
-  };
-  saveShipyardQuoteLangPrefs(prefs);
-  return prefs;
 }
 
 export function resolveActiveLocale(prefs: ShipyardQuoteLangPrefs): ShipyardQuoteLocale {

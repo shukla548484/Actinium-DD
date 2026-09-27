@@ -62,6 +62,13 @@ export function SteelRenewalScopePanel({ scope, onChange, disabled }: Props) {
 
   const rows = scope.lines.length > 0 ? scope.lines : [createEmptySteelRenewalLine()];
 
+  // Seed a real empty line so location/qty edits persist (avoid phantom row with no source line).
+  useEffect(() => {
+    if (scope.lines.length === 0 && !disabled) {
+      onChange({ ...scope, lines: [createEmptySteelRenewalLine()] });
+    }
+  }, [scope.lines.length, disabled, onChange, scope]);
+
   return (
     <div className="space-y-4 rounded-lg border bg-muted/20 p-4">
       <div>

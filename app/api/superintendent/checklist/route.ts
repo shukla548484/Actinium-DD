@@ -37,6 +37,15 @@ export async function GET(request: Request) {
     ...buildChildEntityWhere(dryDockProjectId, guard.projectFilter),
   };
 
+  const scopedToOneProject = Boolean(dryDockProjectId);
+  const orderBy = scopedToOneProject
+    ? ([{ sortOrder: "asc" }, { createdAt: "desc" }] as const)
+    : ([
+        { dryDockProject: { name: "asc" } },
+        { sortOrder: "asc" },
+        { createdAt: "desc" },
+      ] as const);
+
   const [total, completedCount, checklistItems] = await Promise.all([
     prisma.ddChecklistItem.count({ where }),
     prisma.ddChecklistItem.count({ where: { ...where, isCompleted: true } }),
@@ -44,7 +53,10 @@ export async function GET(request: Request) {
       where,
       skip,
       take: limit,
-      orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+      orderBy: [...orderBy],
+      include: {
+        dryDockProject: { select: { id: true, name: true, referenceCode: true } },
+      },
     }),
   ]);
 
@@ -73,8 +85,14 @@ export async function GET(request: Request) {
     syncedCompletedCount += idsToSync.length;
   }
 
+  const items = checklistItems.map(({ dryDockProject, ...item }) => ({
+    ...item,
+    projectName: dryDockProject.name,
+    projectReferenceCode: dryDockProject.referenceCode,
+  }));
+
   return NextResponse.json({
-    ...paginatedResult(checklistItems, total, page, limit),
+    ...paginatedResult(items, total, page, limit),
     completedCount: syncedCompletedCount,
   });
 }

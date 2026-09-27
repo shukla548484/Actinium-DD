@@ -11,6 +11,10 @@ import { notDeleted } from "@/lib/superintendent/helpers";
 import { prisma } from "@/lib/prisma";
 
 export const SUPERINTENDENT_EMPLOYEE_COOKIE = "superintendent_employee_id";
+/** Durable session active dry-dock project for Tech Superintendent navigation. */
+export const SUPERINTENDENT_ACTIVE_PROJECT_COOKIE = "superintendent_active_project_id";
+
+export const ACTIVE_PROJECT_COOKIE_MAX_AGE = 60 * 60 * 24 * 90;
 
 /** undefined = unrestricted (platform admin); [] = no vessels; string[] = assigned vessels */
 export async function getScopedVesselIds(): Promise<string[] | undefined> {
@@ -100,4 +104,41 @@ export async function assertVesselInScope(
 
 export function emptyPaginated(page: number, limit: number) {
   return { items: [], total: 0, page, limit, totalPages: 0 };
+}
+
+/** Cookie-stored active dry dock project id, or null when unscoped. */
+export async function getActiveDryDockProjectId(): Promise<string | null> {
+  const jar = await cookies();
+  const id = jar.get(SUPERINTENDENT_ACTIVE_PROJECT_COOKIE)?.value?.trim();
+  return id || null;
+}
+
+export type ActiveDryDockProjectSummary = {
+  id: string;
+  name: string;
+  referenceCode: string | null;
+  vessel: { id: string; name: string; code: string };
+};
+
+/** Resolve active project from cookie if it still exists and is in vessel scope. */
+export async function resolveActiveDryDockProject(): Promise<ActiveDryDockProjectSummary | null> {
+  const id = await getActiveDryDockProjectId();
+  if (!id) return null;
+
+  const vesselIds = await getScopedVesselIds();
+  const project = await prisma.dryDockProject.findFirst({
+    where: {
+      id,
+      ...notDeleted,
+      archivedAt: null,
+      ...dryDockProjectScopeWhere(vesselIds),
+    },
+    select: {
+      id: true,
+      name: true,
+      referenceCode: true,
+      vessel: { select: { id: true, name: true, code: true } },
+    },
+  });
+  return project;
 }

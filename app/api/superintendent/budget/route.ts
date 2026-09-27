@@ -12,6 +12,7 @@ import {
   guardChildListAccess,
 } from "@/lib/superintendent/childRouteScope";
 import { assertDryDockProjectInScope } from "@/lib/superintendent/scope";
+import { resolveBudgetLineCurrencyAmounts } from "@/lib/superintendent/budgetLineCurrency";
 import { ddBudgetLineCreateSchema, parseBody } from "@/lib/superintendent/validation";
 import { prisma } from "@/lib/prisma";
 
@@ -59,6 +60,31 @@ export async function POST(request: Request) {
   const access = await assertDryDockProjectInScope(parsed.data.dryDockProjectId);
   if (!access.ok) return access.response;
 
-  const budgetLine = await prisma.ddBudgetLine.create({ data: parsed.data });
+  const {
+    currency,
+    exchangeRateLocalPerUsd,
+    budgetAmount,
+    quotedAmount,
+    approvedAmount,
+    actualAmount,
+    ...rest
+  } = parsed.data;
+
+  const amounts = await resolveBudgetLineCurrencyAmounts({
+    dryDockProjectId: parsed.data.dryDockProjectId,
+    currency,
+    exchangeRateLocalPerUsd,
+    budgetAmount,
+    quotedAmount,
+    approvedAmount,
+    actualAmount,
+  });
+
+  const budgetLine = await prisma.ddBudgetLine.create({
+    data: {
+      ...rest,
+      ...amounts,
+    },
+  });
   return NextResponse.json({ budgetLine }, { status: 201 });
 }

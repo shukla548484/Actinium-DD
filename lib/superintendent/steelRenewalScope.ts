@@ -12,6 +12,9 @@ export const STEEL_RENEWAL_LOCATION_OPTIONS: readonly { value: string; label: st
   { value: "Hull", label: "Hull" },
   { value: "Accommodation", label: "Accommodation" },
   { value: "Cargo Holds", label: "Cargo Holds" },
+  { value: "Chain Locker", label: "Chain Locker" },
+  { value: "Bottom Plate", label: "Bottom Plate" },
+  { value: "BT Room", label: "BT Room" },
 ] as const;
 
 export type SteelRenewalLine = {

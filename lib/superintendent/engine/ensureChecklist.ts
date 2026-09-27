@@ -1,16 +1,20 @@
 import type { DryDockProjectType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { notDeleted } from "@/lib/superintendent/helpers";
+import { dedupeProjectChecklistItems } from "./dedupeChecklist";
 import { getProjectTemplate } from "./projectTemplates";
 
 /**
- * Adds any template checklist / document items missing from a project (matched by title).
- * Safe to call repeatedly — does not duplicate existing titles.
+ * Adds any template checklist / document / RFQ items missing from a project
+ * (matched by title). Safe to call repeatedly — does not duplicate existing titles.
+ * Also soft-deletes any within-project title+category duplicates first.
  */
 export async function ensureProjectChecklistFromTemplate(input: {
   dryDockProjectId: string;
   projectType: DryDockProjectType;
-}): Promise<{ added: number; titles: string[] }> {
+}): Promise<{ added: number; titles: string[]; deduped: number }> {
+  const dedupe = await dedupeProjectChecklistItems(input.dryDockProjectId);
+
   const template = getProjectTemplate(input.projectType);
   const desired = [
     ...template.checklist.map((item, index) => ({
@@ -23,6 +27,11 @@ export async function ensureProjectChecklistFromTemplate(input: {
       category: "Documents",
       sortOrder: 1000 + index,
     })),
+    ...template.rfqSteps.map((item, index) => ({
+      title: item.title,
+      category: "RFQ",
+      sortOrder: 2000 + index,
+    })),
   ];
 
   const existing = await prisma.ddChecklistItem.findMany({
@@ -33,7 +42,7 @@ export async function ensureProjectChecklistFromTemplate(input: {
 
   const missing = desired.filter((item) => !existingTitles.has(item.title.trim().toLowerCase()));
   if (missing.length === 0) {
-    return { added: 0, titles: [] };
+    return { added: 0, titles: [], deduped: dedupe.removed };
   }
 
   await prisma.ddChecklistItem.createMany({
@@ -45,5 +54,9 @@ export async function ensureProjectChecklistFromTemplate(input: {
     })),
   });
 
-  return { added: missing.length, titles: missing.map((item) => item.title) };
+  return {
+    added: missing.length,
+    titles: missing.map((item) => item.title),
+    deduped: dedupe.removed,
+  };
 }

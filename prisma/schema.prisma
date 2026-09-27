@@ -2010,10 +2010,19 @@ model DdBudgetLine {
   dryDockProjectId  String   @map("dry_dock_project_id")
   category          String
   description       String?
+  /// Amounts below are in this currency (default USD).
+  currency          String   @default("USD")
+  /// Local currency units per 1 USD at save time (1 when currency is USD).
+  exchangeRateLocalPerUsd Float? @map("exchange_rate_local_per_usd")
   budgetAmount      Float    @default(0) @map("budget_amount")
   quotedAmount      Float?   @map("quoted_amount")
   approvedAmount    Float?   @map("approved_amount")
   actualAmount      Float?   @map("actual_amount")
+  /// USD mirrors when currency ≠ USD (or same as local when USD).
+  budgetAmountUsd   Float?   @map("budget_amount_usd")
+  quotedAmountUsd   Float?   @map("quoted_amount_usd")
+  approvedAmountUsd Float?   @map("approved_amount_usd")
+  actualAmountUsd   Float?   @map("actual_amount_usd")
   responsibleParty  String?  @map("responsible_party")
   varianceReason    String?  @map("variance_reason")
   approvalStatus    DdApprovalStatus @default(pending) @map("approval_status")
@@ -2140,6 +2149,10 @@ model DdDailyReport {
   id                String   @id @default(cuid())
   dryDockProjectId  String   @map("dry_dock_project_id")
   reportDate        DateTime @map("report_date")
+  /// Six section payloads: { deck_crew, engine_crew, third_party, shipyard, painting, class_attendance } each { workDone }.
+  sectionsJson      Json?    @map("sections_json")
+  weatherCondition  String?  @map("weather_condition")
+  /// Legacy flat fields — kept for read/migration; UI writes sectionsJson instead.
   completedWork     String?  @map("completed_work")
   plannedWork       String?  @map("planned_work")
   manpowerCount     Int?     @map("manpower_count")
@@ -2151,10 +2164,31 @@ model DdDailyReport {
   updatedAt         DateTime @updatedAt @map("updated_at")
 
   dryDockProject DryDockProject @relation(fields: [dryDockProjectId], references: [id], onDelete: Cascade)
+  attachments    DdDailyReportAttachment[]
 
+  /// Soft-delete-aware uniqueness is enforced via partial unique index in migration
+  /// (dry_dock_project_id, report_date) WHERE deleted_at IS NULL.
   @@index([dryDockProjectId, reportDate])
   @@index([deletedAt])
   @@map("dd_daily_reports")
+}
+
+model DdDailyReportAttachment {
+  id            String   @id @default(cuid())
+  dailyReportId String   @map("daily_report_id")
+  /// One of: deck_crew | engine_crew | third_party | shipyard | painting | class_attendance
+  sectionKey    String   @map("section_key")
+  fileName      String   @map("file_name")
+  fileUrl       String   @map("file_url")
+  mimeType      String?  @map("mime_type")
+  fileSize      Int?     @map("file_size")
+  caption       String?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  dailyReport DdDailyReport @relation(fields: [dailyReportId], references: [id], onDelete: Cascade)
+
+  @@index([dailyReportId, sectionKey])
+  @@map("dd_daily_report_attachments")
 }
 
 model DdDelayItem {

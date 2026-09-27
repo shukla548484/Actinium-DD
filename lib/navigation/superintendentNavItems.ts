@@ -249,8 +249,64 @@ export const superintendentNavGroups: SuperintendentNavGroup[] = [
   "Reports",
 ];
 
+function withProjectQuery(href: string, dryDockProjectId: string): string {
+  const sep = href.includes("?") ? "&" : "?";
+  return `${href}${sep}dryDockProjectId=${encodeURIComponent(dryDockProjectId)}`;
+}
+
+/**
+ * Remap sidebar hrefs into the active dry-dock project workspace when set.
+ * Prefers in-project routes; falls back to global list pages with dryDockProjectId.
+ */
+export function buildSuperintendentNavItems(
+  activeProjectId: string | null | undefined,
+): SuperintendentNavItem[] {
+  if (!activeProjectId) return superintendentNavItems;
+
+  const id = activeProjectId;
+  const scopedHref: Partial<Record<SuperintendentNavId, string>> = {
+    dashboard: `/superintendent/projects/${id}`,
+    // Keep the projects list so users can switch; active project is set from the scope bar / deep links.
+    checklist: `/superintendent/planning/checklist?dryDockProjectId=${encodeURIComponent(id)}`,
+    milestones: `/superintendent/planning/milestones?dryDockProjectId=${encodeURIComponent(id)}`,
+    risks: `/superintendent/planning/risks?dryDockProjectId=${encodeURIComponent(id)}`,
+    jobs: `/superintendent/projects/${id}/scope`,
+    vesselJobBank: withProjectQuery("/superintendent/vessel-jobs", id),
+    simpleJobs: withProjectQuery("/superintendent/simple-jobs", id),
+    shipyardQuotations: withProjectQuery("/superintendent/quotations", id),
+    budget: `/superintendent/budget?dryDockProjectId=${encodeURIComponent(id)}`,
+    variations: `/superintendent/budget/variations?dryDockProjectId=${encodeURIComponent(id)}`,
+    rfq: `/superintendent/projects/${id}/rfq`,
+    dailyReports: `/superintendent/monitoring/daily-reports?dryDockProjectId=${encodeURIComponent(id)}`,
+    delays: `/superintendent/monitoring/delays?dryDockProjectId=${encodeURIComponent(id)}`,
+    progress: `/superintendent/projects/${id}`,
+    survey: withProjectQuery("/superintendent/survey", id),
+    vesselRequisitionBank: withProjectQuery("/superintendent/vessel-requisitions", id),
+    spares: withProjectQuery("/superintendent/spares", id),
+    approvals: withProjectQuery("/superintendent/approvals", id),
+    reports: `/superintendent/projects/${id}/reports`,
+  };
+
+  return superintendentNavItems.map((item) => {
+    const href = scopedHref[item.id];
+    return href ? { ...item, href } : item;
+  });
+}
+
 export function resolveSuperintendentNavId(pathname: string): SuperintendentNavId {
   if (pathname.startsWith("/superintendent/vessels")) return "vessels";
+  // Project workspace deep links — map modules to sidebar equivalents.
+  const projectModule = pathname.match(/^\/superintendent\/projects\/([^/]+)(?:\/([^/?#]+))?/);
+  if (projectModule) {
+    const projectKey = projectModule[1];
+    if (projectKey === "new") return "projects";
+    const section = projectModule[2];
+    if (!section) return "dashboard";
+    if (section === "scope") return "jobs";
+    if (section === "rfq") return "rfq";
+    if (section === "reports") return "reports";
+    return "projects";
+  }
   if (pathname.startsWith("/superintendent/projects")) return "projects";
   if (pathname.startsWith("/superintendent/planning/checklist")) return "checklist";
   if (pathname.startsWith("/superintendent/planning/milestones")) return "milestones";

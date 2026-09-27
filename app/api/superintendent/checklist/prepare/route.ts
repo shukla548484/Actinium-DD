@@ -35,5 +35,6 @@ export async function POST(request: Request) {
     ok: true,
     added: result.added,
     titles: result.titles,
+    deduped: result.deduped,
   });
 }
